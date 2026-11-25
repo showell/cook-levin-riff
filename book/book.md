@@ -578,6 +578,42 @@ The step unit's gates as the repository builds them, in `sat_step` (`src/sat.c`)
 
 {{chapter Cook-Levin as SAT}} takes the last step: each gate becomes three clauses, the required output becomes four more, and the circuit becomes one formula for a SAT solver.
 
+## The tableau, filled in
+
+{{chapter The Cook-Levin machine}} describes Cook's grid; this chapter prints it, once for one program and once for every program at once.
+
+### The tableau of one program
+
+Here is the tableau filled in for `is_not_tiny`'s answer, `decr, mod2, zero, decr, zero, nada`: each cell is the state after that row's line, from the stepper's compiled step (`src/tableau_main.c`, which the book's build runs and holds these tables to).
+
+| step | line | core 0 | core 1 | core 2 | core 3 |
+|---|---|---|---|---|---|
+| start | | AX=0 | AX=1 | AX=2 | AX=3 |
+| 1 | `decr` | AX=0, halted | AX=0 | AX=1 | AX=2 |
+| 2 | `mod2` | AX=0, halted | AX=0 | AX=1 | AX=0 |
+| 3 | `zero` | AX=0, halted | AX=0, accepted | AX=1 | AX=0, accepted |
+| 4 | `decr` | AX=0, halted | AX=0, accepted, halted | AX=0 | AX=0, accepted, halted |
+| 5 | `zero` | AX=0, halted | AX=0, accepted, halted | AX=0, accepted | AX=0, accepted, halted |
+| 6 | `nada` | AX=0, halted | AX=0, accepted, halted | AX=0, accepted | AX=0, accepted, halted |
+
+The bottom row's `accepted` flags read 0, 1, 1, 1, which is {1, 2, 3}, the language. One detail of the circuit shows here: an accept leaves the core running, since only `decr` at 0 sets `halted`. Cores 1 and 3 accept on line 3 and halt on line 4, and `accepted` stays 1, because the flags only ever turn on. The interpreter stops at the accept instead; the bottom row agrees either way.
+
+### The tableau of every program
+
+Now leave the program free. The same grid, as the SAT encoding builds it for {1, 2, 3}, names in each cell the formula's literals for the four state wires, `hb lb halted accepted`. A 1 or 0 is a constant, and `xN` is the formula's variable N. Variables 1 to 12 are the program's bits, two per line.
+
+| step | line's bits | core 0 | core 1 | core 2 | core 3 |
+|---|---|---|---|---|---|
+| start | | 0 0 0 0 | 0 1 0 0 | 1 0 0 0 | 1 1 0 0 |
+| 1 | x1 x2 | 0 0 x15 x14 | 0 x68 0 0 | x67 x15 0 0 | x272 x68 0 0 |
+| 2 | x3 x4 | 0 0 x26 x25 | 0 x75 x72 x71 | x150 x151 x141 x138 | x295 x296 x286 x283 |
+| 3 | x5 x6 | 0 0 x36 x35 | 0 x88 x86 x85 | x180 x181 x173 x172 | x325 x326 x318 x317 |
+| 4 | x7 x8 | 0 0 x46 x45 | 0 x101 x99 x98 | x210 x211 x203 x202 | x355 x356 x348 x347 |
+| 5 | x9 x10 | 0 0 x56 x55 | 0 x114 x112 x111 | x240 x241 x233 x232 | x385 x386 x378 x377 |
+| 6 | x11 x12 | 0 0 x66 x65 | 0 x127 x125 x124 | x270 x271 x263 x262 | x415 x416 x408 x407 |
+
+Each variable here is a gate's output, and its three clauses tie it to the cell above and to its row's two program bits. Some cells are constants the whole way down, and the constants carry facts. Core 0 starts at `AX` = 0, and every opcode keeps 0 at 0 or halts, so its `AX` bits are the constant 0 in every row, and the encoder folds them away. Core 1 starts at 1, and its `hb` stays 0 because `AX` can only fall. Some literals repeat across cores: `x15` is core 0's `halted` after line 1 and core 2's `lb`, since both are the same function of `x1` and `x2`: line 1 is `decr`. The encoder builds that gate once and reuses it. Setting `x1` to `x12` to the program above and propagating fills every cell with the first table's values; the last four clauses then require the bottom row's `accepted` literals, `x65`, `x124`, `x262` and `x407`, to be 0, 1, 1 and 1.
+
 ## Cook-Levin as SAT
 
 `src/sat.c` writes each puzzle as a Boolean formula in DIMACS CNF, the input format of SAT solvers (`8de51b7`). This is the Cook-Levin construction itself: the question "which six-instruction programs accept exactly this language?" becomes one formula whose satisfying assignments are exactly those programs.
