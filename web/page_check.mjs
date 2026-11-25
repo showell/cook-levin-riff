@@ -385,6 +385,9 @@ try {
   expect((await text("verdict")) === "Your program falsely accepts 0. It falsely rejects 1 and 3.", `zero on is_odd says \`${await text("verdict")}\``);
   const marks = await evaluate("[...document.querySelectorAll('#trace tr[data-row=\"outcome\"] td')].map((c) => c.textContent).join(\" | \")");
   expect(marks === "WRONG! ❌ | WRONG! ❌ | Correct! 🎉 | WRONG! ❌", `zero on is_odd's outcome row says \`${marks}\``);
+  // At a phone's width each outcome cell holds its words without clipping.
+  const clipped = await evaluate("[...document.querySelectorAll('#trace tr[data-row=\"outcome\"] td')].filter((c) => c.scrollWidth > c.clientWidth).length");
+  expect(clipped === 0, `${clipped} of the outcome row's cells are clipped at ${WIDTH}px`);
 
   // A solved puzzle reopens as a puzzle: unsolved, at its start, still
   // marked solved in the row.
