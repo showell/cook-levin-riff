@@ -75,8 +75,18 @@ settings = {
 	negatives: Lint({ words: "book/negative_words.txt", table: "book/negatives.txt" }),
 	colorer: colored_code,
 	include_languages: Includes.default_languages.append({ extension: "c", language: "c" }),
-	look: { ..default_look, head_end: Polynomials.style },
+	look: { ..default_look, head_end: Polynomials.style, dividers: parts },
 }
+
+## The book's three parts, each named above its first chapter in the
+## contents. A part's title lives here alone; the manuscript says "the first
+## part" and so on.
+parts : List(Pages.Divider)
+parts = [
+	{ before: "The machine", level: Part, title: "Part I: the toy" },
+	{ before: "How it got here", level: Part, title: "Part II: Cook-Levin" },
+	{ before: "The oracles", level: Part, title: "Part III: the cross-checks" },
+]
 
 default_look : Pages.Look
 default_look = Builder.default_settings.look
