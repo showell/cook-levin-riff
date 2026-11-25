@@ -10,7 +10,7 @@ Steve Howell wrote the first version by hand in Python, in [virtual-machine](htt
 
 ### What the book covers
 
-{{chapter The machine}} sets out the machine, and {{chapter Languages and machines}} gives the computer science behind the word "language", back to Turing. {{chapter Programs as languages}} is the search over all 4,096 programs, and {{chapter Nibble, the puzzle page}} turns its 16 languages into puzzles. {{chapter Arithmetization}} turns one step into polynomials. {{chapter Why composing blew up}} and {{chapter Six steps composed}} take the step through a whole program. {{chapter Cook-Levin as SAT}} turns the same machine into a formula for a SAT solver. {{chapter The oracles}} lines up every implementation that computes the answers, and {{chapter The Roc port}} reads the mathematics in Roc.
+{{chapter The machine}} sets out the machine, and {{chapter Languages and machines}} gives the computer science behind the word "language", back to Turing. {{chapter Programs as languages}} is the search over all 4,096 programs, and {{chapter Nibble, the puzzle page}} turns its 16 languages into puzzles. {{chapter Arithmetization}} turns one step into polynomials. {{chapter Why composing blew up}} and {{chapter Six steps composed}} take the step through a whole program, and {{chapter The polynomials, in full}} prints every one of those polynomials whole, the Python's among them. {{chapter Cook-Levin as SAT}} turns the same machine into a formula for a SAT solver. {{chapter The oracles}} lines up every implementation that computes the answers, and {{chapter The Roc port}} reads the mathematics in Roc.
 
 ### Why the name fits
 
@@ -243,7 +243,7 @@ The construction names each fact about the state with an indicator, a polynomial
 
 ### The step's sizes
 
-In Python's general polynomial ring, where x·x is x², the four polynomials come out large: hb' has 786 terms and lb' 2,979 (`README.md`, its layout's `src/stepper.c`). The C port prints them exactly as `stepper.py` does, held to `tests/golden/step_hb.txt` and its three siblings. In the Boolean ring of {{chapter Why composing blew up}} the same four have 7, 13, 17 and 33 terms, every coefficient 1 or -1, as an expect in `roc/Stepper.roc` holds.
+In Python's general polynomial ring, where x·x is x², the four polynomials come out large: hb' has 786 terms and lb' 2,979 (`README.md`, its layout's `src/stepper.c`). The C port prints them exactly as `stepper.py` does, held to `tests/golden/step_hb.txt` and its three siblings. In the Boolean ring of {{chapter Why composing blew up}} the same four have 7, 13, 17 and 33 terms, every coefficient 1 or -1, as an expect in `roc/Stepper.roc` holds. {{chapter The polynomials, in full}} prints all eight whole.
 
 Here is `halted'` in that ring. It says: halted already, or a `decr` at `AX` = 0 on a running machine.
 
@@ -280,7 +280,7 @@ The fix is one identity. Every variable here is only ever 0 or 1, and on those v
 
 The Boolean ring keeps every value the machine can see. Two polynomials that agree on every 0/1 point reduce to the same multilinear polynomial, and a multilinear polynomial is fixed by its values on {0, 1}^n. So reducing by x² = x keeps every value the machine can see, and the canonical form makes `==` equality of functions (`roc/BoolPoly.roc`'s header).
 
-With the identity in place the step polynomials shrink from 786 and 2,979 terms to 7 and 13, and the composition of {{chapter Six steps composed}} takes a fraction of a second.
+With the identity in place the step polynomials shrink from 786 and 2,979 terms to 7 and 13, and the composition of {{chapter Six steps composed}} takes a fraction of a second. {{chapter The polynomials, in full}} shows the step both ways, Python's 147,274 characters of lb' beside its 230 in the Boolean ring.
 
 ## Six steps composed
 
@@ -318,7 +318,7 @@ Each step's term counts, from `roc/golden/composition.txt` and `out/tcc/compose_
 | 5 | 143 | 727 | 878 | 2,568 |
 | 6 | 319 | 2,185 | 2,732 | 10,324 |
 
-The final `hb` has degree 9 and its largest coefficient is 6; `lb` has degree 14 and 21; `halted` 14 and 20; `accepted` 14 and 63. Sixty-three is the largest coefficient of the four final polynomials, so int64 holds each with room to spare. Built with `gcc -O2` for this book, `compose_main` composed all six in 233 ms, 199 of them in step 6, at a peak of 4,224 KiB resident.
+The final `hb` has degree 9 and its largest coefficient is 6; `lb` has degree 14 and 21; `halted` 14 and 20; `accepted` 14 and 63. Sixty-three is the largest coefficient of the four final polynomials, so int64 holds each with room to spare. {{chapter The polynomials, in full}} prints the four. Built with `gcc -O2` for this book, `compose_main` composed all six in 233 ms, 199 of them in step 6, at a peak of 4,224 KiB resident.
 
 ### The proof
 
@@ -331,6 +331,95 @@ proof: 16384 points, 0 differ, 5596 accepted, 2891 accepted with no halt
 The last count is the Python's own reading of `halted`, kept as it is: a `zero` that accepts leaves the stepper's `halted` at 0, so 2,891 accepting runs end with it unset. The verdict is `accepted`, and it agrees with the machine at every point.
 
 The proof is exhaustive: it checks every input with every program. And since a multilinear polynomial is fixed by its values on {0, 1}^14, any implementation whose four polynomials pass it has exactly these four.
+
+## The polynomials, in full
+
+This chapter prints the polynomials of the last three chapters whole, every term of each. Over each box is what the book's app (`book/app/Polynomials.roc`) counts in the text it shows: terms, degree, the largest coefficient and characters. The chapter states each term count again in its source, and the build stops if a box's text has any other.
+
+### What the sizes mean
+
+Each final polynomial is a function of 14 bits: the input's two, `h0` and `l0`, and two for each instruction, `op1_hb` and `op1_lb` through `op6_hb` and `op6_lb`. Set them to one input and one program, and `accepted` evaluates to 1 when that program accepts that input and to 0 when it rejects it. Its 10,324 terms are all 4,096 programs run on all four inputs, written as one sum. `tests/test_compose.c` evaluates it at all 16,384 points and holds every value to the machine.
+
+### One step, as the Python printed it
+
+These are the step polynomials of {{chapter Arithmetization}} in the general ring, where x·x is x², as Steve's `stepper.py` prints them. `tests/golden/step_hb.txt` and its three siblings hold Python's own `str` of each, and `tests/test_stepper.c` holds the C's printing to them byte for byte (`5b14d74`). For this book `stepper.py` was run again, at virtual-machine's [94c3d31](https://github.com/showell/virtual-machine/commit/94c3d31), and its four strings matched the goldens byte for byte.
+
+```polynomial tests/golden/step_hb.txt
+hb', one step in the general ring, as Python's stepper.py prints it
+786
+```
+
+```polynomial tests/golden/step_lb.txt
+lb', one step in the general ring, as Python's stepper.py prints it
+2979
+```
+
+```polynomial tests/golden/step_halted.txt
+halted', one step in the general ring, as Python's stepper.py prints it
+25
+```
+
+```polynomial tests/golden/step_accepted.txt
+accepted', one step in the general ring, as Python's stepper.py prints it
+33
+```
+
+### The same step, with x² = x
+
+In the Boolean ring of {{chapter Why composing blew up}} each power folds to its variable, and like terms meet:
+
+| polynomial | general ring | Boolean ring |
+|---|---|---|
+| hb' | 786 terms, 36,547 characters | 7 terms, 116 characters |
+| lb' | 2,979 terms, 147,274 characters | 13 terms, 230 characters |
+| halted' | 25 terms, 514 characters | 17 terms, 294 characters |
+| accepted' | 33 terms, 728 characters | 33 terms, 728 characters |
+
+`accepted'` is already multilinear in the general ring, so the identity keeps its 33 terms; the two printers order them differently. The four below are the C's `bp_str`, as `roc/golden/step_polynomials.txt` holds them, and the Roc port's gate, `roc/check.shale`, prints the same file.
+
+```polynomial roc/golden/step_polynomials.txt hb'
+hb', one step in the Boolean ring, printed by the C's bp_str
+7
+```
+
+```polynomial roc/golden/step_polynomials.txt lb'
+lb', one step in the Boolean ring, printed by the C's bp_str
+13
+```
+
+```polynomial roc/golden/step_polynomials.txt halted'
+halted', one step in the Boolean ring, printed by the C's bp_str
+17
+```
+
+```polynomial roc/golden/step_polynomials.txt accepted'
+accepted', one step in the Boolean ring, printed by the C's bp_str
+33
+```
+
+### The whole program
+
+The four final polynomials come from `src/compose_main.c` (`1146d43`). `book/book.shale` builds it with `gcc -O2` and runs it each time the book is built, and holds what it prints, each step's term counts and each final polynomial's terms, degree and largest coefficient, to `roc/golden/composition.txt`, which the Roc and JavaScript ports print too. Then the app reads the four files it writes. `accepted` is the largest, at 510,387 characters.
+
+```polynomial book/build/out/hb.txt
+hb after six steps, composed by the C's compose_main at the book's build
+319
+```
+
+```polynomial book/build/out/lb.txt
+lb after six steps, composed by the C's compose_main at the book's build
+2185
+```
+
+```polynomial book/build/out/halted.txt
+halted after six steps, composed by the C's compose_main at the book's build
+2732
+```
+
+```polynomial book/build/out/accepted.txt
+accepted after six steps, composed by the C's compose_main at the book's build
+10324
+```
 
 ## Cook-Levin as SAT
 
