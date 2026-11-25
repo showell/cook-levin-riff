@@ -600,17 +600,22 @@ The bottom row's `accepted` flags read 0, 1, 1, 1, which is {1, 2, 3}, the langu
 
 ### The tableau of every program
 
-Now leave the program free. The same grid, as the SAT encoding builds it for {1, 2, 3}, names in each cell the formula's literals for the four state wires, `hb lb halted accepted`. A 1 or 0 is a constant, and `vN` is the formula's variable N. Variables 1 to 12 are the program's bits, two per line.
+Now leave the program free. The same grid, as the SAT encoding builds it for {1, 2, 3}, has in each cell the four wires of one core's state, written `hb lb · halted accepted`:
+
+- **The first two are `AX`**, as two bits: `0 0` is 0, `0 1` is 1, `1 0` is 2, `1 1` is 3. The start row is each core's input in binary: core 0 starts at `0 0`, core 1 at `0 1`, core 2 at `1 0`, core 3 at `1 1`.
+- **The last two are the verdict so far**, `halted` and `accepted`, both 0 at the start. They are there because the circuit runs to the end: all six step units run in every core, even after the program has accepted or rejected. The flags carry "this run already accepted" or "already halted" down to the bottom row, where the comparators read them; `AX` alone has only its value to carry.
+
+A 1 or 0 is a wire whose value is fixed whatever the program, and `vN` is the formula's variable N, a wire whose value depends on the program. Variables 1 to 12 are the program's bits, two per line.
 
 | step | line's bits | core 0 | core 1 | core 2 | core 3 |
 |---|---|---|---|---|---|
-| start | | 0 0 0 0 | 0 1 0 0 | 1 0 0 0 | 1 1 0 0 |
-| 1 | v1 v2 | 0 0 v15 v14 | 0 v68 0 0 | v67 v15 0 0 | v272 v68 0 0 |
-| 2 | v3 v4 | 0 0 v26 v25 | 0 v75 v72 v71 | v150 v151 v141 v138 | v295 v296 v286 v283 |
-| 3 | v5 v6 | 0 0 v36 v35 | 0 v88 v86 v85 | v180 v181 v173 v172 | v325 v326 v318 v317 |
-| 4 | v7 v8 | 0 0 v46 v45 | 0 v101 v99 v98 | v210 v211 v203 v202 | v355 v356 v348 v347 |
-| 5 | v9 v10 | 0 0 v56 v55 | 0 v114 v112 v111 | v240 v241 v233 v232 | v385 v386 v378 v377 |
-| 6 | v11 v12 | 0 0 v66 v65 | 0 v127 v125 v124 | v270 v271 v263 v262 | v415 v416 v408 v407 |
+| start | | 0 0 · 0 0 | 0 1 · 0 0 | 1 0 · 0 0 | 1 1 · 0 0 |
+| 1 | v1 v2 | 0 0 · v15 v14 | 0 v68 · 0 0 | v67 v15 · 0 0 | v272 v68 · 0 0 |
+| 2 | v3 v4 | 0 0 · v26 v25 | 0 v75 · v72 v71 | v150 v151 · v141 v138 | v295 v296 · v286 v283 |
+| 3 | v5 v6 | 0 0 · v36 v35 | 0 v88 · v86 v85 | v180 v181 · v173 v172 | v325 v326 · v318 v317 |
+| 4 | v7 v8 | 0 0 · v46 v45 | 0 v101 · v99 v98 | v210 v211 · v203 v202 | v355 v356 · v348 v347 |
+| 5 | v9 v10 | 0 0 · v56 v55 | 0 v114 · v112 v111 | v240 v241 · v233 v232 | v385 v386 · v378 v377 |
+| 6 | v11 v12 | 0 0 · v66 v65 | 0 v127 · v125 v124 | v270 v271 · v263 v262 | v415 v416 · v408 v407 |
 
 Each variable here is a gate's output, and its three clauses tie it to the cell above and to its row's two program bits. Some cells are constants the whole way down, and the constants carry facts. Core 0 starts at `AX` = 0, and every opcode keeps 0 at 0 or halts, so its `AX` bits are the constant 0 in every row, and the encoder folds them away. Core 1 starts at 1, and its `hb` stays 0 because `AX` can only fall. Some literals repeat across cores: `v15` is core 0's `halted` after line 1 and core 2's `lb`, since both are the same function of `v1` and `v2`: line 1 is `decr`. The encoder builds that gate once and reuses it. Setting `v1` to `v12` to the program above and propagating fills every cell with the first table's values; the last four clauses then require the bottom row's `accepted` literals, `v65`, `v124`, `v262` and `v407`, to be 0, 1, 1 and 1.
 

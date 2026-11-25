@@ -68,7 +68,7 @@ int main(void) {
             literal(t.hb);
             printf(" ");
             literal(t.lb);
-            printf(" ");
+            printf(" · ");
             literal(t.halted);
             printf(" ");
             literal(t.accepted);
