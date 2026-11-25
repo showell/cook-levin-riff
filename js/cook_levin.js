@@ -14,7 +14,8 @@
 //
 // It prints find_solutions' report (tests/golden/find_solutions.txt), then
 // the composition's (roc/golden/composition.txt). STEPS is how many steps
-// to compose; the proof needs all six (js/oracle.shale may set it lower).
+// to compose (1 to 6); the proof needs all six, and with fewer the last
+// line says so, as roc/Composition.roc's does.
 
 const STEPS = 6;
 
