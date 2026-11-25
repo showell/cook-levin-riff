@@ -16,7 +16,7 @@
 -- Run from the repository's root.
 
 const OUT = "out"
-const TESTS = {"tests/test_vm.c", "tests/test_reference.c", "tests/test_golden.c", "tests/test_ring_int.c", "tests/test_poly.c", "tests/test_stepper.c", "tests/test_cross_check.c", "tests/test_boolring.c", "tests/test_compose.c"}
+const TESTS = {"tests/test_vm.c", "tests/test_reference.c", "tests/test_golden.c", "tests/test_ring_int.c", "tests/test_poly.c", "tests/test_stepper.c", "tests/test_cross_check.c", "tests/test_boolring.c", "tests/test_compose.c", "tests/test_sat.c"}
 const GOLDEN = "tests/golden/find_solutions.txt"
 -- Why `run` may start a binary git does not track: this build just made it.
 const RAN = "build: a test binary this build just compiled"
