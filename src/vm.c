@@ -2,16 +2,10 @@
 
 #include "vm.h"
 
-// The machine needs no libc but for its stops. The wasm build (web/nibble.c)
-// defines VM_FREESTANDING: there a stop is a trap, which the page reports.
-#ifdef VM_FREESTANDING
-#define VM_STOP(...) __builtin_trap()
-#else
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #define VM_STOP(...) (fprintf(stderr, __VA_ARGS__), abort())
-#endif
 
 static const char *const OP_NAMES[NUM_OPS] = {"nada", "zero", "decr", "mod2"};
 

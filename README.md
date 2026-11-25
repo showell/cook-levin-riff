@@ -104,17 +104,24 @@ opens unsolved. The moment a pick solves it, the page says so, with how
 many six-line programs solve it, and the next puzzle opens. Nothing is
 kept between visits: a reload starts at puzzle 1 with only it open.
 
-The page runs this repository's C machine: `web/nibble.c` is `src/vm.c`
-compiled to wasm by `zig cc -target wasm32-freestanding`, with no libc
-(`VM_FREESTANDING` makes a stop a trap). The table of puzzles comes from
-C too: `web/puzzles.c` counts every program's language.
+The page runs the Roc port's machine. `roc/NibbleWasm.roc` is
+`roc/Machine.roc` behind the three functions the page calls: `status(n,
+code)`, `after(n, code, k)` (AX, halted and the Status packed in one
+number) and `accepts(code)`. The pinned Roc builds it for wasm32
+(`--opt=speed`) on the small platform in `web/platform/`, and Zig links it
+with `web/platform/host.zig`, the allocator and crash functions, into a
+9.5 KB module that imports nothing and exports only those three. The
+table of puzzles still comes from C: `web/puzzles.c` counts every
+program's language and finds each puzzle's shortest program.
 
 ```sh
 shale web/build.shale      # the table, the wasm, the page in out/web/site, and its check
 ```
 
-The check, `web/page_check.mjs`, holds the wasm to the C on all 4,096 × 4
-runs and to the 16-puzzle table and its order, then loads the page in
+The check, `web/page_check.mjs`, holds the Roc wasm to the C on all
+4,096 × 4 runs, by `status` and by six `after` steps, and to the C's
+16-puzzle table and its order, so the page is a cross-check of the two
+ports. It then loads the page in
 headless Chromium at a phone's width (390px), solves the first puzzle by
 clicking, sees that neither the page nor the trace scrolls sideways and that
 the locked and fixed lines are locked, sees a reload start fresh with
@@ -225,15 +232,18 @@ that `roc/roc-version` pins (0.1.0_RC1, at `~/tools/roc-0.1.0_RC1/roc`).
   turn, and the proof at all 2^14 (input, program) points. A multilinear
   polynomial is fixed by its values on {0, 1}^n, so agreeing with the
   machine everywhere makes the four final polynomials exactly the C's.
+- The app `NibbleWasm.roc`: `Machine.roc` as the Nibble page's wasm
+  (Playground, above).
 
 ```sh
 shale roc/check.shale      # the gate, from the repository's root
 shale roc/bench.shale      # one release build, and the composition timed beside the C's
 ```
 
-The gate runs `roc fmt --check`; `roc check` of the three apps, with no
+The gate runs `roc fmt --check`; `roc check` of the four apps, with no
 errors and no warnings; `roc test` of each, its expects held exactly (30,
-28 and 28); and each app built on the dev backend, its output held byte
+28, 21 and 28); and the three apps but `NibbleWasm.roc` (whose wasm
+`web/build.shale` builds and checks) built on the dev backend, its output held byte
 for byte to a golden: `tests/golden/find_solutions.txt`,
 `roc/golden/step_polynomials.txt` (written by the C's `bp_str`) and
 `roc/golden/composition.txt` (`tests/test_compose.c`'s term counts for
