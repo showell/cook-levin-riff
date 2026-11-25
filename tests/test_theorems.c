@@ -1,7 +1,9 @@
-// test_theorems.c: the book's theorems about shortest programs, proved by
-// running all 4,096 programs on all four inputs. A program's length is its
-// instructions before its trailing `nada`s. The counts themselves are
-// tests/golden/find_solutions.txt's, held by test_golden.c.
+// test_theorems.c: the book's theorems about the toy, proved by running all
+// 4,096 programs on all four inputs: each language's shortest length and
+// the final zero of its shortest programs, Steve's analytical solution on
+// every language, and the languages decided without mod2. A program's
+// length is its instructions before its trailing `nada`s. The counts
+// themselves are tests/golden/find_solutions.txt's, held by test_golden.c.
 
 #include "test.h"
 
@@ -59,5 +61,82 @@ TEST(every_shortest_program_ends_in_zero) {
     EXPECT(longer_ending_otherwise > 0);
 }
 
+// Steve's analytical solution (virtual-machine's d6bb78f, `solve`): decr
+// down to the language's least member, zero, and the same for the rest.
+// Writes the ops to `ops` and gives their count, which may pass MAX_STEPS.
+static int solve(int code, Op *ops) {
+    int lang[NUM_INPUTS];
+    int len = 0;
+    for (int i = 0; i < NUM_INPUTS; i++) {
+        if (code & (1 << i)) lang[len++] = i;
+    }
+    int n = 0;
+    int first = 0;
+    while (first < len) {
+        while (lang[first] > 0) {
+            ops[n++] = OP_DECR;
+            for (int k = first; k < len; k++) lang[k]--;
+        }
+        ops[n++] = OP_ZERO;
+        first++;
+    }
+    return n;
+}
+
+// The language that `count` ops accept, run by vm_step with no bound on
+// their number.
+static int language_of_ops(const Op *ops, int count) {
+    int code = 0;
+    for (int i = 0; i < NUM_INPUTS; i++) {
+        Machine m = vm_start(i);
+        for (int k = 0; k < count; k++) m = vm_step(m, ops[k]);
+        if (m.status == STATUS_ACCEPTED) code |= 1 << i;
+    }
+    return code;
+}
+
+TEST(the_analytical_solution_decides_every_language) {
+    Op ops[2 * NUM_INPUTS];
+    for (int y = 0; y < NUM_LANGUAGES; y++) {
+        int n = solve(y, ops);
+        EXPECT_EQ(language_of_ops(ops, n), y);
+        // Six lines or fewer for every language but {0, 1, 2, 3}, which
+        // takes seven: zero, decr, zero, decr, zero, decr, zero.
+        EXPECT_EQ(n > MAX_STEPS, y == 15);
+        if (n <= MAX_STEPS) {
+            Program p = disassemble(assemble(ops, (size_t)n));
+            EXPECT_EQ(language_code(p), y);
+        }
+    }
+    EXPECT_EQ(solve(15, ops), 7);
+    // For {0, 2, 3} it builds the one program that decides it.
+    const Op unique[MAX_STEPS] = {OP_ZERO, OP_DECR, OP_DECR, OP_ZERO, OP_DECR, OP_ZERO};
+    EXPECT_EQ(solve(13, ops), MAX_STEPS);
+    EXPECT_EQ(assemble(ops, MAX_STEPS), assemble(unique, MAX_STEPS));
+}
+
+// The 3^6 = 729 programs over nada, zero and decr decide 15 languages: all
+// but {0, 1, 2, 3}.
+TEST(without_mod2_fifteen_languages_are_decided) {
+    int found[NUM_LANGUAGES] = {0};
+    int programs = 0;
+    for (int n = 0; n < NUM_PROGRAMS; n++) {
+        Program p = disassemble((uint32_t)n);
+        int has_mod2 = 0;
+        for (int i = 0; i < MAX_STEPS; i++) has_mod2 |= p.ops[i] == OP_MOD2;
+        if (has_mod2) continue;
+        programs++;
+        found[language_code(p)] = 1;
+    }
+    EXPECT_EQ(programs, 729);
+    int languages = 0;
+    for (int y = 0; y < NUM_LANGUAGES; y++) languages += found[y];
+    EXPECT_EQ(languages, 15);
+    EXPECT_EQ(found[15], 0);
+    EXPECT_EQ(found[13], 1);
+}
+
 TEST_MAIN(TEST_CASE(each_language_has_the_shortest_length_the_book_states),
-          TEST_CASE(every_shortest_program_ends_in_zero))
+          TEST_CASE(every_shortest_program_ends_in_zero),
+          TEST_CASE(the_analytical_solution_decides_every_language),
+          TEST_CASE(without_mod2_fifteen_languages_are_decided))
