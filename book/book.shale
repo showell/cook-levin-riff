@@ -1,0 +1,133 @@
+-- budget: steps=20000000 arena_bytes=400000000 read_bytes=100000000 output_bytes=200000
+-- This builds the Cook-Levin book, A riff on Cook-Levin, with the book
+-- builder (roc-apps' book_builder/), into the dev channel's /cook-levin/:
+--
+--   cd <cook-levin checkout> && shale book/book.shale
+--
+-- The book builder is roc-apps', in the roc-apps checkout beside this one
+-- (ROC_APPS), and its tools run with that checkout as their root, so they
+-- name this checkout's files through its mount (HERE): this script runs from
+-- the checkout at HERE alone, and stops elsewhere. The book is the app
+-- book/app/main.roc (APP_DIR) on the book platform, which reads this
+-- checkout from its root and prints every page. First every commit the
+-- manuscript cites is held to resolve (check_citations, below). Its pre-step
+-- draws each ```dot fence of the manuscript with Graphviz
+-- (book_builder/tools/draw_diagrams.shale) into book/build/prepared/, as
+-- diagram-N.dot and diagram-N.svg, where the app reads them.
+--
+-- Then the book builder's tools/build_book.shale runs the app's expects, held
+-- to exactly APP_TESTS, builds the app into book_builder/zig-out/cook-levin,
+-- on Roc's dev backend, and runs the program on the checkout's root, which
+-- writes the pages, or stops on a gate. The pages go to book/build/book/
+-- with the builder's stylesheet, and are staged in the channel's
+-- /cook-levin.staging/. The builder's tools/book_check.mjs drives them there
+-- in a real browser and leaves a shot of each page in book/build/shots/.
+-- Then the book builder's tools/move_stage.shale puts the stage in the place
+-- of /cook-levin/. A failure at any step stops the run before the move, so
+-- the channel's book is left as it was.
+const APP_DIR = "book"
+const SOURCE = "book/book.md"
+const PREPARED = "book/build/prepared"
+const OUT = "book/build/book"
+const REPORT = "book/build/report.txt"
+const SHOTS = "book/build/shots"
+const NEXT = "build:roc-apps/next"
+const DEST_NAME = "cook-levin"
+const STAGED_NAME = "cook-levin.staging"
+const ROC_APPS = "repos:roc-apps"
+const HERE = "repos:cook-levin"
+const DRAW = "book_builder/tools/draw_diagrams.shale"
+const MOVE = "book_builder/tools/move_stage.shale"
+const CHECKER = "book_builder/tools/book_check.mjs"
+const BUILD = "book_builder/tools/build_book.shale"
+const APP_TESTS = 3
+const DOT_WANT = "graphviz: a book's diagrams, drawn at build time"
+const CHECK_WANT = "script: book_check.mjs drives the staged pages in headless Chromium"
+
+-- Every commit the manuscript cites resolves: a short hash in backticks is a
+-- commit of this repository. The Python repository's commits are cited as
+-- links to GitHub, outside the backticks, and this check leaves them alone.
+function check_citations()
+  local text = read(SOURCE)
+  local cited = 0
+  local hashes = {}
+  for m in re_find_all(text, "`([0-9a-f]{7,12})`") do
+    cited = cited + 1
+    hashes[m.group] = true
+  end
+  local wrong = {}
+  for h in sort(keys(hashes)) do
+    local r = run({"git", "-C", real("."), "cat-file", "-e", h .. "^{commit}"}, {timeout_ms = 10000, whole = 2000})
+    if r.code ~= 0 then push(wrong, h .. " is no commit of this repository") end
+  end
+  if #wrong > 0 then
+    for w in wrong do print("  " .. w) end
+    fail("book: " .. #wrong .. " of the manuscript's cited commits don't resolve, so /" .. DEST_NAME .. "/ is left as it was")
+  end
+  print("book: " .. cited .. " citations of " .. #keys(hashes) .. " commits resolve")
+  return nil
+end
+
+-- `to`, a real path, as a path relative to the real folder `from`.
+function relative_path(from, to)
+  local a = split(from, "/")
+  local b = split(to, "/")
+  local i = 1
+  while i <= #a and i <= #b and a[i] == b[i] do i = i + 1 end
+  local parts = {}
+  for j = i, #a do push(parts, "..") end
+  for j = i, #b do push(parts, b[j]) end
+  return join(parts, "/")
+end
+
+function main()
+  if not exists(HERE) or real(HERE) ~= real(".") then fail("book: run from the checkout at " .. HERE .. " (" .. (exists(HERE) and real(HERE) or "not there") .. "), which roc-apps' tools reach by that mount") end
+  if not exists(ROC_APPS .. "/" .. BUILD) then fail("book: no " .. ROC_APPS .. "/" .. BUILD .. ": clone roc-apps beside this checkout") end
+  check_citations()
+  if exists(PREPARED) then remove_tree(PREPARED) end
+  mkdir(PREPARED)
+  local drawn = must(run({"shale", "--root", ".", DRAW, "source=" .. HERE .. "/" .. SOURCE, "prepared=" .. HERE .. "/" .. PREPARED}, {cwd = ROC_APPS, timeout_ms = 120000, tail = 20, want = DOT_WANT}))
+  for l in lines(drawn.out) do
+    if starts_with(l, "draw_diagrams: ") then print("book: " .. sub(l, 16) .. " in " .. drawn.ms .. " ms") end
+  end
+
+  local app = relative_path(real(ROC_APPS .. "/book_builder"), real(APP_DIR .. "/app/main.roc"))
+  local argv = {"shale", "--root", ".", BUILD, "book=" .. HERE .. "/" .. APP_DIR, "tests=" .. APP_TESTS, "name=cook-levin", "folder=" .. real("."), "out=" .. HERE .. "/" .. OUT, "report=" .. HERE .. "/" .. REPORT, "app=" .. app}
+  local built = run(argv, {cwd = ROC_APPS, timeout_ms = 900000, tail = 60})
+  local pages = 0
+  for l in lines(built.out) do
+    if starts_with(l, "build_book: ") then print("book: " .. sub(l, 13)) end
+    local m = re_find(l, "^build_book: ([0-9]+) pages in ")
+    if m ~= nil then pages = tonumber(m.groups[1]) end
+  end
+  if built.code ~= 0 then
+    print(trim(built.out))
+    fail("book: build_book.shale stopped, so /" .. DEST_NAME .. "/ is left as it was")
+  end
+  local staging = NEXT .. "/" .. STAGED_NAME
+  if exists(staging) then remove_tree(staging) end
+  copy(OUT, staging)
+
+  if exists(SHOTS) then remove_tree(SHOTS) end
+  mkdir(SHOTS)
+  local check_argv = {"nice", "-n", "19", "node", real(ROC_APPS .. "/" .. CHECKER), "http://127.0.0.1:9210/" .. STAGED_NAME .. "/", real(SHOTS)}
+  local checked = run(check_argv, {timeout_ms = 600000, tail = 60, want = CHECK_WANT})
+  if checked.ended ~= "exit" or checked.code ~= 0 then
+    print(trim(checked.out))
+    fail("book: book_check failed on " .. staging .. ", so /" .. DEST_NAME .. "/ is left as it was")
+  end
+  for l in lines(checked.out) do
+    if starts_with(l, "book_check: ") then print(l) end
+  end
+  print("book: book_check, shots in " .. SHOTS .. ", took " .. checked.ms .. " ms")
+  local moved = must(run({"shale", "--root", ".", MOVE, "stage=" .. STAGED_NAME, "place=" .. DEST_NAME}, {cwd = ROC_APPS, timeout_ms = 60000, tail = 20}))
+  print("book: the move into place took " .. moved.ms .. " ms")
+
+  for l in lines(read(REPORT)) do
+    if trim(l) ~= "" then print("book: " .. l) end
+  end
+  print("book: " .. pages .. " pages at http://localhost:9210/" .. DEST_NAME .. "/")
+  return nil
+end
+
+main()
