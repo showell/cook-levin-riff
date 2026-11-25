@@ -162,7 +162,7 @@ The empty language has 844 programs, since any program that rejects every input 
 
 ### What runs in the page
 
-The page runs this repository's C. `web/nibble.c` is `src/vm.c` compiled to freestanding wasm by `zig cc`, and the puzzle table is printed by `web/puzzles.c`, which counts every program's language and finds each puzzle's shortest program (`README.md`, "Playground"). The JavaScript in the page draws; the machine's verdicts are the C's. The page's check, `web/page_check.mjs`, holds the wasm to the C on all 4,096 programs and all four inputs, then plays every puzzle in headless Chromium by clicks.
+The page runs the Roc port's machine. `roc/NibbleWasm.roc` exports three functions built on `roc/Machine.roc`, compiled to a 9.5 KB wasm module by the pinned Roc with a small Zig host (`web/platform/`), and the puzzle table is printed by the C's `web/puzzles.c`, which counts every program's language and finds each puzzle's shortest program (`README.md`, "Playground"). The JavaScript in the page draws; the machine's verdicts are Roc's. The page's check, `web/page_check.mjs`, holds the Roc wasm to the C on all 4,096 programs and all four inputs, so every build of the page is also a cross-check of the two ports, then plays every puzzle in headless Chromium by clicks.
 
 ### Playing a puzzle
 
@@ -420,6 +420,72 @@ halted after six steps, composed by the C's compose_main at the book's build
 accepted after six steps, composed by the C's compose_main at the book's build
 10324
 ```
+
+## The machine as a circuit
+
+The polynomials say that a run of the machine is arithmetic. The same fact can be drawn as hardware: a circuit that takes a language and a program and lights one wire, "decides", exactly when the program decides the language. It is combinational: the whole run is laid out in space, and every wire settles at once.
+
+### The whole circuit
+
+The circuit has two registers on its left. The *want* register holds four bits, one per input, saying which inputs the language accepts: {1, 2, 3} is `0111`, input 0's bit first. The *program* register holds the twelve bits of a program, two per line. The program goes to four cores side by side, one per input, and each core answers whether its input is accepted. Four comparators check each answer against its want bit, and a final AND joins them.
+
+The circuit, end to end
+```dot
+digraph {
+  rankdir=TB;
+  node [shape=box, style=rounded];
+  prog [label="program register, 12 bits"];
+  want [label="want register\n0111"];
+  cores [shape=record, label="core 0\nAX=0|core 1\nAX=1|core 2\nAX=2|core 3\nAX=3"];
+  same [shape=record, label="same?|same?|same?|same?"];
+  all [label="AND"];
+  out [label="decides"];
+  prog -> cores;
+  cores -> same [label="accepted"];
+  want -> same;
+  same -> all;
+  all -> out;
+}
+```
+
+### One core
+
+A core is the machine itself, unrolled. Its `AX` register is wired to its input's number, and six step units sit in a chain, each fed by the one before it and by its own line's two bits from the program register. What leaves the sixth unit's `accepted` wire is the core's answer.
+
+One core: six step units in a chain
+```dot
+digraph {
+  rankdir=LR;
+  node [shape=box, style=rounded];
+  ax [label="AX = input\nhalted = 0\naccepted = 0"];
+  s1 [label="step 1"];
+  s2 [label="step 2"];
+  s3 [label="step 3"];
+  s4 [label="step 4"];
+  s5 [label="step 5"];
+  s6 [label="step 6"];
+  ax -> s1 -> s2 -> s3 -> s4 -> s5 -> s6;
+}
+```
+
+Each step unit is the step of {{chapter Arithmetization}} built from gates: six wires in (`hb`, `lb`, `halted`, `accepted` and the line's `op_hb`, `op_lb`), four wires out, and between them the gates for complement, AND and OR that the step polynomials spell as 1 - x, xy and x + y - xy. Four cores of six units make 24 step units in all, every one the same.
+
+### A program through it
+
+Load the want register with `0111` and the program register with `decr, mod2, zero, decr, zero, nada`, the five-line answer to `is_not_tiny`, whose bits are `10 11 01 10 01 00`. The four cores settle like this:
+
+| core | the run | accepted | want | same? |
+|---|---|---|---|---|
+| 0 | `decr` finds `AX` at 0: reject | 0 | 0 | yes |
+| 1 | `decr` to 0, `mod2` keeps 0, `zero`: accept | 1 | 1 | yes |
+| 2 | `decr` to 1, `mod2` keeps 1, `zero` passes, `decr` to 0, `zero`: accept | 1 | 1 | yes |
+| 3 | `decr` to 2, `mod2` folds 2 to 0, `zero`: accept | 1 | 1 | yes |
+
+All four comparators say yes, so the AND lights "decides". Change one program bit and some core's answer flips, its comparator reports a mismatch, and the light goes out.
+
+### Why the circuit matters
+
+Fix the want register and leave the program register's twelve bits free, and the circuit asks a question: is there a setting of these twelve inputs that lights the output? That is circuit satisfiability, and {{chapter Cook-Levin as SAT}} writes this very circuit as clauses, gate by gate, for a SAT solver to answer.
 
 ## Cook-Levin as SAT
 
