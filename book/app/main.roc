@@ -6,7 +6,9 @@
 ## and this app reads the drawings through the platform; a missing one stops
 ## the build, named. Each `polynomial` fence shows a polynomial file in full,
 ## as `Polynomials.roc` says; the pre-step composes the four final ones into
-## `book/build/out/`.
+## `book/build/out/`. Each `dimacs` fence shows a SAT formula, proof or
+## answer in full, as `SatFiles.roc` says; the pre-step writes the formulas
+## to `book/build/sat/` and checks rocsat's committed proofs and answers.
 app [main!] {
 	bb: "../../../roc-apps/book_builder/builder/main.roc",
 	pf: platform "../../../roc-apps/book_builder/platform/main.roc",
@@ -21,6 +23,7 @@ import bb.Includes
 import bb.Pages
 import sc.SyntaxColor
 import Polynomials
+import SatFiles
 
 main! : Str => Try(Str, Str)
 main! = |_folder| {
@@ -40,8 +43,12 @@ main! = |_folder| {
 	for path in Polynomials.paths_wanted(found.manuscript) {
 		$polynomials = $polynomials.append({ path, text: read_text!(path)? })
 	}
+	var $sat_files = []
+	for path in SatFiles.paths_wanted(found.manuscript) {
+		$sat_files = $sat_files.append({ path, text: read_text!(path)? })
+	}
 	Builder.build!(
-		{ ..settings, fence_hooks: [Diagrams.hook(drawn), Polynomials.hook($polynomials)] },
+		{ ..settings, fence_hooks: [Diagrams.hook(drawn), Polynomials.hook($polynomials), SatFiles.hook($sat_files)] },
 		|path|
 			if path == manuscript_path {
 				Ok(found.manuscript)

@@ -17,7 +17,14 @@
 -- src/compose_main.c with gcc -O2 and runs it in book/build/ (COMPOSED), which
 -- writes the four final polynomials to book/build/out/, for the chapter that
 -- shows them in full; its term counts, degrees and largest coefficients are
--- held to roc/golden/composition.txt first.
+-- held to roc/golden/composition.txt first. Then it builds src/sat_main.c
+-- and src/drat_main.c with gcc -O2 into book/build/sat/ (SAT_DIR) and checks
+-- rocsat's committed outputs, sat/proofs/ (sat/oracle.shale writes them),
+-- with no rocsat: each DRAT proof against the CNF sat_main writes for it,
+-- by drat_main's checker, and each answer's `v` lines against its CNF's
+-- clauses and its program on the machine (`sat solves`). The chapter that
+-- shows them is held to what this finds: each proof's row of its table, the
+-- checker's line for each proof it shows, and each shown answer's program.
 --
 -- Then the book builder's tools/build_book.shale runs the app's expects, held
 -- to exactly APP_TESTS, builds the app into book_builder/zig-out/cook-levin,
@@ -44,12 +51,16 @@ const DRAW = "book_builder/tools/draw_diagrams.shale"
 const MOVE = "book_builder/tools/move_stage.shale"
 const CHECKER = "book_builder/tools/book_check.mjs"
 const BUILD = "book_builder/tools/build_book.shale"
-const APP_TESTS = 10
+const APP_TESTS = 13
 const DOT_WANT = "graphviz: a book's diagrams, drawn at build time"
 const CHECK_WANT = "script: book_check.mjs drives the staged pages in headless Chromium"
 const COMPOSED = "book/build"
 const COMPOSITION_GOLDEN = "roc/golden/composition.txt"
 const COMPOSE_WANT = "book: compose_main, just built from src/ for the book"
+const SAT_DIR = "book/build/sat"
+const PROOFS = "sat/proofs"
+const SAT_WANT = "book: sat_main and drat_main, just built from src/ for the book"
+const OPS = {"nada", "zero", "decr", "mod2"}
 
 -- The four final polynomials, composed by the C into COMPOSED/out/. What
 -- compose_main prints is held to the golden's lines: each step's term counts
@@ -75,6 +86,128 @@ function compose_polynomials()
     fail("book: compose_main's counts differ from " .. COMPOSITION_GOLDEN .. ", so /" .. DEST_NAME .. "/ is left as it was")
   end
   print("book: compose_main wrote the four final polynomials in " .. r.ms .. " ms, its 10 counts as " .. COMPOSITION_GOLDEN .. " has them")
+  return nil
+end
+
+-- A count with a comma before each group of three digits.
+function commas(n)
+  local s = "" .. n
+  local out = ""
+  for i = 1, #s do
+    if i > 1 and (#s - i + 1) % 3 == 0 then out = out .. "," end
+    out = out .. sub(s, i, i)
+  end
+  return out
+end
+
+-- A language's set of inputs, `{0, 2, 3}`, from its code.
+function set_of(lang)
+  local items = {}
+  local left = lang
+  local powers = {8, 4, 2, 1}
+  local found = {}
+  for k = 1, 4 do
+    if left >= powers[k] then
+      left = left - powers[k]
+      push(found, 4 - k)
+    end
+  end
+  for k = #found, 1, -1 do push(items, "" .. found[k]) end
+  return "{" .. join(items, ", ") .. "}"
+end
+
+-- The puzzles' names, by language code from 0, as web/puzzles.c lists them.
+function puzzle_names()
+  local text = read("web/puzzles.c")
+  local list = between(text, "\"grumpy\"", "\"always_true\"")
+  local names = {"grumpy"}
+  for m in re_find_all(list, "\"([a-z_]+)\"") do push(names, m.group) end
+  push(names, "always_true")
+  if #names ~= 16 then fail("book: web/puzzles.c names " .. #names .. " puzzles, not 16") end
+  return names
+end
+
+-- Puzzle `lang`'s CNF with lines past `len` forced to nada, written to
+-- SAT_DIR; gives its path.
+function write_cnf(lang, len)
+  local path = SAT_DIR .. "/" .. lang .. "-len" .. len .. ".cnf"
+  local r = must(run({real(SAT_DIR .. "/sat"), "" .. lang, "len=" .. len}, {timeout_ms = 20000, whole = 4000000, want = SAT_WANT}))
+  replace(path, r.out)
+  return path
+end
+
+-- The program code an answer's first 12 variables name, and its ops.
+function program_of(answer)
+  local bits = {}
+  for v = 1, 12 do push(bits, -1) end
+  for l in re_lines(answer, "^v ") do
+    for w in words(l.text) do
+      local x = parse_int(w)
+      if x ~= nil and x ~= 0 and abs(x) <= 12 then
+        if x > 0 then bits[x] = 1 else bits[-x] = 0 end
+      end
+    end
+  end
+  local code = 0
+  local place = 1
+  local ops = {}
+  for i = 1, 6 do
+    local op = 2 * bits[2 * i - 1] + bits[2 * i]
+    if op < 0 then fail("book: an answer leaves instruction " .. i .. "'s bits unnamed") end
+    code = code + op * place
+    place = place * 4
+    push(ops, OPS[op + 1])
+  end
+  return {code = code, ops = join(ops, ", ")}
+end
+
+-- rocsat's committed proofs and answers, checked by the repository's C
+-- before the chapter shows them, and the chapter held to what is found.
+function check_solver_files()
+  mkdir(SAT_DIR)
+  must(run({"gcc", "-O2", "-o", real(SAT_DIR) .. "/sat", "src/sat_main.c"}, {timeout_ms = 120000, tail = 20}))
+  must(run({"gcc", "-O2", "-o", real(SAT_DIR) .. "/drat", "src/drat_main.c"}, {timeout_ms = 120000, tail = 20}))
+  local text = read(SOURCE)
+  local names = puzzle_names()
+  local wrong = {}
+  local proofs = 0
+  local answers = 0
+  for p in glob(PROOFS .. "/*.drat") do
+    local m = re_find(basename(p), "^([0-9]+)-len([0-5])\\.drat$")
+    if m == nil then fail("book: " .. p .. " is named as no proof of the oracle's") end
+    local lang = tonumber(m.groups[1])
+    local len = tonumber(m.groups[2])
+    local said = run({real(SAT_DIR .. "/drat"), "check", real(write_cnf(lang, len)), real(p)}, {timeout_ms = 60000, tail = 3, want = SAT_WANT})
+    if get(said, "code", -1) ~= 0 then fail("book: " .. p .. " fails the checker: " .. trim(said.out) .. ", so /" .. DEST_NAME .. "/ is left as it was") end
+    local proof = read(p)
+    local lemmas = 0
+    for l in lines(proof) do
+      if l ~= "" and not starts_with(l, "d ") then lemmas = lemmas + 1 end
+    end
+    local row = "| " .. lang .. " | `" .. names[lang + 1] .. "` | " .. set_of(lang) .. " | " .. (len + 1) .. " | " .. commas(#proof) .. " | " .. commas(lemmas) .. " | yes |"
+    if find(text, row) == nil then push(wrong, "the table has no row " .. row) end
+    if find(text, "```dimacs " .. p) ~= nil and find(text, "`" .. trim(said.out) .. "`") == nil then push(wrong, "the chapter shows " .. p .. " and quotes no `" .. trim(said.out) .. "`") end
+    proofs = proofs + 1
+  end
+  for p in glob(PROOFS .. "/*.model") do
+    local m = re_find(basename(p), "^([0-9]+)-len([0-6])\\.model$")
+    if m == nil then fail("book: " .. p .. " is named as no answer of the oracle's") end
+    local lang = tonumber(m.groups[1])
+    local cnf = write_cnf(lang, tonumber(m.groups[2]))
+    local said = run({real(SAT_DIR .. "/drat"), "model", real(cnf), real(p)}, {timeout_ms = 60000, tail = 3, want = SAT_WANT})
+    if get(said, "code", -1) ~= 0 then fail("book: " .. p .. " is no model of " .. cnf .. ": " .. trim(said.out)) end
+    local program = program_of(read(p))
+    local solves = run({real(SAT_DIR .. "/sat"), "solves", "" .. lang, "" .. program.code}, {timeout_ms = 20000, tail = 1, want = SAT_WANT})
+    if get(solves, "code", -1) ~= 0 then fail("book: " .. p .. "'s program " .. program.code .. " fails puzzle " .. lang .. " on the machine") end
+    if find(text, "```dimacs " .. p) ~= nil and find(text, "`" .. program.ops .. "`") == nil then push(wrong, "the chapter shows " .. p .. " and quotes no `" .. program.ops .. "`") end
+    answers = answers + 1
+  end
+  if proofs ~= 15 or answers ~= 16 then fail("book: " .. PROOFS .. " holds " .. proofs .. " proofs and " .. answers .. " answers, not 15 and 16") end
+  if #wrong > 0 then
+    for w in wrong do print("  " .. w) end
+    fail("book: the SAT chapter differs from what the checks found, so /" .. DEST_NAME .. "/ is left as it was")
+  end
+  print("book: " .. proofs .. " DRAT proofs verified by src/drat.c and " .. answers .. " answers held to their CNFs and the machine, all from " .. PROOFS .. "/")
   return nil
 end
 
@@ -125,6 +258,7 @@ function main()
     if starts_with(l, "draw_diagrams: ") then print("book: " .. sub(l, 16) .. " in " .. drawn.ms .. " ms") end
   end
   compose_polynomials()
+  check_solver_files()
 
   local app = relative_path(real(ROC_APPS .. "/book_builder"), real(APP_DIR .. "/app/main.roc"))
   local argv = {"shale", "--root", ".", BUILD, "book=" .. HERE .. "/" .. APP_DIR, "tests=" .. APP_TESTS, "name=cook-levin", "folder=" .. real("."), "out=" .. HERE .. "/" .. OUT, "report=" .. HERE .. "/" .. REPORT, "app=" .. app}
