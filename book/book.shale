@@ -13,7 +13,11 @@
 -- manuscript cites is held to resolve (check_citations, below). Its pre-step
 -- draws each ```dot fence of the manuscript with Graphviz
 -- (book_builder/tools/draw_diagrams.shale) into book/build/prepared/, as
--- diagram-N.dot and diagram-N.svg, where the app reads them.
+-- diagram-N.dot and diagram-N.svg, where the app reads them. Then it builds
+-- src/compose_main.c with gcc -O2 and runs it in book/build/ (COMPOSED), which
+-- writes the four final polynomials to book/build/out/, for the chapter that
+-- shows them in full; its term counts, degrees and largest coefficients are
+-- held to roc/golden/composition.txt first.
 --
 -- Then the book builder's tools/build_book.shale runs the app's expects, held
 -- to exactly APP_TESTS, builds the app into book_builder/zig-out/cook-levin,
@@ -40,9 +44,39 @@ const DRAW = "book_builder/tools/draw_diagrams.shale"
 const MOVE = "book_builder/tools/move_stage.shale"
 const CHECKER = "book_builder/tools/book_check.mjs"
 const BUILD = "book_builder/tools/build_book.shale"
-const APP_TESTS = 3
+const APP_TESTS = 10
 const DOT_WANT = "graphviz: a book's diagrams, drawn at build time"
 const CHECK_WANT = "script: book_check.mjs drives the staged pages in headless Chromium"
+const COMPOSED = "book/build"
+const COMPOSITION_GOLDEN = "roc/golden/composition.txt"
+const COMPOSE_WANT = "book: compose_main, just built from src/ for the book"
+
+-- The four final polynomials, composed by the C into COMPOSED/out/. What
+-- compose_main prints is held to the golden's lines: each step's term counts
+-- (its time left off) and each final polynomial's terms, degree and largest
+-- coefficient.
+function compose_polynomials()
+  mkdir(COMPOSED .. "/out")
+  local exe = COMPOSED .. "/compose_main"
+  must(run({"gcc", "-O2", "-o", real(COMPOSED) .. "/compose_main", "src/compose_main.c"}, {timeout_ms = 120000, tail = 20}))
+  local r = must(run({real(exe)}, {cwd = COMPOSED, timeout_ms = 60000, tail = 20, want = COMPOSE_WANT}))
+  local said = {}
+  for l in lines(r.out) do
+    local row = re_find(l, "^([0-9]+  [0-9]+  [0-9]+  [0-9]+  [0-9]+)  [0-9.]+$")
+    if row ~= nil then push(said, row.groups[1]) end
+    if re_find(l, "^[a-z]+: [0-9]+ terms, ") ~= nil then push(said, l) end
+  end
+  local want = {}
+  for l in lines(read(COMPOSITION_GOLDEN)) do
+    if re_find(l, "^[0-9]+  ") ~= nil or re_find(l, "^[a-z]+: [0-9]+ terms, ") ~= nil then push(want, l) end
+  end
+  if join(said, "\n") ~= join(want, "\n") or #want ~= 10 then
+    print(r.out)
+    fail("book: compose_main's counts differ from " .. COMPOSITION_GOLDEN .. ", so /" .. DEST_NAME .. "/ is left as it was")
+  end
+  print("book: compose_main wrote the four final polynomials in " .. r.ms .. " ms, its 10 counts as " .. COMPOSITION_GOLDEN .. " has them")
+  return nil
+end
 
 -- Every commit the manuscript cites resolves: a short hash in backticks is a
 -- commit of this repository. The Python repository's commits are cited as
@@ -90,6 +124,7 @@ function main()
   for l in lines(drawn.out) do
     if starts_with(l, "draw_diagrams: ") then print("book: " .. sub(l, 16) .. " in " .. drawn.ms .. " ms") end
   end
+  compose_polynomials()
 
   local app = relative_path(real(ROC_APPS .. "/book_builder"), real(APP_DIR .. "/app/main.roc"))
   local argv = {"shale", "--root", ".", BUILD, "book=" .. HERE .. "/" .. APP_DIR, "tests=" .. APP_TESTS, "name=cook-levin", "folder=" .. real("."), "out=" .. HERE .. "/" .. OUT, "report=" .. HERE .. "/" .. REPORT, "app=" .. app}

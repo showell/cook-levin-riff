@@ -4,7 +4,9 @@
 ## quotes the repository's C and Roc by their paths there. Its pre-step,
 ## book.shale, draws the diagrams with Graphviz into `book/build/prepared/`,
 ## and this app reads the drawings through the platform; a missing one stops
-## the build, named.
+## the build, named. Each `polynomial` fence shows a polynomial file in full,
+## as `Polynomials.roc` says; the pre-step composes the four final ones into
+## `book/build/out/`.
 app [main!] {
 	bb: "../../../roc-apps/book_builder/builder/main.roc",
 	pf: platform "../../../roc-apps/book_builder/platform/main.roc",
@@ -16,7 +18,9 @@ import bb.Builder
 import bb.Diagrams
 import bb.Fences
 import bb.Includes
+import bb.Pages
 import sc.SyntaxColor
+import Polynomials
 
 main! : Str => Try(Str, Str)
 main! = |_folder| {
@@ -32,8 +36,12 @@ main! = |_folder| {
 		},
 		read_text!,
 	)?
+	var $polynomials = []
+	for path in Polynomials.paths_wanted(found.manuscript) {
+		$polynomials = $polynomials.append({ path, text: read_text!(path)? })
+	}
 	Builder.build!(
-		{ ..settings, fence_hooks: [Diagrams.hook(drawn)] },
+		{ ..settings, fence_hooks: [Diagrams.hook(drawn), Polynomials.hook($polynomials)] },
 		|path|
 			if path == manuscript_path {
 				Ok(found.manuscript)
@@ -60,7 +68,11 @@ settings = {
 	negatives: Lint({ words: "book/negative_words.txt", table: "book/negatives.txt" }),
 	colorer: colored_code,
 	include_languages: Includes.default_languages.append({ extension: "c", language: "c" }),
+	look: { ..default_look, head_end: Polynomials.style },
 }
+
+default_look : Pages.Look
+default_look = Builder.default_settings.look
 
 ## Roc, C and Shale colored by roc-syntax-color, and any other language left
 ## as escaped text.
