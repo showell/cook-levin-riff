@@ -1,0 +1,106 @@
+-- build.shale: the builds and every test, in two tiers.
+--
+--   shale build.shale          the fast tier: tcc runs every test file and
+--                              the main program, the program's stdout held
+--                              to tests/golden/find_solutions.txt.
+--   shale build.shale full=1   the fast tier, then gcc twice: -std=c11 -O2
+--                              -Wall -Wextra -Werror, and -O0 with
+--                              -fsanitize=address,undefined; each builds and
+--                              runs every test file and the main program,
+--                              and the golden check runs on each binary.
+--
+-- One line a check, with its numbers. Each test file's printed count is held
+-- to its `TEST(` count. Exits 0 only when every check passes.
+-- The C is a unity build: a test file includes the .c files it needs.
+--
+-- Run from the repository's root.
+
+const OUT = "out"
+const TESTS = {"tests/test_vm.c", "tests/test_reference.c", "tests/test_golden.c"}
+const GOLDEN = "tests/golden/find_solutions.txt"
+-- Why `run` may start a binary git does not track: this build just made it.
+const RAN = "build: a test binary this build just compiled"
+const GCC_WARN = {"-std=c11", "-Wall", "-Wextra", "-Werror"}
+
+-- Says a check's line; gives 1 when it failed, else 0.
+function check(ok, line)
+  if ok then
+    print("ok   " .. line)
+    return 0
+  end
+  print("FAIL " .. line)
+  return 1
+end
+
+function test_count(src)
+  local n = 0
+  for m in grep(src, "TEST(") do
+    if starts_with(m.text, "TEST(") then n = n + 1 end
+  end
+  return n
+end
+
+-- The compile command of `src` to `bin` for a build.
+function compile_argv(build, src, bin)
+  local argv = {}
+  if build == "tcc" then
+    argv = {"tcc", "-Wall", "-Werror"}
+  elseif build == "release" then
+    argv = {"gcc", "-O2"}
+    for w in GCC_WARN do push(argv, w) end
+  else
+    argv = {"gcc", "-O0", "-g", "-fsanitize=address,undefined", "-fno-sanitize-recover=all"}
+    for w in GCC_WARN do push(argv, w) end
+  end
+  push(argv, "-o")
+  push(argv, bin)
+  push(argv, src)
+  return argv
+end
+
+-- Compiles `src`; gives the binary's Shale path, or nil (said) when it fails.
+function compiled(build, src)
+  local name = sub(basename(src), 1, #basename(src) - 2)
+  local bin = OUT .. "/" .. build .. "/" .. name
+  local r = run(compile_argv(build, src, real(bin)), {timeout_ms = 120000, tail = 20})
+  if r.code ~= 0 then
+    check(false, build .. ": " .. src .. " does not compile")
+    print(r.out)
+    return nil
+  end
+  return bin
+end
+
+function run_tests(build, src)
+  local bin = compiled(build, src)
+  if bin == nil then return 1 end
+  local want = test_count(src)
+  local r = run({real(bin)}, {timeout_ms = 60000, tail = 30, env = {ASAN_OPTIONS = "detect_leaks=1"}, want = RAN})
+  local said = src .. ": " .. want .. " tests passed"
+  local ok = r.code == 0 and find(r.out, said) ~= nil
+  local bad = check(ok, build .. ": " .. src .. ": " .. want .. " tests, " .. r.ms .. " ms")
+  if not ok then print(r.out) end
+  return bad
+end
+
+function run_golden(build)
+  local bin = compiled(build, "src/main.c")
+  if bin == nil then return 1 end
+  local r = run({real(bin)}, {timeout_ms = 60000, whole = 65536, want = RAN})
+  local want = read(GOLDEN)
+  local same = r.code == 0 and r.out == want
+  return check(same, build .. ": main's stdout is " .. GOLDEN .. ": " .. #r.out .. " bytes of " .. #want .. ", exit " .. r.code)
+end
+
+local failures = 0
+local builds = {"tcc"}
+if arg("full", false) then builds = {"tcc", "release", "asan"} end
+
+for build in builds do
+  mkdir(OUT .. "/" .. build)
+  for src in TESTS do failures = failures + run_tests(build, src) end
+  failures = failures + run_golden(build)
+end
+
+if failures > 0 then fail(failures .. " check(s) failed") end
+print("all checks passed: " .. join(builds, ", "))
