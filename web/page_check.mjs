@@ -269,6 +269,12 @@ try {
   await open(url);
   expect(await evaluate("document.querySelector('[data-puzzle=\"0\"]').classList.contains('solved')"), "after a reload the first puzzle isn't marked solved");
   expect((await text("title")) === `Puzzle 2 of 16: ${puzzles[1].name}`, `after a reload the page shows \`${await text("title")}\``);
+  // A solved puzzle reopens as a puzzle: unsolved, at its start, still
+  // marked solved in the row.
+  await click('[data-puzzle="0"]');
+  expect(!(await text("verdict")).startsWith("Solved!") && (await text("found")) === "", `the solved first puzzle reopens solved: \`${await text("verdict")}\``);
+  expect(await evaluate("document.querySelector('[data-puzzle=\"0\"]').classList.contains('solved')"), "reopening the first puzzle unmarks it");
+  await click('[data-puzzle="1"]');
 
   // An older save, from when the order was by count: its puzzle by place
   // (`current`) is dropped, and a solved language ({2}) stays solved and
