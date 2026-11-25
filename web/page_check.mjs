@@ -309,7 +309,10 @@ try {
     expect((await locks()) === wantLocks(p), `${p.name}'s lines are \`${await locks()}\`, not \`${wantLocks(p)}\``);
     expect((await locks()).startsWith(`G${op} onada L`), `${p.name}'s line 1 isn't given as ${op}`);
     expect((await evaluate(`document.querySelector('[data-slot="0"][data-op="${op}"]').title`)) === `Given: line 1 is ${op}.`, `${p.name}'s given line's title isn't \`Given: line 1 is ${op}.\``);
-    expect((await text("hint")) === "Line 1 is given; pick line 2. Lines 3 to 6 are locked to nada.", `${p.name}'s hint says \`${await text("hint")}\``);
+    expect((await text("hint")) === `Line 1 is already fixed as ${op}. Your job: fix line 2. Lines 3 to 6 are locked to nada.`, `${p.name}'s hint says \`${await text("hint")}\``);
+    // The given op is shown light, as the locked nadas are: the locked rows' opacity.
+    const shade = await evaluate(`[getComputedStyle(document.querySelector('[data-slot="0"][data-op="${op}"]')).opacity, getComputedStyle(document.querySelector('[data-slot="3"][data-op="nada"]')).opacity].join(" ")`);
+    expect(shade.split(" ")[0] === shade.split(" ")[1] && Number(shade.split(" ")[0]) < 1, `${p.name}'s given ${op} isn't light like the locked nadas: opacities ${shade}`);
     expect((await text("lesson")) === p.lesson, `${p.name}'s lesson is \`${await text("lesson")}\``);
     expect((await text("verdict")) === opening, `${p.name} as it opens says \`${await text("verdict")}\``);
     if (i === 1) {
