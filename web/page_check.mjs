@@ -255,7 +255,7 @@ try {
   // No Run button: the fresh all-nada program has run already, and is wrong.
   expect(!(await evaluate("!!document.getElementById('run')")), "the page has a Run button");
   expect((await text("verdict")) === "Your program falsely rejects 0.", `the all-nada verdict says \`${await text("verdict")}\``);
-  expect((await evaluate("document.querySelectorAll('#trace tbody tr').length")) === STEPS + 2, "the trace hasn't a row a step, then result and want");
+  expect((await evaluate("document.querySelectorAll('#trace tbody tr').length")) === STEPS + 3, "the trace hasn't a row a step, then result, want and outcome");
   expect((await evaluate("document.querySelectorAll('#trace thead th[data-input]').length")) === 4, "the trace hasn't a column an input");
 
   // The C's example, clicked in slot by slot.
@@ -341,6 +341,13 @@ try {
   await click('[data-slot="0"][data-op="nada"]');
   expect(await solvedNow(), `after nada on line 1 grumpy says \`${await text("verdict")}\``);
   expect((await isSolvedMark(3)) && !(await isShut(4)), "solving grumpy doesn't mark it and open the next");
+  // Solved, the buttons fold away and the trace's outcome row cheers; "Change
+  // the program" brings the buttons back.
+  expect((await evaluate("document.getElementById('slots').hidden")) && !(await evaluate("document.getElementById('edit').hidden")), "solving grumpy doesn't fold the buttons away behind Change the program");
+  const cheers = await evaluate("[...document.querySelectorAll('#trace tr[data-row=\"outcome\"] td')].map((c) => c.textContent).join(\" | \")");
+  expect(cheers === "Correct! 🎉 | Correct! 🎉 | Correct! 🎉 | Correct! 🎉", `grumpy's outcome row says \`${cheers}\``);
+  await click("#edit");
+  expect(!(await evaluate("document.getElementById('slots').hidden")) && (await evaluate("document.getElementById('edit').hidden")), "Change the program doesn't bring the buttons back");
   for (const op of ["decr", "mod2"]) {
     await click(`[data-slot="0"][data-op="${op}"]`);
     expect(await solvedNow(), `${op} on line 1 doesn't solve grumpy`);
@@ -353,6 +360,8 @@ try {
   // and rejects 1 and 3.
   await click('[data-slot="0"][data-op="zero"]');
   expect((await text("verdict")) === "Your program falsely accepts 0. It falsely rejects 1 and 3.", `zero on is_odd says \`${await text("verdict")}\``);
+  const marks = await evaluate("[...document.querySelectorAll('#trace tr[data-row=\"outcome\"] td')].map((c) => c.textContent).join(\" | \")");
+  expect(marks === "WRONG! ❌ | WRONG! ❌ | Correct! 🎉 | WRONG! ❌", `zero on is_odd's outcome row says \`${marks}\``);
 
   // A solved puzzle reopens as a puzzle: unsolved, at its start, still
   // marked solved in the row.
