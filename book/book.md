@@ -470,6 +470,64 @@ digraph {
 
 Each step unit is the step of {{chapter Arithmetization}} built from gates: six wires in (`hb`, `lb`, `halted`, `accepted` and the line's `op_hb`, `op_lb`), four wires out, and between them the gates for complement, AND and OR that the step polynomials spell as 1 - x, xy and x + y - xy. Four cores of six units make 24 step units in all, every one the same.
 
+### Inside a step unit
+
+A step unit is built from two-input AND and OR gates and inverters, and its layout is a classic one: decode, compute every opcode at once, select. Its gates are exactly `sat_step` in `src/sat.c`, and `tests/test_sat.c` holds them to the machine's step on all 64 settings of the unit's six input wires.
+
+One step unit
+```dot
+digraph {
+  rankdir=TB;
+  node [shape=box, style=rounded];
+  ax [label="AX decoder\nis_0 is_1 is_2 is_3"];
+  op [label="op decoder + halted\nenable: nada zero decr mod2"];
+  mods [shape=record, label="nada|zero|decr|mod2"];
+  join [label="OR together\nbecomes_1 becomes_2 becomes_3\naccepts, halts"];
+  out [label="hb' lb' halted' accepted'"];
+  ax -> mods;
+  op -> mods;
+  mods -> join;
+  join -> out;
+}
+```
+
+- **The AX decoder** turns the two bits `hb`, `lb` into four one-hot wires, one per value: `is_0` is (complement of `hb`) AND (complement of `lb`), and so on, four AND gates.
+- **The op decoder** does the same to the line's two bits, giving one wire per opcode (`nada` 00, `zero` 01, `decr` 10, `mod2` 11). It then gates them with `halted`: a halted machine acts as `nada`, so `nada`'s enable is its wire OR `halted`, and each other opcode's enable is its wire AND the complement of `halted`.
+- **The four opcode modules** each say, for their own opcode, which value `AX` becomes, and whether the step accepts or halts. Value 0 is what remains when `becomes_1`, `becomes_2` and `becomes_3` are all 0, so it takes care of itself.
+- **The output stage** ORs the four modules' wires together, since only one module is enabled, then folds the one-hot value back into two bits: `hb'` is `becomes_2` OR `becomes_3`, and `lb'` is `becomes_1` OR `becomes_3`. The flags only ever turn on: `accepted'` is `accepted` OR the step's accept, and `halted'` likewise.
+
+### Each opcode as gates
+
+With `e` for the module's enable wire, every opcode is a handful of AND gates on the decoder's wires:
+
+| opcode | becomes_1 | becomes_2 | becomes_3 | accepts | halts |
+|---|---|---|---|---|---|
+| `nada` | `is_1` AND e | `is_2` AND e | `is_3` AND e | 0 | 0 |
+| `zero` | `is_1` AND e | `is_2` AND e | `is_3` AND e | `is_0` AND e | 0 |
+| `decr` | `is_2` AND e | `is_3` AND e | 0 | 0 | `is_0` AND e |
+| `mod2` | (`is_1` OR `is_3`) AND e | 0 | 0 | 0 | 0 |
+
+Read across a row and the opcode's rule appears. `nada` passes the value through. `zero` passes it through too and adds one gate that fires on 0. `decr` shifts each wire down one place, 2 to 1 and 3 to 2, lets 1 fall to 0, and turns 0 into a halt. `mod2` sends both odd values to 1 and lets 2 fall to 0. The whole unit is 34 two-input gates as written, and the four cores' constants (`AX` fixed per core, `halted` and `accepted` 0 at the start) fold many of them away: the full circuit of 24 units comes to the 404 gates that {{chapter Cook-Levin as SAT}} counts.
+
+`decr`, the busiest module, drawn alone
+```dot
+digraph {
+  rankdir=LR;
+  node [shape=box, style=rounded];
+  e [label="enable e"];
+  w [label="is_0  is_2  is_3"];
+  g [shape=record, label="AND|AND|AND"];
+  o [shape=record, label="halts|becomes_1|becomes_2"];
+  e -> g;
+  w -> g;
+  g -> o;
+}
+```
+
+The gates in the code, as the SAT encoding builds them:
+
+{{lines src/sat.c from "    Lit is_3 = AND(hb, lb);" to "    Lit lb_set = OR(becomes_3, becomes_1);"}}
+
 ### A program through it
 
 Load the want register with `0111` and the program register with `decr, mod2, zero, decr, zero, nada`, the five-line answer to `is_not_tiny`, whose bits are `10 11 01 10 01 00`. The four cores settle like this:
