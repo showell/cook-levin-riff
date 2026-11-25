@@ -37,12 +37,18 @@ void step_polys_free(StepPolys *s);
 // and kept for the program's life.
 const StepPolys *step_polynomials(void);
 
-// What `step` gives: Python's (AX, halted, accepted).
+// What `step` gives: Python's (AX, halted, accepted). Padded to 16 bytes:
+// tcc 0.9.27 returns a 12-byte struct in two registers and stores all 16
+// bytes, past the end of its 12-byte temporary, onto whatever local sits
+// next to it (in test_compose.c it was the loop counter of
+// `for (...) st = step_compiled(...)`, reset every turn).
 typedef struct {
     int ax;
     int halted;
     int accepted;
+    int unused;
 } StepState;
+_Static_assert(sizeof(StepState) == 16, "StepState is 16 bytes (see above)");
 
 // Python's step: AX 0..3, halted and accepted 0 or 1, op 0..3 (a value out
 // of range stops the program, as Python's asserts do). Each of the four

@@ -203,12 +203,12 @@ StepState step(int ax, int halted, int accepted, Op op) {
     int new_halted = bit_of(poly_eval(&p->halted, vals, n), "halted");
     int new_accepted = bit_of(poly_eval(&p->accepted, vals, n), "accepted");
 
-    StepState out = {2 * hb_set + lb_set, new_halted, new_accepted};
+    StepState out = {2 * hb_set + lb_set, new_halted, new_accepted, 0};
     return out;
 }
 
 int test_with_stepper(Program program, int ax) {
-    StepState s = {ax, 0, 0};
+    StepState s = {ax, 0, 0, 0};
     for (int i = 0; i < MAX_STEPS; i++) s = step(s.ax, s.halted, s.accepted, program.ops[i]);
     return s.accepted;
 }
@@ -284,12 +284,12 @@ StepState step_compiled(int ax, int halted, int accepted, Op op) {
     int lb_set = bit_of(compiled_eval(&c[1], vals), "lb_set");
     int new_halted = bit_of(compiled_eval(&c[2], vals), "halted");
     int new_accepted = bit_of(compiled_eval(&c[3], vals), "accepted");
-    StepState out = {2 * hb_set + lb_set, new_halted, new_accepted};
+    StepState out = {2 * hb_set + lb_set, new_halted, new_accepted, 0};
     return out;
 }
 
 int test_with_compiled_stepper(Program program, int ax) {
-    StepState s = {ax, 0, 0};
+    StepState s = {ax, 0, 0, 0};
     for (int i = 0; i < MAX_STEPS; i++) s = step_compiled(s.ax, s.halted, s.accepted, program.ops[i]);
     return s.accepted;
 }
