@@ -26,3 +26,4 @@ scope: It makes no claim about NP, and it reduces one machine's questions, never
 logic: - NOT x is 1 - x;
 logic: The logic is the stepper's, gate for gate, NOT, AND and OR as in {{chapter Arithmetization}}.
 logic: Each AND and OR becomes a Tseitin variable, tied to its inputs by three clauses, and a NOT is a literal's sign:
+guarantee: No program of five or fewer lines decides {0, 2, 3}.

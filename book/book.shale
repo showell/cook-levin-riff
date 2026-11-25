@@ -101,7 +101,7 @@ function commas(n)
 end
 
 -- A language's set of inputs, `{0, 2, 3}`, from its code.
-function set_of(lang)
+function language_set(lang)
   local items = {}
   local left = lang
   local powers = {8, 4, 2, 1}
@@ -184,7 +184,7 @@ function check_solver_files()
     for l in lines(proof) do
       if l ~= "" and not starts_with(l, "d ") then lemmas = lemmas + 1 end
     end
-    local row = "| " .. lang .. " | `" .. names[lang + 1] .. "` | " .. set_of(lang) .. " | " .. (len + 1) .. " | " .. commas(#proof) .. " | " .. commas(lemmas) .. " | yes |"
+    local row = "| " .. lang .. " | `" .. names[lang + 1] .. "` | " .. language_set(lang) .. " | " .. (len + 1) .. " | " .. commas(#proof) .. " | " .. commas(lemmas) .. " | yes |"
     if find(text, row) == nil then push(wrong, "the table has no row " .. row) end
     if find(text, "```dimacs " .. p) ~= nil and find(text, "`" .. trim(said.out) .. "`") == nil then push(wrong, "the chapter shows " .. p .. " and quotes no `" .. trim(said.out) .. "`") end
     proofs = proofs + 1
