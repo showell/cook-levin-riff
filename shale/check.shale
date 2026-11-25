@@ -1,0 +1,67 @@
+-- shale/check.shale: the Shale port's gate, one line a check, PASS or FAIL
+-- with its time and steps. From the repository's root:
+--
+--   shale shale/check.shale
+--
+-- It runs shale/cook_levin.shale twice, niced, each run a child `shale`
+-- with --verbose, so it ends with its step count:
+--   - `part=search`: its stdout is tests/golden/find_solutions.txt, byte for
+--     byte (the report of the 4,096-program search, each example program
+--     also run on the step polynomials);
+--   - `part=composition`: its stdout is roc/golden/composition.txt, byte for
+--     byte (the term counts after each of the six steps, the final degrees
+--     and coefficients, and the proof at all 2^14 points, 0 differing).
+-- The runner's own lines (`── ...`) are left out of what is held to the
+-- golden. It fails unless both pass.
+
+const PORT = "shale/cook_levin.shale"
+const CHECKS = {
+  {part = "search", golden = "tests/golden/find_solutions.txt"},
+  {part = "composition", golden = "roc/golden/composition.txt"},
+}
+
+-- A child run's output split into what the script printed and the step
+-- count its `── finished (N steps)` line gives.
+function printed_and_steps(out)
+  local printed = {}
+  local steps = -1
+  for l in lines(out) do
+    if starts_with(l, "── ") then
+      local m = re_find(l, "^── finished \\(([0-9]+) steps\\)$")
+      if m ~= nil then steps = tonumber(m.group) end
+    else
+      push(printed, l)
+    end
+  end
+  if #printed == 0 then return {text = "", steps = steps} end
+  return {text = join(printed, "\n") .. "\n", steps = steps}
+end
+
+-- `n` with a comma between each three digits.
+function grouped(n)
+  local s = "" .. n
+  local out = ""
+  while #s > 3 do
+    out = "," .. sub(s, -3) .. out
+    s = sub(s, 1, #s - 3)
+  end
+  return s .. out
+end
+
+if not exists(PORT) then fail("shale/check.shale: no " .. PORT .. ": run from the repository's root") end
+local failed = 0
+for c in CHECKS do
+  local r = run({"shale", "--verbose", PORT, "part=" .. c.part}, {timeout_ms = 300000, whole = 1000000, nice = 10})
+  local got = printed_and_steps(r.out)
+  local golden = read(c.golden)
+  local same = r.code == 0 and got.text == golden
+  local verdict = "PASS"
+  if not same then
+    verdict = "FAIL"
+    failed = failed + 1
+  end
+  print(verdict .. "  " .. PORT .. " part=" .. c.part .. ": stdout is " .. c.golden .. ", " .. #got.text .. " bytes of " .. #golden .. ", " .. r.ms .. " ms, " .. grouped(got.steps) .. " steps")
+  if not same then print(r.out) end
+end
+if failed > 0 then fail("shale/check.shale: " .. failed .. " of " .. #CHECKS .. " checks failed") end
+print("shale/check.shale: " .. #CHECKS .. " of " .. #CHECKS .. " passed")
