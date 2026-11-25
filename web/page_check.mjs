@@ -129,6 +129,10 @@ const easierThan = (q, p) => [effort(q.code) - effort(p.code), plainest[q.code].
 // The order that comes to, by name, so a change to it is a change here too.
 const RAMP = ["is_two", "is_small", "is_huge", "is_middling", "is_odd", "is_big", "is_extreme", "is_not_huge", "is_not_two", "always_true", "is_not_one", "is_not_tiny"];
 
+// Hints past the lessons, beside the final zero: is_not_tiny ({1, 2, 3}, code
+// 14) has line 2 given as mod2 (3 at base-4 digit 1), its fold.
+const HINTED = { 14: { fixed: 1 << 1, start: 3 * 4, text: "Line 2 is already fixed as mod2, and line 5 as zero. Your job: fix lines 1, 3 and 4." } };
+
 const puzzles = table.puzzles;
 expect(puzzles.slice(4).map((p) => p.name).join(" ") === RAMP.join(" "), `the ramp after the lessons is ${puzzles.slice(4).map((p) => p.name).join(" ")}`);
 const solves = (p, code) => m.accepts(code) === p.code;
@@ -164,7 +168,9 @@ for (let i = 0; i < puzzles.length; i++) {
     expect(got === `${l.code} ${l.name} ${l.lines} ${l.fixed} ${l.start}`, `puzzle ${i + 1} is \`${got}\`, not ${l.name}'s`);
   } else {
     // The hint: a shortest program's final zero, fixed, and nothing else.
-    const [fixed, start] = endsInZero.has(p.code) ? [1 << (p.lines - 1), 4 ** (p.lines - 1)] : [0, 0];
+    const [zeroFixed, zeroStart] = endsInZero.has(p.code) ? [1 << (p.lines - 1), 4 ** (p.lines - 1)] : [0, 0];
+    const h = HINTED[p.code] ?? { fixed: 0, start: 0 };
+    const [fixed, start] = [zeroFixed | h.fixed, zeroStart + h.start];
     expect(p.lines === p.shortest && p.fixed === fixed && p.start === start, `${p.name}: ${p.lines} lines, fixed ${p.fixed}, start ${p.start}, not ${p.shortest}, ${fixed}, ${start}`);
     if (i > LESSONS.length) {
       const q = puzzles[i - 1];
@@ -447,7 +453,9 @@ try {
     expect((await locks()) === wantLocks(p), `${p.name}'s lines are \`${await locks()}\`, not \`${wantLocks(p)}\``);
     expect(!(await solvedNow()), `${p.name} opens solved`);
     const n = p.lines;
-    const hint = p.fixed
+    const hint = HINTED[p.code]
+      ? `This can be solved with ${LINES[n]} Nibble program. ${HINTED[p.code].text}${lockedText(n)}`
+      : p.fixed
       ? `This can be solved with ${LINES[n]} Nibble program. Line ${n} is already fixed as zero. Your job: fix ${span(1, n - 1)}.${lockedText(n)}`
       : `This can be solved with ${LINES[n]} Nibble program${n === STEPS ? "" : `, so ${span(n + 1, STEPS)} ${n + 1 === STEPS ? "is" : "are"} locked to nada`}.`;
     expect((await text("hint")) === hint, `${p.name}'s hint says \`${await text("hint")}\`, not \`${hint}\``);

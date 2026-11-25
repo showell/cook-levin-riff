@@ -49,6 +49,28 @@ static const Lesson LESSONS[NUM_LESSONS] = {
      1, 0, OP_ZERO},
 };
 
+// A hint past the lessons: lines fixed beside the final zero. is_not_tiny
+// ({1, 2, 3}, decr, mod2, zero, decr, zero): its fold is the subtle part
+// (Steve: "make me choose decr, but fix mod2 on the line where it's
+// needed"), so line 2 is given as mod2.
+typedef struct {
+    int code;
+    int fixed;      // more fixed lines, line k (from 0) bit k
+    uint32_t start; // their ops, at those lines
+} Hint;
+
+#define NUM_HINTS 1
+static const Hint HINTS[NUM_HINTS] = {
+    {14, 1 << 1, OP_MOD2 * NUM_OPS},
+};
+
+static const Hint *hint_of(int code) {
+    for (int i = 0; i < NUM_HINTS; i++) {
+        if (HINTS[i].code == code) return &HINTS[i];
+    }
+    return NULL;
+}
+
 // The lesson's place in LESSONS, or NUM_LESSONS for a puzzle that isn't one.
 static int lesson_of(int code) {
     for (int i = 0; i < NUM_LESSONS; i++) {
@@ -179,6 +201,11 @@ static void print_puzzles(void) {
                 uint32_t place = 1;
                 for (int k = 0; k < z->lines - 1; k++) place *= NUM_OPS;
                 z->start = OP_ZERO * place;
+            }
+            const Hint *h = hint_of(y);
+            if (h != NULL) {
+                z->fixed |= h->fixed;
+                z->start += h->start;
             }
         }
         if (z->fixed >> z->lines) fail_puzzle("a fixed line is past its open lines", y);
