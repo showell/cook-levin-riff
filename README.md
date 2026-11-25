@@ -37,6 +37,9 @@ variables, and composing six steps gives the whole program as polynomials.
   `src/sat_main.c` is its command line, and `sat/oracle.shale` checks it
   against rocsat (below, "SAT").
 - `web/`: the playground (below).
+- `js/`: the machine, the search and the composition in JavaScript, run by
+  node, roc-js-interpreter's VM and its x86-64 compiler (below,
+  "JavaScript").
 - `tests/`: the Python's asserts, every program on every input against a
   table of each opcode's rule, and the golden test against the Python's
   output (`tests/golden/find_solutions.txt`); Poly's strings against
