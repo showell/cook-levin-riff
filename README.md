@@ -249,6 +249,62 @@ array write that reads back already in order. The C could use the same
 table, and has not been tried with it. The search's report is worked out by
 the compiler as it builds, since every input to it is a constant.
 
+## JavaScript
+
+`js/cook_levin.js` is the machine, the search over all 4,096 programs, the
+step polynomials and the six-step composition in one JavaScript program. It
+prints find_solutions' report, then the composition's term counts, sizes
+and proof, and its output is `tests/golden/find_solutions.txt` followed by
+`roc/golden/composition.txt`, byte for byte.
+
+It is written in the subset of JavaScript that
+[roc-js-interpreter](https://github.com/showell/roc-js-interpreter) runs,
+so the program has three runners and each is an oracle for the others.
+That subset has no bitwise operators, so the OR and AND of two masks come
+from tables of their 7-bit halves (with 14 variables, every mask is below
+2^14), and a bit is a division and a `%`. A polynomial is two arrays, its
+masks and its coefficients, kept in mask order. Like terms are summed in
+one dense table indexed by mask, as the Roc port sums them; the table is
+made once and each slot is put back to 0 as it is read. Every coefficient is
+a small integer, so it is exact in a double, and a sum past 2^53 stops the
+program. The step polynomials are built from NOT = 1 - x, AND = xy and
+OR = x + y - xy, as `roc/Stepper.roc` builds them. The stepper reads each
+step from the step polynomials' values at their 64 points, and the proof
+evaluates the four final polynomials at all 2^14 points by the zeta
+transform, into four arrays made once.
+
+```sh
+shale js/oracle.shale      # node, the roc-js VM and js-x86, each held to the goldens
+```
+
+The oracle runs the three one at a time, niced, and prints one line for
+each:
+
+- **node** runs the file as written.
+- **js-vm** is roc-js-interpreter's bytecode VM, in its release build. It
+  runs the same program text, all six steps and the proof, in about 15
+  million of its steps (its budget is 200 million).
+- **js-x86** is roc-js-interpreter's x86-64 compiler. It compiles the
+  program to a static executable with no libc, which is then run under GNU
+  time to measure its peak memory. Compiled programs have no garbage
+  collector yet (a bump allocator over 1 GiB), which is why the big arrays
+  are reused.
+
+Every runner's output must match the goldens byte for byte, and the run
+fails unless all three do. On this box (2 cores, 2026-11-25, node v22),
+node takes about 0.3 s. The VM takes about 80 s. The compiled executable
+is 111,698 bytes, takes 0.6 to 1.0 s and peaks at 33 MB resident. So the
+compiled program is slower than node here. Its array reads and writes are
+values whose kind the compiler doesn't know, so each one goes through the
+runtime's tag checks.
+
+The VM and the compiler are roc-js-interpreter's, written in Roc. They are
+the one cross-repo piece of this repository: `js/oracle.shale` builds both
+in the roc-js-interpreter checkout beside this one
+(`repos:roc-js-interpreter`), through that repository's own
+`tools/roc_build.shale`, which reuses a build its cache already holds. With
+no such checkout, the oracle stops and says so.
+
 ## License
 
 [UPL 1.0](LICENSE).
