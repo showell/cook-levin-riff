@@ -177,8 +177,11 @@ points, none differing, 5,596 accepted).
 On this box (2 cores, 2026-11-25), the release build of `composition 6`
 composes all six steps and runs the proof in about 30 ms; the C's
 `compose_main` at -O2, which composes and proves nothing, takes about 260
-ms. The C sums like terms in a hash table; the Roc's dense table, indexed
-by mask, is a straight array write. The search's report is worked out by
+ms. The gap is the data structure, not the language: the C sums like terms
+in a hash table it grows and then sorts, while the Roc sums them in a dense
+table indexed by mask (14 variables make at most 16,384 masks), a straight
+array write that reads back already in order. The C could use the same
+table, and has not been tried with it. The search's report is worked out by
 the compiler as it builds, since every input to it is a constant.
 
 ## License
