@@ -33,6 +33,9 @@ variables, and composing six steps gives the whole program as polynomials.
   variables (the input's two bits and each instruction's two);
   `src/compose_main.c` prints each step's term counts and writes the four
   final polynomials to `out/`.
+- `src/sat.c`: each puzzle as DIMACS CNF, the Cook-Levin construction;
+  `src/sat_main.c` is its command line, and `sat/oracle.shale` checks it
+  against rocsat (below, "SAT").
 - `web/`: the playground (below).
 - `tests/`: the Python's asserts, every program on every input against a
   table of each opcode's rule, and the golden test against the Python's
@@ -118,6 +121,65 @@ solves it by clicks; it saves screenshots to `out/web/page.png`,
 `out/web/page-given.png` and `out/web/page-fixed.png`. The page's files are
 named by their bytes, and its URLs are relative, so `out/web/site` can be
 served from any folder.
+
+## SAT
+
+`src/sat.c` writes each Nibble puzzle as a SAT problem in DIMACS CNF. This
+is the Cook-Levin construction itself, on a machine small enough to see
+whole: the question "which six-instruction programs accept exactly this
+language?" becomes one Boolean formula whose satisfying assignments are
+exactly those programs.
+
+The formula's first 12 variables are the program's bits: variable 2i - 1 is
+instruction i's high bit and 2i its low bit, as `compose.h` numbers them
+(less the input's two bits), so a model reads straight off as a program.
+The machine is then unrolled: each of its six steps, on each of the four
+inputs, is a copy of the step's logic, wired to the state the step before
+left. That logic is `construct_polynomials` from `stepper.c`, gate for gate,
+with NOT, AND and OR the gates that 1 - x, x*y and x + y - x*y stand for.
+Each AND and OR is a Tseitin variable tied to its inputs by three clauses,
+and NOT is just a literal's sign. A gate on a constant is folded, and a gate
+already built from the same inputs is reused, so every puzzle's formula has
+416 variables and 1,216 clauses. The last four clauses ask that each
+input's final `accepted` be what the language wants. Options lock lines:
+`len=N` forces the lines past N to `nada`, and `fix=K:OP` fixes line K, as
+the playground does.
+
+```sh
+out/tcc/sat 9 len=5 > is_extreme.cnf   # the CNF of {0, 3}, at most five lines
+out/tcc/sat facts                      # each language's count, shortest length and CNF size
+```
+
+`tests/test_sat.c` proves the encoding without any solver. With every input
+a constant, folding evaluates the step, and it matches the stepper on all
+64 of the step's inputs. Then, for every puzzle, it sets the program bits to
+each of the 4,096 programs in turn and unit-propagates them through the
+CNF. Propagation alone decides every Tseitin variable, because each gate's
+inputs come before it. The assignments that survive are exactly the
+programs the machine says solve the puzzle: 844, 681, 303 and so on,
+4,096 over the 16 languages. With lines past N forced to `nada`, the
+survivors are exactly the solving programs of length N or less, so the CNF
+is satisfiable exactly when N is at least the puzzle's shortest length.
+
+`sat/oracle.shale` uses Matt Pizenberg's
+[rocsat](https://github.com/mpizenberg/rocsat), a CDCL SAT solver written
+in Roc, as an independent oracle. For each puzzle, it first solves the CNF
+and checks the model's program on the machine. It then counts the solutions
+by adding a clause that blocks each model and solving again until rocsat
+says UNSAT, and checks that count against the machine's. Finally it proves
+the shortest length: one line shorter is UNSAT, with rocsat's DRAT proof
+written to `out/sat/`, and the shortest length itself is SAT. The DRAT
+proofs are written but not checked here. The script prints one line per
+puzzle and fails if any check fails. It runs about 4,150 programs in about
+a minute, so it isn't in `build.shale`'s tiers:
+
+```sh
+shale sat/oracle.shale     # needs rocsat built at build:rocsat/src/rocsat (or rocsat=PATH)
+```
+
+rocsat builds with its pinned Roc nightly (`roc-version`,
+`nightly-2026-08-18-e9be50a`), via `make build`. Its `scripts/install-roc`
+installs that nightly under `~/.roc`, or under `ROC_INSTALL_DIR`.
 
 ## Status
 
