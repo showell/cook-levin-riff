@@ -14,7 +14,52 @@ Steve Howell devised a virtual machine with a single two-bit register, `AX`, and
 
 Once Steve was confident in how the mundane machine worked, he used techniques inspired by the Cook-Levin proof to answer the same questions with polynomials. Each step of the machine becomes four polynomials in the state's bits and the instruction's bits, so that evaluating them at 0s and 1s gives the next state. Chained through all six steps, they become polynomials that answer "does this program accept this input?" for every program and every input at once.
 
-Then Steve proved that the Cook-Levin machinery matches the toy. His Python's search runs each language's example program twice, once on the interpreter and once through the step polynomials, and checks that the two give the same verdicts. **That agreement is the thesis of this book: the machine and its Cook-Levin translation answer every question the same way.** Everything after it widens the check. The C runs both on all 4,096 programs and all four inputs; the six steps are chained into four polynomials that agree with the machine on all 2^14 points; a SAT solver, given the same machine as a formula, finds exactly the machine's programs; and seven implementations in five languages compute the same answers. His Python stopped short of chaining all six steps, and this repository finishes the chain ({{chapter How it got here}}).
+Then Steve proved that the Cook-Levin machinery matches the toy. His Python's search runs each language's example program twice, once on the interpreter and once through the step polynomials, and checks that the two give the same verdicts. Three pieces of his Python, quoted as they stand in [virtual-machine](https://github.com/showell/virtual-machine) at commit [94c3d31](https://github.com/showell/virtual-machine/commit/94c3d31), carry the whole idea. First, logic becomes arithmetic ([stepper.py, lines 8 to 17](https://github.com/showell/virtual-machine/blob/94c3d31/stepper.py#L8-L17)):
+
+```python
+def NOT(x):
+    return 1 - x
+
+
+def AND(x, y):
+    return x * y
+
+
+def OR(x, y):
+    return (x + y) - (x * y)
+```
+
+Second, a program runs through the step polynomials instead of the interpreter, each step evaluating them at the state's 0s and 1s ([stepper.py, lines 147 to 158](https://github.com/showell/virtual-machine/blob/94c3d31/stepper.py#L147-L158)):
+
+```python
+def test_with_stepper(program, ax):
+    AX = ax
+    halted = False
+    accepted = False
+    for cmd in program:
+        (AX, halted, accepted) = step(
+            AX=AX,
+            halted=halted,
+            accepted=accepted,
+            op=OPS[cmd],
+        )
+    return accepted
+```
+
+Third, the assertions, in `find_solutions` ([virtual_machine.py, lines 159 to 160 and 178 to 180](https://github.com/showell/virtual-machine/blob/94c3d31/virtual_machine.py#L159-L180)). After running all 4,096 programs on the interpreter, every one of the 16 languages must have a program, and each language's example program, run through the polynomials on each input, must accept exactly the language's inputs:
+
+```python
+    for y in range(16):
+        assert len(solutions[y]) > 0
+```
+
+```python
+        for i in range(4):
+            accepted = stepper.test_with_stepper(example_program, i)
+            assert accepted == (i in lang)
+```
+
+**That agreement is the thesis of this book: the machine and its Cook-Levin translation answer every question the same way.** Everything after it widens the check. The C runs both on all 4,096 programs and all four inputs; the six steps are chained into four polynomials that agree with the machine on all 2^14 points; a SAT solver, given the same machine as a formula, finds exactly the machine's programs; and seven implementations in five languages compute the same answers. His Python stopped short of chaining all six steps, and this repository finishes the chain ({{chapter How it got here}}).
 
 Steve wrote the first version by hand in Python, in [virtual-machine](https://github.com/showell/virtual-machine): the machine (`virtual_machine.py`), a general polynomial library (`poly.py`) and a stepper that writes one step of the machine as polynomials (`stepper.py`). In the cook-levin-riff repository, the code was written by AI coding agents (Claude), with human supervision, as its `README.md` says in its second line.
 
