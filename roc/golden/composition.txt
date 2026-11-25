@@ -1,0 +1,12 @@
+step  hb  lb  halted  accepted
+1  4  7  8  8
+2  11  25  30  40
+3  27  79  92  162
+4  63  241  282  642
+5  143  727  878  2568
+6  319  2185  2732  10324
+hb: 319 terms, degree 9, max |coeff| 6
+lb: 2185 terms, degree 14, max |coeff| 21
+halted: 2732 terms, degree 14, max |coeff| 20
+accepted: 10324 terms, degree 14, max |coeff| 63
+proof: 16384 points, 0 differ, 5596 accepted, 2891 accepted with no halt
