@@ -132,6 +132,55 @@ and `tests/test_compose.c` holds all four to the machine on every program
 and every input (2^14 cases). The composition takes about a quarter of a
 second at -O2.
 
+## The Roc port
+
+`roc/` is the same machine and the same mathematics in Roc, at the compiler
+that `roc/roc-version` pins (0.1.0_RC1, at `~/tools/roc-0.1.0_RC1/roc`).
+
+- `Op.roc` and `Machine.roc`: the four ops, the interpreter, assemble and
+  disassemble, and the language codes. Python's six asserts are expects.
+- `Search.roc` and the app `FindSolutions.roc`: find_solutions' report,
+  with each example program also run on the step polynomials, as the
+  Python does.
+- `BoolPoly.roc`: the Boolean ring. A polynomial is an opaque, canonical
+  list of terms (a mask of variables and an I64 coefficient), and Roc's
+  `+`, `-` and `*` are the ring's operations, so `x + y - x * y` is
+  written as it reads. Roc's I64 arithmetic crashes on overflow, so every
+  coefficient is exact or the program stops. Like terms are summed in a
+  dense table indexed by mask, which a product or a substitution writes in
+  place, so variables run from 0 to 19 (the C's ring takes 32). `values`
+  gives a polynomial's value at every point at once, by the zeta transform.
+- `Stepper.roc`: the step polynomials, built directly in the ring from
+  NOT = 1 - x, AND = x·y and OR = x + y - x·y. The general `Poly` is not
+  ported: it exists to print as Python prints, and the Boolean ring's
+  canonical form is what the composition needs. The app
+  `StepPolynomials.roc` prints the four, held to the C's (below).
+- `Compose.roc` and the app `Composition.roc`: the six steps substituted in
+  turn, and the proof at all 2^14 (input, program) points. A multilinear
+  polynomial is fixed by its values on {0, 1}^n, so agreeing with the
+  machine everywhere makes the four final polynomials exactly the C's.
+
+```sh
+shale roc/check.shale      # the gate, from the repository's root
+shale roc/bench.shale      # one release build, and the composition timed beside the C's
+```
+
+The gate runs `roc fmt --check`; `roc check` of the three apps, with no
+errors and no warnings; `roc test` of each, its expects held exactly (30,
+28 and 28); and each app built on the dev backend, its output held byte
+for byte to a golden: `tests/golden/find_solutions.txt`,
+`roc/golden/step_polynomials.txt` (written by the C's `bp_str`) and
+`roc/golden/composition.txt` (`tests/test_compose.c`'s term counts for
+every step, the final degrees and coefficients, and the proof: 16,384
+points, none differing, 5,596 accepted).
+
+On this box (2 cores, 2026-11-25), the release build of `composition 6`
+composes all six steps and runs the proof in about 30 ms; the C's
+`compose_main` at -O2, which composes and proves nothing, takes about 260
+ms. The C sums like terms in a hash table; the Roc's dense table, indexed
+by mask, is a straight array write. The search's report is worked out by
+the compiler as it builds, since every input to it is a constant.
+
 ## License
 
 [UPL 1.0](LICENSE).
