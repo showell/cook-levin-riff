@@ -294,7 +294,7 @@ try {
   expect((await text("hint")) === "This can be solved with a one-line Nibble program, so lines 2 to 6 are locked to nada.", `the first puzzle's hint says \`${await text("hint")}\``);
   // Each open button's tip says what its op does to each AX.
   const tips = await evaluate("['nada', 'zero', 'decr', 'mod2'].map((op) => document.querySelector(`[data-slot=\"0\"][data-op=\"${op}\"]`).title).join(' | ')");
-  expect(tips === "nada: 0->0, 1->1, 2->2, 3->3 (A accepts, R rejects) | zero: 0->A, 1->1, 2->2, 3->3 (A accepts, R rejects) | decr: 0->R, 1->0, 2->1, 3->2 (A accepts, R rejects) | mod2: 0->0, 1->1, 2->0, 3->1 (A accepts, R rejects)", `the buttons' tips are \`${tips}\``);
+  expect(tips === "nada: 0->0, 1->1, 2->2, 3->3 | zero: 0->A, 1->1, 2->2, 3->3 (A accepts) | decr: 0->R, 1->0, 2->1, 3->2 (R rejects) | mod2: 0->0, 1->1, 2->0, 3->1", `the buttons' tips are \`${tips}\``);
   expect(await isShut(1), "the second puzzle is open before the first is solved");
   expect((await text("lesson")) === first.lesson, `the first puzzle's lesson says \`${await text("lesson")}\``);
   expect((await locks()) === wantLocks(first), `the first puzzle's lines are \`${await locks()}\`, not \`${wantLocks(first)}\``);
