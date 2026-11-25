@@ -13,7 +13,8 @@
 //   holds the C's 16-puzzle table to them and to its order: the four
 //   lessons first (is_tiny; is_one and is_even, each with line 1 fixed, as
 //   decr and mod2; grumpy, opening as zero, which nada, decr and mod2 each
-//   solve), then the other twelve by shortest length, count and code, each
+//   solve), then the other twelve by effort (shortest length, a mod2 counted
+//   as a line more; ties to no mod2, fewer zeros, more solutions), each
 //   with its last line fixed as zero exactly when some shortest program ends
 //   in zero; each example is a shortest and fits its open lines and its
 //   fixed ones, each puzzle leaves a line to pick, and each start leaves it
@@ -106,7 +107,30 @@ for (let code = 0; code < PROGRAMS; code++) {
   if (len > 0 && Math.floor(code / 4 ** len) === 0 && Math.floor(code / 4 ** (len - 1)) % 4 === 1) endsInZero.add(lang);
 }
 
+// Each language's plainest shortest program: fewest mod2s, then fewest zeros.
+const plainest = {};
+for (let code = 0; code < PROGRAMS; code++) {
+  const lang = m.accepts(code);
+  const len = shortest[lang];
+  if (Math.floor(code / 4 ** len) !== 0) continue;
+  let mod2s = 0, zeros = 0;
+  for (let k = 0; k < len; k++) {
+    const op = Math.floor(code / 4 ** k) % 4;
+    mod2s += op === 3;
+    zeros += op === 1;
+  }
+  const best = plainest[lang];
+  if (!best || mod2s < best.mod2s || (mod2s === best.mod2s && zeros < best.zeros)) plainest[lang] = { mod2s, zeros };
+}
+// Past the lessons, easiest first: the shortest length with a mod2 counted as
+// a line more; a tie to no mod2, then fewer zeros, then more solutions.
+const effort = (code) => shortest[code] + plainest[code].mod2s;
+const easierThan = (q, p) => [effort(q.code) - effort(p.code), plainest[q.code].mod2s - plainest[p.code].mod2s, plainest[q.code].zeros - plainest[p.code].zeros, p.count - q.count, q.code - p.code].find((d) => d !== 0) < 0;
+// The order that comes to, by name, so a change to it is a change here too.
+const RAMP = ["is_two", "is_small", "is_huge", "is_middling", "is_odd", "is_big", "is_extreme", "is_not_huge", "is_not_two", "always_true", "is_not_one", "is_not_tiny"];
+
 const puzzles = table.puzzles;
+expect(puzzles.slice(4).map((p) => p.name).join(" ") === RAMP.join(" "), `the ramp after the lessons is ${puzzles.slice(4).map((p) => p.name).join(" ")}`);
 const solves = (p, code) => m.accepts(code) === p.code;
 const opAt = (code, k) => Math.floor(code / 4 ** k) % 4;
 expect(puzzles.length === 16, `the table has ${puzzles.length} puzzles, not 16`);
@@ -144,8 +168,7 @@ for (let i = 0; i < puzzles.length; i++) {
     expect(p.lines === p.shortest && p.fixed === fixed && p.start === start, `${p.name}: ${p.lines} lines, fixed ${p.fixed}, start ${p.start}, not ${p.shortest}, ${fixed}, ${start}`);
     if (i > LESSONS.length) {
       const q = puzzles[i - 1];
-      const after = q.shortest < p.shortest || (q.shortest === p.shortest && (q.count > p.count || (q.count === p.count && q.code < p.code)));
-      expect(after, `${p.name} comes after a harder puzzle, ${q.name}`);
+      expect(easierThan(q, p), `${p.name} comes after a harder puzzle, ${q.name}`);
     }
   }
 }
@@ -379,12 +402,12 @@ try {
   expect(!(await solvedNow()), "zero on line 1 solves grumpy");
   await click("#next");
   expect((await text("title")) === `Puzzle 5 of 16: ${puzzles[4].name}`, `after grumpy Next shows \`${await text("title")}\``);
-  // Wrong both ways, every input named: zero on is_odd's line 1 accepts 0
-  // and rejects 1 and 3.
+  // Wrong both ways, every input named: zero on is_two's line 1 accepts 0,
+  // and its fixed zero on line 3 never meets AX at 0 again, so 2 is rejected.
   await click('[data-slot="0"][data-op="zero"]');
-  expect((await text("verdict")) === "Your program falsely accepts 0. It falsely rejects 1 and 3.", `zero on is_odd says \`${await text("verdict")}\``);
+  expect((await text("verdict")) === "Your program falsely accepts 0. It falsely rejects 2.", `zero on is_two says \`${await text("verdict")}\``);
   const marks = await evaluate("[...document.querySelectorAll('#trace tr[data-row=\"outcome\"] td')].map((c) => c.textContent).join(\" | \")");
-  expect(marks === "WRONG! ❌ | WRONG! ❌ | Correct! 🎉 | WRONG! ❌", `zero on is_odd's outcome row says \`${marks}\``);
+  expect(marks === "WRONG! ❌ | Correct! 🎉 | WRONG! ❌ | Correct! 🎉", `zero on is_two's outcome row says \`${marks}\``);
   // At a phone's width each outcome cell holds its words without clipping.
   const clipped = await evaluate("[...document.querySelectorAll('#trace tr[data-row=\"outcome\"] td')].filter((c) => c.scrollWidth > c.clientWidth).length");
   expect(clipped === 0, `${clipped} of the outcome row's cells are clipped at ${WIDTH}px`);

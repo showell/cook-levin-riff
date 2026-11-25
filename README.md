@@ -70,10 +70,11 @@ locked as `decr`, so the player picks line 2 (`zero`); `is_even`, {0, 2},
 the same with line 1 fixed as `mod2`; and `grumpy`, { } ("Reject all
 inputs"), one line that opens as `zero`, which `nada`, `decr` or `mod2`
 each solve, since none of them ever accepts on its own. The other twelve
-languages ramp up, by the length of the shortest program, fewest lines
-first, then by how many of the 4,096 programs solve each, most first, then
-by code: `is_odd` (three lines) comes next, and `is_not_one` (six lines,
-one program) is last. Each puzzle says how short its best program is ("This
+languages ramp up by effort: the length of the shortest program, with each
+`mod2` in it counted as a line more, since `mod2` takes more thought; a tie
+goes to the puzzle with no `mod2`, then fewer `zero`s, then more solutions.
+So `is_two` (`decr, decr, zero`) comes next, `is_odd` (three lines with a
+`mod2`) is ninth, and `is_not_tiny` (five lines with a `mod2`) is last. Each puzzle says how short its best program is ("This
 can be solved with a three-line Nibble program", a program's length being
 its instructions before its trailing `nada`s), and its lines past that
 length are locked to `nada`; every other line starts as `nada`, so the

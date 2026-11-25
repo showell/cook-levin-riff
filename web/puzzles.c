@@ -20,9 +20,9 @@
 // lessons, in LESSONS' order, each with a sentence on the opcode it shows
 // (`lesson`): is_tiny ({0}, zero), is_one ({1}, line 1 fixed as decr),
 // is_even ({0, 2}, line 1 fixed as mod2) and grumpy ({ }, one line opening as
-// zero, which nada, decr or mod2 solves). The other twelve ramp up: by
-// shortest length, fewest lines first; a tie by count, most first, then by
-// code. Each has its shortest length open, and opens as all nada, but for
+// zero, which nada, decr or mod2 solves). The other twelve ramp up by effort
+// (`easier`): the shortest length with each mod2 counted as a line more, so
+// decr, decr, zero comes before is_odd's mod2. Each has its shortest length open, and opens as all nada, but for
 // a hint: when some shortest program ends in zero, its last line is fixed
 // as zero.
 
@@ -85,14 +85,32 @@ typedef struct {
     int fits;       // programs that solve it within its lines and fixed ones
     int example_len;
     uint32_t example;
+    int mod2s; // in its plainest shortest program: fewest mod2s, then zeros
+    int zeros;
 } Puzzle;
 
+// How hard a puzzle is to think through: its shortest length, a mod2 counted
+// as a line more, since it is the op that takes more thought (Steve:
+// "decr, decr, zero ... is simpler for my brain than is_odd").
+static int effort(const Puzzle *z) { return z->shortest + z->mod2s; }
+
+// Lessons first, in order; then by effort, a tie going to the puzzle with no
+// mod2, then fewer zeros (fewer places it can accept), then more solutions.
 static int easier(const Puzzle *a, const Puzzle *b) {
     int la = lesson_of(a->code), lb = lesson_of(b->code);
     if (la != lb) return la < lb;
-    if (a->shortest != b->shortest) return a->shortest < b->shortest;
+    if (effort(a) != effort(b)) return effort(a) < effort(b);
+    if (a->mod2s != b->mod2s) return a->mod2s < b->mod2s;
+    if (a->zeros != b->zeros) return a->zeros < b->zeros;
     if (a->count != b->count) return a->count > b->count;
     return a->code < b->code;
+}
+
+// How many of program n's first len ops are op.
+static int ops_of(uint32_t n, int len, int op) {
+    int k = 0;
+    for (int i = 0; i < len; i++) k += op_at(n, i) == op;
+    return k;
 }
 
 // Program n fits puzzle z's page: nothing past its open lines, and its fixed
@@ -124,7 +142,7 @@ static void print_puzzles(void) {
     int accepts[NUM_PROGRAMS];
     int lens[NUM_PROGRAMS];
     for (int y = 0; y < NUM_LANGUAGES; y++) {
-        Puzzle none = {y, 0, MAX_STEPS + 1, 0, 0, 0, 0, MAX_STEPS + 1, 0};
+        Puzzle none = {y, 0, MAX_STEPS + 1, 0, 0, 0, 0, MAX_STEPS + 1, 0, MAX_STEPS + 1, MAX_STEPS + 1};
         puzzles[y] = none;
     }
     for (uint32_t n = 0; n < NUM_PROGRAMS; n++) {
@@ -134,6 +152,15 @@ static void print_puzzles(void) {
         Puzzle *z = &puzzles[accepts[n]];
         z->count++;
         if (lens[n] < z->shortest) z->shortest = lens[n];
+    }
+    for (uint32_t n = 0; n < NUM_PROGRAMS; n++) {
+        Puzzle *z = &puzzles[accepts[n]];
+        if (lens[n] != z->shortest) continue;
+        int m = ops_of(n, lens[n], OP_MOD2), zs = ops_of(n, lens[n], OP_ZERO);
+        if (m < z->mod2s || (m == z->mod2s && zs < z->zeros)) {
+            z->mod2s = m;
+            z->zeros = zs;
+        }
     }
     for (int y = 0; y < NUM_LANGUAGES; y++) {
         Puzzle *z = &puzzles[y];
