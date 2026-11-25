@@ -38,6 +38,19 @@ const char *op_comment(Op op);
 // `OPS[op]` raises.
 Op op_from_name(const char *name);
 
+// The machine between instructions: AX, and whether it has halted and how.
+// `run_progam` is `vm_step` over a program's six ops from `vm_start`; the
+// playground steps it itself, to show AX after each one.
+typedef struct {
+    int ax;
+    int halted;
+    Status status;
+} Machine;
+
+Machine vm_start(int n);
+// One instruction; a halted machine stays as it is (Python's `continue`).
+Machine vm_step(Machine m, Op op);
+
 Status run_progam(int n, Program program);
 
 // Each op is base-4 digit i, least significant first. Takes any number of

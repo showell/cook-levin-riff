@@ -65,9 +65,28 @@ TEST(each_op_has_its_name_and_comment) {
     for (int i = 0; i < NUM_OPS; i++) EXPECT_EQ(op_from_name(op_name((Op)i)), i);
 }
 
+TEST(stepping_halts_and_then_holds_ax_and_status) {
+    Machine m = vm_start(1);
+    m = vm_step(m, OP_ZERO);
+    EXPECT_EQ(m.halted, 0);
+    m = vm_step(m, OP_DECR);
+    EXPECT_EQ(m.ax, 0);
+    m = vm_step(m, OP_ZERO);
+    EXPECT_EQ(m.halted, 1);
+    EXPECT_EQ(m.status, STATUS_ACCEPTED);
+    m = vm_step(m, OP_DECR);
+    EXPECT_EQ(m.ax, 0);
+    EXPECT_EQ(m.status, STATUS_ACCEPTED);
+    m = vm_step(vm_start(0), OP_DECR);
+    EXPECT_EQ(m.status, STATUS_REJECTED);
+    m = vm_step(vm_start(3), OP_MOD2);
+    EXPECT_EQ(m.ax, 1);
+}
+
 TEST_MAIN(TEST_CASE(assemble_of_zero_decr_is_9), TEST_CASE(disassemble_of_9_is_zero_decr_then_four_nadas),
           TEST_CASE(the_empty_language_is_code_0), TEST_CASE(the_odd_inputs_are_code_10),
           TEST_CASE(vm_test_passes_as_pythons_test_does),
           TEST_CASE(assemble_and_disassemble_are_inverses_on_every_program),
           TEST_CASE(every_code_round_trips_through_its_language_and_complement),
-          TEST_CASE(each_op_has_its_name_and_comment))
+          TEST_CASE(each_op_has_its_name_and_comment),
+          TEST_CASE(stepping_halts_and_then_holds_ax_and_status))

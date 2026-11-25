@@ -2,9 +2,16 @@
 
 #include "vm.h"
 
+// The machine needs no libc but for its stops. The wasm build (web/nibble.c)
+// defines VM_FREESTANDING: there a stop is a trap, which the page reports.
+#ifdef VM_FREESTANDING
+#define VM_STOP(...) __builtin_trap()
+#else
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#define VM_STOP(...) (fprintf(stderr, __VA_ARGS__), abort())
+#endif
 
 static const char *const OP_NAMES[NUM_OPS] = {"nada", "zero", "decr", "mod2"};
 
@@ -16,8 +23,17 @@ static const char *const OP_COMMENTS[NUM_OPS] = {
 };
 
 static void vm_die(const char *what, long value) {
-    fprintf(stderr, "vm: %s: %ld\n", what, value);
-    abort();
+    (void)what;
+    (void)value;
+    VM_STOP("vm: %s: %ld\n", what, value);
+}
+
+static int same_name(const char *a, const char *b) {
+    while (*a && *a == *b) {
+        a++;
+        b++;
+    }
+    return *a == *b;
 }
 
 static void check_op(Op op) {
@@ -36,46 +52,49 @@ const char *op_comment(Op op) {
 
 Op op_from_name(const char *name) {
     for (int i = 0; i < NUM_OPS; i++) {
-        if (strcmp(OP_NAMES[i], name) == 0) return (Op)i;
+        if (same_name(OP_NAMES[i], name)) return (Op)i;
     }
-    fprintf(stderr, "vm: unknown op name: %s\n", name);
-    abort();
+    VM_STOP("vm: unknown op name: %s\n", name);
     return OP_NADA; // not reached; tcc can't see that abort doesn't return
 }
 
-Status run_progam(int n, Program program) {
-    int halted = 0;
-    int ax = n;
-    Status status = STATUS_NONE;
+Machine vm_start(int n) {
+    Machine m = {n, 0, STATUS_NONE};
+    return m;
+}
 
-    for (int i = 0; i < MAX_STEPS; i++) {
-        Op op = program.ops[i];
-        if (halted) continue;
-        switch (op) {
-        case OP_NADA:
-            break;
-        case OP_ZERO:
-            if (ax == 0) {
-                halted = 1;
-                status = STATUS_ACCEPTED;
-            }
-            break;
-        case OP_DECR:
-            if (ax == 0) {
-                halted = 1;
-                status = STATUS_REJECTED;
-            } else {
-                ax -= 1;
-            }
-            break;
-        case OP_MOD2:
-            ax = ax % 2;
-            break;
-        default:
-            vm_die("unknown op", (long)op);
+Machine vm_step(Machine m, Op op) {
+    if (m.halted) return m;
+    switch (op) {
+    case OP_NADA:
+        break;
+    case OP_ZERO:
+        if (m.ax == 0) {
+            m.halted = 1;
+            m.status = STATUS_ACCEPTED;
         }
+        break;
+    case OP_DECR:
+        if (m.ax == 0) {
+            m.halted = 1;
+            m.status = STATUS_REJECTED;
+        } else {
+            m.ax -= 1;
+        }
+        break;
+    case OP_MOD2:
+        m.ax = m.ax % 2;
+        break;
+    default:
+        vm_die("unknown op", (long)op);
     }
-    return status;
+    return m;
+}
+
+Status run_progam(int n, Program program) {
+    Machine m = vm_start(n);
+    for (int i = 0; i < MAX_STEPS; i++) m = vm_step(m, program.ops[i]);
+    return m.status;
 }
 
 uint32_t assemble(const Op *ops, size_t count) {
@@ -136,10 +155,8 @@ int lang_has(Lang lang, int x) {
 }
 
 static void vm_test_check(int ok, const char *what) {
-    if (!ok) {
-        fprintf(stderr, "vm test failed: %s\n", what);
-        abort();
-    }
+    (void)what;
+    if (!ok) VM_STOP("vm test failed: %s\n", what);
 }
 
 void vm_test(void) {
