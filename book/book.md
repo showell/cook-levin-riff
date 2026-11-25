@@ -71,6 +71,35 @@ A machine *decides* a language when, given any string, it halts, accepting the s
 
 In 1936 Alan Turing described a machine with a finite set of states and an unbounded tape, in "On Computable Numbers, with an Application to the Entscheidungsproblem". It reads and writes the tape one cell at a time, and every algorithm anyone has written since can be carried out by such a machine; that claim is the Church-Turing thesis. Turing also showed that some languages are undecidable: whatever machine one builds for them, some string defeats it. The best known is the halting problem, the language of programs that halt on their input. A machine can *recognize* it, accepting every member by running it, but for some strings outside the language it runs forever, still waiting to answer.
 
+### A simple example
+
+Take the alphabet {a, b} and the language of strings with an even count of a's: `aba` and `bb` are in it, `ab` and `aaab` are out. A Turing machine decides it with two working states, `even` and `odd`, and a head that reads the tape left to right. The input is written on the tape, with blank cells after it, and the machine starts in `even` on the first symbol.
+
+| state | reads | writes | moves | next state |
+|---|---|---|---|---|
+| `even` | a | a | right | `odd` |
+| `even` | b | b | right | `even` |
+| `even` | blank | blank | stays | accept |
+| `odd` | a | a | right | `even` |
+| `odd` | b | b | right | `odd` |
+| `odd` | blank | blank | stays | reject |
+
+Each row is one rule: in this state, reading this symbol, write this, move, and go to that state. The state remembers the one fact that matters, whether the a's seen so far are even, and the blank after the input is where the machine answers.
+
+A run on `aba`:
+
+| step | state | reading | tape, head in brackets |
+|---|---|---|---|
+| 1 | `even` | a | [a] b a _ |
+| 2 | `odd` | b | a [b] a _ |
+| 3 | `odd` | a | a b [a] _ |
+| 4 | `even` | blank | a b a [_] |
+|   | accept | | |
+
+And on `ab`: `even` reads a and moves to `odd`, `odd` reads b and stays `odd`, `odd` reads the blank and rejects. Every run takes one step per symbol and then halts, so the machine decides the language: it accepts exactly the strings with an even count of a's.
+
+This machine only reads and moves right, so it is also a finite automaton; Turing's machines earn their tape on harder languages, such as the strings of a's followed by the same number of b's, where the machine writes marks on the tape to pair each a with a b. The idea carries over unchanged: states, a rule table, a run that ends in accept or reject, and a language made of the strings accepted.
+
 ### When deciding is cheap, and when checking is
 
 Decidable languages differ in cost. P is the class decided in time polynomial in the input's length. NP is the class whose members have short certificates that a machine can check in polynomial time: a formula is in SAT, the language of satisfiable Boolean formulas, when an assignment makes it true, and checking an assignment is quick. In 1971 Stephen Cook, in "The Complexity of Theorem-Proving Procedures", and independently Leonid Levin, published in 1973, showed that SAT is as hard as anything in NP. Their proof takes the checking machine, which runs for a polynomial number of steps, and writes each step of its run as clauses: the whole run becomes one formula, satisfiable exactly when a certificate exists.
