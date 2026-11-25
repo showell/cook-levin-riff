@@ -233,6 +233,12 @@ try {
     await click(`[data-slot="${slot}"][data-op="${op}"]`);
   }
   expect((await text("verdict")).startsWith("Solved!"), `the example's verdict says \`${await text("verdict")}\``);
+  // The celebration shows without scrolling: the verdict's bottom is inside
+  // the first screen, and it comes before the program's lines.
+  const fold = await evaluate(`(() => { const v = document.getElementById("verdict").getBoundingClientRect(); return { bottom: v.bottom + window.scrollY, screen: window.innerHeight, before: !!(document.getElementById("verdict").compareDocumentPosition(document.querySelector(".slots")) & Node.DOCUMENT_POSITION_FOLLOWING) }; })()`);
+  expect(fold.bottom <= fold.screen, `the verdict ends at ${Math.round(fold.bottom)}px, below the first ${fold.screen}px screen`);
+  expect(fold.before, "the verdict doesn't come before the program's lines");
+  expect(!(await evaluate("document.getElementById('intro').hidden")) && (await evaluate("document.getElementById('help').hidden")), "the first puzzle doesn't show the intro without a Help link");
   expect((await text("found")) === `You found one of ${first.count.toLocaleString("en-US")} programs that do this.`, `after solving the page says \`${await text("found")}\``);
   expect(!(await evaluate("document.querySelector('[data-puzzle=\"1\"]').disabled")), "solving the first puzzle doesn't open the second");
   // No sideways scroll at a phone's width: not the page, and not the trace,
@@ -253,6 +259,13 @@ try {
   await click("#next");
   expect((await text("title")) === `Puzzle 2 of 16: ${puzzles[1].name}`, `Next shows \`${await text("title")}\``);
   expect((await locks()) === wantLocks(puzzles[1]), `the second puzzle's lines are \`${await locks()}\``);
+  // Past the first puzzle the intro folds away behind Help, which opens and
+  // closes it.
+  expect((await evaluate("document.getElementById('intro').hidden")) && !(await evaluate("document.getElementById('help').hidden")), "the second puzzle shows the intro, or no Help link");
+  await click("#help");
+  expect(!(await evaluate("document.getElementById('intro').hidden")) && (await text("help")) === "Hide help", "Help doesn't open the intro");
+  await click("#help");
+  expect((await evaluate("document.getElementById('intro').hidden")) && (await text("help")) === "Help", "Hide help doesn't close the intro");
   await open(url);
   expect(await evaluate("document.querySelector('[data-puzzle=\"0\"]').classList.contains('solved')"), "after a reload the first puzzle isn't marked solved");
   expect((await text("title")) === `Puzzle 2 of 16: ${puzzles[1].name}`, `after a reload the page shows \`${await text("title")}\``);
