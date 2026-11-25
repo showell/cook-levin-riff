@@ -44,6 +44,11 @@ Op op_from_name(const char *name) {
 }
 
 Status run_progam(int n, Program program) {
+    int ax;
+    return run_progam_ax(n, program, &ax);
+}
+
+Status run_progam_ax(int n, Program program, int *final_ax) {
     int halted = 0;
     int ax = n;
     Status status = STATUS_NONE;
@@ -75,6 +80,7 @@ Status run_progam(int n, Program program) {
             vm_die("unknown op", (long)op);
         }
     }
+    *final_ax = ax;
     return status;
 }
 

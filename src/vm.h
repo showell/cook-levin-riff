@@ -39,6 +39,9 @@ const char *op_comment(Op op);
 Op op_from_name(const char *name);
 
 Status run_progam(int n, Program program);
+// The same run, and AX when it ended: when it halted (the ops after a halt
+// are skipped, so AX keeps that value) or after the last op.
+Status run_progam_ax(int n, Program program, int *final_ax);
 
 // Each op is base-4 digit i, least significant first. Takes any number of
 // ops, as Python's does (`assemble(["zero", "decr"])` is 9).
