@@ -1,0 +1,109 @@
+-- roc/check.shale: the Roc port's gate, one line a check, PASS or FAIL with
+-- its numbers. From the repository's root:
+--
+--   shale roc/check.shale
+--
+-- It fails unless every line passed:
+--   - `roc fmt --check` over every .roc file in roc/, by the Roc that
+--     roc/roc-version pins (~/tools/roc-<pin>/roc, never one on the PATH);
+--   - `roc check` of each app, with no error and no warning (no ✗ or ●);
+--   - `roc test` of each app, its expects' count held exactly to EXPECTS;
+--   - each app built on the dev backend and run: FindSolutions' stdout is
+--     tests/golden/find_solutions.txt byte for byte, StepPolynomials' is
+--     roc/golden/step_polynomials.txt (the C's `bp_str` of the four step
+--     polynomials), and `composition 6`'s is roc/golden/composition.txt
+--     (tests/test_compose.c's term counts for every step, the final sizes,
+--     and the proof against the machine at all 2^14 points, 0 differing).
+--
+-- The release build and its timing are roc/bench.shale's, not this gate's.
+
+const WANT = "roc-pin: the Roc port's pinned compiler"
+const RAN = "roc-check: an app this gate just built"
+const APPS = {"Composition.roc", "FindSolutions.roc", "StepPolynomials.roc"}
+const EXPECTS = {
+  {app = "Composition.roc", count = 30},
+  {app = "FindSolutions.roc", count = 28},
+  {app = "StepPolynomials.roc", count = 28},
+}
+const RUNS = {
+  {app = "FindSolutions.roc", exe = "find-solutions", args = {}, golden = "tests/golden/find_solutions.txt"},
+  {app = "StepPolynomials.roc", exe = "step-polynomials", args = {}, golden = "roc/golden/step_polynomials.txt"},
+  {app = "Composition.roc", exe = "composition", args = {"6"}, golden = "roc/golden/composition.txt"},
+}
+
+const board = {lines = 0, failed = 0}
+
+function say(ok, what)
+  board.lines = board.lines + 1
+  if ok then
+    print("PASS  " .. what)
+  else
+    board.failed = board.failed + 1
+    print("FAIL  " .. what)
+  end
+  return nil
+end
+
+function pinned_roc()
+  if not exists("roc/roc-version") then fail("roc/check.shale: no roc/roc-version: run from the repository's root") end
+  local pin = trim(read("roc/roc-version"))
+  local roc = "tools:roc-" .. pin .. "/roc"
+  if not exists(roc) then fail("roc/check.shale: no " .. roc .. ": install the pinned Roc " .. pin .. " at ~/tools/roc-" .. pin .. "/") end
+  local said = run({real(roc), "version"}, {timeout_ms = 30000, whole = 4000, want = WANT})
+  if trim(said.out) ~= "Roc compiler version " .. pin then fail("roc/check.shale: " .. roc .. " is " .. trim(said.out) .. ", not " .. pin) end
+  return real(roc)
+end
+
+-- The ✗ and ● lines of a compiler's output.
+function marks(out)
+  local n = 0
+  for l in lines(out) do
+    if contains(l, "✗") or contains(l, "●") then n = n + 1 end
+  end
+  return n
+end
+
+local roc = pinned_roc()
+local files = glob("roc/*.roc")
+sort(files)
+local fmt = {roc, "fmt", "--check"}
+for f in files do push(fmt, real(f)) end
+local f = run(fmt, {timeout_ms = 120000, whole = 100000, want = WANT})
+say(f.code == 0, "roc fmt --check: " .. #files .. " files" .. (f.code == 0 and "" or (": " .. trim(f.out))))
+
+for app in APPS do
+  local r = run({roc, "check", app}, {cwd = "roc", timeout_ms = 120000, whole = 1000000, want = WANT, nice = 10})
+  local n = marks(r.out)
+  say(r.code == 0 and n == 0 and contains(r.out, "No errors found"), "roc check roc/" .. app .. ": " .. n .. " errors and warnings, exit " .. r.code)
+  if n > 0 then print(r.out) end
+end
+
+for e in EXPECTS do
+  local r = run({roc, "test", e.app}, {cwd = "roc", timeout_ms = 300000, tail = 40, want = WANT, nice = 10})
+  local passed = re_find(r.out, "All \\(([0-9]+)\\) tests passed")
+  local n = passed == nil and -1 or tonumber(passed.group)
+  local said = passed == nil and ("exit " .. r.code .. ": " .. trim(r.out)) or (n .. " expects passed")
+  say(r.code == 0 and n == e.count, "roc test roc/" .. e.app .. ": " .. said .. ", held at " .. e.count)
+end
+
+mkdir("out/roc")
+for g in RUNS do
+  local exe = "out/roc/" .. g.exe .. "-dev"
+  local b = run({roc, "build", "--opt=dev", "--output=" .. real("out/roc") .. "/" .. g.exe .. "-dev", g.app}, {cwd = "roc", timeout_ms = 300000, tail = 30, want = WANT, nice = 10})
+  local built = b.code == 0 and marks(b.out) == 0
+  if not built then
+    say(false, "roc build --opt=dev roc/" .. g.app .. ": exit " .. b.code)
+    print(b.out)
+  else
+    local argv = {real(exe)}
+    for a in g.args do push(argv, a) end
+    local r = run(argv, {timeout_ms = 120000, whole = 1000000, want = RAN, nice = 10})
+    local golden = read(g.golden)
+    local same = get(r, "code", -1) == 0 and r.out == golden
+    say(same, g.exe .. " " .. join(g.args, " ") .. " (dev): stdout is " .. g.golden .. ", " .. #r.out .. " bytes of " .. #golden .. ", " .. r.ms .. " ms")
+    if not same then print(r.out) end
+  end
+end
+
+if board.failed > 0 then fail("roc/check.shale: " .. board.failed .. " of " .. board.lines .. " checks failed") end
+print("roc/check.shale: " .. board.lines .. " of " .. board.lines .. " passed")
