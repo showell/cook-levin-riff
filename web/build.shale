@@ -1,0 +1,75 @@
+-- web/build.shale: the Nibble playground, built and checked.
+--
+--   shale web/build.shale      from the repository's root
+--
+-- 1. web/puzzles.c (gcc -Wall -Wextra -Werror) writes the puzzle table,
+--    out/web/puzzles.json, and every program's run on every input,
+--    out/web/runs.json, for the check.
+-- 2. web/nibble.c, which is src/vm.c with no libc, is compiled to
+--    out/web/nibble.wasm by `zig cc -target wasm32-freestanding`
+--    (zig016:zig).
+-- 3. The page goes to out/web/site, each file but index.html named by its
+--    bytes (`nibble.<hash>.js`, the first 16 hex digits of its sha256), as
+--    roc-apps' site names them; the JS's names for the wasm and the table
+--    are rewritten to their hashed names before the JS is hashed.
+-- 4. web/page_check.mjs holds the wasm to the C's table on all 4,096 x 4
+--    runs and to its puzzle table, then loads the page in headless Chromium
+--    and solves the first puzzle by clicking; it saves a screenshot to
+--    out/web/page.png.
+--
+-- One line a stage. Exits 0 only when every check passes.
+
+const OUT = "out/web"
+const SITE = "out/web/site"
+const RAN = "build: the table program this build just compiled"
+const WANT_ZIG = "zig: the wasm's compiler"
+const WANT_NODE = "node: the page check, in headless Chromium"
+
+-- The first 16 hex digits of the file's sha256.
+function hash_of(path)
+  local r = must(run({"sha256sum", real(path)}, {timeout_ms = 60000, whole = 400}))
+  return sub(r.out, 1, 16)
+end
+
+-- The hashed name of OUT's `name.ext`, `name.<hash>.ext`.
+function hashed_name(name, ext)
+  return name .. "." .. hash_of(OUT .. "/" .. name .. "." .. ext) .. "." .. ext
+end
+
+mkdir(OUT)
+local cc = must(run({"gcc", "-std=c11", "-O2", "-Wall", "-Wextra", "-Werror", "-o", real(OUT) .. "/puzzles", "web/puzzles.c"},
+  {timeout_ms = 120000, tail = 20}))
+local table = must(run({real(OUT .. "/puzzles"), "puzzles"}, {timeout_ms = 10000, whole = 16000, want = RAN}))
+replace(OUT .. "/puzzles.json", table.out)
+local runs = must(run({real(OUT .. "/puzzles"), "runs"}, {timeout_ms = 10000, whole = 20000, want = RAN}))
+replace(OUT .. "/runs.json", runs.out)
+local puzzles = json_read(table.out).puzzles
+print("ok   web/puzzles.c: " .. #puzzles .. " puzzles, " .. (#runs.out - 3) .. " runs, " .. cc.ms .. " ms to compile")
+
+local z = run({real("zig016:zig"), "cc", "-target", "wasm32-freestanding", "-O2", "-std=c11", "-Wall", "-Wextra", "-Werror",
+  "-nostdlib", "-Wl,--no-entry", "-o", real(OUT) .. "/nibble.wasm", "web/nibble.c"},
+  {timeout_ms = 120000, tail = 30, want = WANT_ZIG})
+if z.code ~= 0 then
+  print(z.out)
+  fail("zig cc web/nibble.c exited " .. z.code)
+end
+print("ok   zig cc web/nibble.c: " .. z.ms .. " ms")
+
+if exists(SITE) then remove_tree(SITE) end
+mkdir(SITE)
+local wasm = hashed_name("nibble", "wasm")
+copy(OUT .. "/nibble.wasm", SITE .. "/" .. wasm)
+local json = hashed_name("puzzles", "json")
+copy(OUT .. "/puzzles.json", SITE .. "/" .. json)
+local js_text = substitute(substitute(read("web/nibble.js"), "fetch(\"nibble.wasm\")", "fetch(\"" .. wasm .. "\")"),
+  "fetch(\"puzzles.json\")", "fetch(\"" .. json .. "\")")
+replace(OUT .. "/nibble.js", js_text)
+local js = hashed_name("nibble", "js")
+copy(OUT .. "/nibble.js", SITE .. "/" .. js)
+replace(SITE .. "/index.html", substitute(read("web/index.html"), "src=\"nibble.js\"", "src=\"" .. js .. "\""))
+print("ok   " .. SITE .. ": index.html, " .. join({js, wasm, json}, ", "))
+
+local check = run({"node", "web/page_check.mjs", real(SITE), real(OUT .. "/puzzles.json"), real(OUT .. "/runs.json"), real(OUT) .. "/page.png"},
+  {timeout_ms = 90000, tail = 30, want = WANT_NODE})
+print(trim(check.out))
+if check.code ~= 0 then fail("web/page_check.mjs exited " .. check.code) end

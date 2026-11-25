@@ -38,6 +38,22 @@ const char *op_comment(Op op);
 // `OPS[op]` raises.
 Op op_from_name(const char *name);
 
+// The machine between instructions: AX, and whether it has halted and how.
+// `run_progam` is `vm_step` over a program's six ops from `vm_start`; the
+// playground steps it itself, to show AX after each one.
+// Padded to 16 bytes past a tcc struct-return bug (stepper.h's StepState).
+typedef struct {
+    int ax;
+    int halted;
+    Status status;
+    int unused;
+} Machine;
+_Static_assert(sizeof(Machine) == 16, "Machine is 16 bytes (see stepper.h)");
+
+Machine vm_start(int n);
+// One instruction; a halted machine stays as it is (Python's `continue`).
+Machine vm_step(Machine m, Op op);
+
 Status run_progam(int n, Program program);
 // The same run, and AX when it ended: when it halted (the ops after a halt
 // are skipped, so AX keeps that value) or after the last op.
