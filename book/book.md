@@ -1,6 +1,6 @@
 # A riff on Cook-Levin
 
-A small book about [cook-levin-riff](https://github.com/showell/cook-levin-riff): a toy machine whose every program is a polynomial and a Boolean formula, the six-step composition that took three years to arrive, and six independent ways of computing the same answers that all agree.
+A small book about [cook-levin-riff](https://github.com/showell/cook-levin-riff): a toy machine whose every program is a polynomial and a Boolean formula, the six-step composition that took three years to arrive, and seven independent ways of computing the same answers that all agree.
 
 ## Introduction
 
@@ -10,7 +10,7 @@ Steve Howell wrote the first version by hand in Python, in [virtual-machine](htt
 
 ### What the book covers
 
-{{chapter The machine}} sets out the machine, and {{chapter Languages and machines}} gives the computer science behind the word "language", back to Turing. {{chapter Programs as languages}} is the search over all 4,096 programs, and {{chapter Nibble, the puzzle page}} turns its 16 languages into puzzles. {{chapter Arithmetization}} turns one step into polynomials. {{chapter Why composing blew up}} and {{chapter Six steps composed}} take the step through a whole program, and {{chapter The polynomials, in full}} prints every one of those polynomials whole, the Python's among them. {{chapter Cook-Levin as SAT}} turns the same machine into a formula for a SAT solver. {{chapter The oracles}} lines up every implementation that computes the answers, and {{chapter The Roc port}} reads the mathematics in Roc.
+{{chapter The machine}} sets out the machine, and {{chapter Languages and machines}} gives the computer science behind the word "language", back to Turing. {{chapter Programs as languages}} is the search over all 4,096 programs, and {{chapter Nibble, the puzzle page}} turns its 16 languages into puzzles. {{chapter Arithmetization}} turns one step into polynomials. {{chapter Why composing blew up}} and {{chapter Six steps composed}} take the step through a whole program, and {{chapter The polynomials, in full}} prints every one of those polynomials whole, the Python's among them. {{chapter Cook-Levin as SAT}} turns the same machine into a formula for a SAT solver. {{chapter The oracles}} lines up every implementation that computes the answers. {{chapter The Roc port}} reads the mathematics in Roc. {{chapter What is Shale?}} describes the scripting language every script here is written in, and {{chapter The VM in Shale}} reads the machine and the composition in it.
 
 ### Why the name fits
 
@@ -651,7 +651,7 @@ The proofs run from 7,440 to 14,698 bytes and from 286 to 821 lemmas. The larges
 
 Every implementation in this repository computes the same answers in its own way, and each is held to the others. The spine of the project is that they all agree.
 
-Six ways to the same answers
+Seven ways to the same answers
 ```dot
 digraph {
   node [shape=box, style=rounded];
@@ -661,12 +661,14 @@ digraph {
   roc [label="Roc"];
   sat [label="SAT, rocsat"];
   js [label="JavaScript x3"];
+  shale [label="Shale"];
   nibble [label="Nibble's wasm"];
   python -> answers;
   c -> answers;
   roc -> answers;
   sat -> answers;
   js -> answers;
+  shale -> answers;
   nibble -> answers;
 }
 ```
@@ -678,6 +680,7 @@ digraph {
 - **Roc** prints the same report, the four step polynomials as the C's `bp_str` prints them (`roc/golden/step_polynomials.txt`) and the composition's counts and proof (`roc/golden/composition.txt`). `roc/check.shale` is its gate.
 - **SAT** reaches the 16 counts through `tests/test_sat.c`'s propagation and again through rocsat's blocked models, and each shortest length through an UNSAT, with a DRAT proof that `src/drat.c` verifies, and a SAT.
 - **JavaScript**, `js/cook_levin.js`, prints the report and then the composition, byte for byte the two goldens, under three runners.
+- **Shale**, `shale/cook_levin.shale`, prints the same report and composition, held to the two goldens byte for byte by `shale/check.shale`.
 - **Nibble's wasm** is `src/vm.c` itself, and `web/page_check.mjs` holds it to the C on all 4,096 × 4 runs and to the 16-puzzle table.
 
 ### One program, three runners
@@ -713,6 +716,114 @@ The proof wants each final polynomial's value at all 16,384 points. `values` get
 ### The speed, honestly
 
 On this box, the release build of `composition 6` composes all six steps and runs the proof in about 30 ms, and the C's `compose_main` at -O2, which only composes, takes about 260 ms (`README.md`, "The Roc port"). The gap is the data structure, and the language has little to do with it: the C sums like terms in a hash table it grows and then sorts, while the Roc sums them in a dense table indexed by mask, a straight array write that reads back already in order. The C could use the same table, and it has yet to be tried (`9e0c86c`).
+
+## What is Shale?
+
+Shale is a small scripting language for working on code, Lua-like on the surface, and the language of every script in this repository and of the port in the next chapter. This chapter describes the language itself, from its own documentation, and leaves Cook-Levin aside; a reader here for the machine can skip ahead to {{chapter The VM in Shale}}.
+
+### What it is for
+
+Shale lives in a public repository of its own, [showell/shale](https://github.com/showell/shale), under the same license as this one, the Universal Permissive License 1.0. Its `README.md` opens: "Shale is a small scripting language for working on code. One line greps a whole repo. A short script refactors one. Every run is budgeted, confined, readable. Agents write it in place of bash, in place of Python." The same README says its code was written by AI coding agents (Claude), with human supervision, as this repository's says of its own.
+
+Its builtins cover the common Linux work, by the README's list: reading, editing and searching files, walking folders, running programs and background jobs, git, text and JSON. A task that would be a pipeline of `grep`, `sed` and `sort` in a shell is a short script, launched as a heredoc (`shale <<'EOF'`) or as a file with `name=value` arguments, which the script reads as `arg("name", default)`. In this repository, `build.shale` runs the C's tiers, `roc/check.shale` and `js/oracle.shale` hold the Roc and JavaScript ports to the goldens, `sat/oracle.shale` drives rocsat, and `book/book.shale` builds this book.
+
+### How a script runs
+
+A C runtime reads each script, compiles it to bytecode and runs it on a small virtual machine. The README says the whole runtime "builds as one C file, links only the C library, and weighs under a megabyte", and runs on Linux x86-64. The first implementation was in Zig; it is frozen in the repository's `legacy_zig/`, and the C was written against it as its oracle, with golden tests, each input frozen with its output, as the judge of behaviour.
+
+Every run has budgets: steps, reads, bytes read, bytes printed, and the arena, the memory the run's values live in. `docs/SHALE.md` gives the defaults as 5,000,000 steps, 10,000 reads, 64 MiB read and a 16 MiB arena, and the README gives 64 KiB of output. A step is each statement, expression and loop iteration, and every byte or item a builtin touches. A run that reaches a budget stops and says which one. `--budget NAME=N` raises one on the command line, and a script that always needs more says so in a `-- budget:` line among its opening comments, as the port's first line does.
+
+A stop is one line that says where and why, with a class (`type`, `index`, `refused`, `budget reads`) and the calls that led there. An argument is read by the script's `arg` calls, and one whose name they leave unread, a misspelled one, stops the run before it starts. Past half of any budget, or on a stop, the runner prints what the run used; `--verbose` prints it always, and ends with the step count that the port's check reads.
+
+### What it refuses
+
+The README's guard rails come down to four rules.
+
+- **A run is confined.** A script reads and writes only under the folder it runs in and the mounts it is given (`name:path`); `..` and absolute paths are refused. A program it starts is held to the same folders by the kernel's Landlock, and so is everything that program starts.
+- **A program runs bounded.** `run` takes a timeout and a keep (`head`, `tail` or `whole`), so a hung test is stopped and a long build log comes back as its last lines.
+- **Risky shortcuts are refused by name.** `run` refuses a shell or an interpreter (`bash`, `python3`, `node`), a text tool Shale already has (`grep`, `sed`), and a program at a path git leaves untracked. A `{want = "tag: why"}` option runs one anyway, and the run records it.
+- **Git is the undo.** A run makes its changes as it goes, and each `edit` prints its diff. Working in a checkout, `git diff` shows what a run did, and `--undo-on-stop` puts back every file a stopped run changed.
+
+The style is an allow-list: the language and its runner name what they permit, and a refusal names what was asked for and what to write instead.
+
+### The language
+
+`docs/SHALE.md` says that Shale "looks like Lua, with smaller semantics of its own". Its integers are 64-bit and checked, so an overflow stops the script. Lists count from 1. A function is declared at the top level, above the code that calls it, and `const` names a top-level value made once. Reading a map's missing key stops the run, and `get(m, k, default)` asks for a default instead; a list that would hold `nil` is a `type` error.
+
+A long list is refused, each item by name: floats and `/`; `^`, hex literals and the bitwise operators; function values, closures, nested functions and `local function`; `:` method calls, `...`, `goto` and `repeat`; multiple assignment and multiple returns; and Lua's library, `string.`, `pairs` and the rest. What remains is integers, strings, booleans, lists and maps, loops, and functions by name, with a large set of builtins beside them. {{chapter The VM in Shale}} is the machine and its mathematics in that much.
+
+## The VM in Shale
+
+`shale/cook_levin.shale` is the machine, the search over all 4,096 programs, the step polynomials and the six-step composition once more, in Shale (`4942a49`). It follows `js/cook_levin.js` closely, and it prints the same two reports, byte for byte: `tests/golden/find_solutions.txt`, then `roc/golden/composition.txt`. `part=search` prints the first alone and `part=composition` the second.
+
+### The machine
+
+A machine's state is a map of two fields, its `AX` and how its run has ended so far, the three endings named by string constants. One step is the rule of {{chapter The machine}}:
+
+{{function shale/cook_levin.shale machine_step}}
+
+A program is a list of six opcodes, the base-4 digits of its number, lowest first (`disassemble`). A run starts with `AX` at the input and folds `machine_step` over the list.
+
+### The search
+
+The search runs each of the 4,096 programs on the four inputs, makes its language's code from the inputs it accepts, and files the program under that code. Lists count from 1, so language `y`'s programs are at slot `y + 1`:
+
+{{lines shale/cook_levin.shale from "function find_solutions()" to "if #programs[y + 1] == 0 then fail"}}
+
+It then prints each language's count and first program, and runs that program on the step polynomials too, failing the run where they disagree with the machine.
+
+### The ring's times
+
+A polynomial of the Boolean ring is a map of two lists, `masks` and `coeffs`, its terms in ascending order of mask. A monomial is a set of variables, bit `i` of its mask for variable `i`, and the product of two monomials is the OR of their masks. Shale refuses the bitwise operators, so the OR comes from a table. Every mask is below 2^14, so it splits into two 7-bit halves, and a table of the OR of every two 7-bit numbers, 16,384 entries, is made once:
+
+{{function shale/cook_levin.shale half_table}}
+
+{{function shale/cook_levin.shale or14}}
+
+The product of two polynomials takes every pair of terms. Like terms are summed in `SUMS`, one dense list of 16,384 slots indexed by mask, the Roc port's table, and `from_sums` reads it back in order and puts each slot back to 0. `q`'s halves are split once, before the pairs, so each pair costs two reads of `OR7`:
+
+{{function shale/cook_levin.shale times}}
+
+### The step polynomials
+
+The step is built in the ring as {{chapter Arithmetization}} builds it: NOT x is 1 − x, x AND y is x·y and x OR y is x + y − x·y.
+
+{{lines shale/cook_levin.shale from "function negation(x)" to "function either(x, y)"}}
+
+`not` is a keyword, as in Lua, so the function is `negation`. `next_state` takes the six variables and builds the step from them, starting with which value `AX` holds and which opcode runs:
+
+{{lines shale/cook_levin.shale from "local is0 = times(negation(hb), negation(lb))" to "local runs_mod2 = times(times(op_hb, op_lb), negation(halted))"}}
+
+Its four answers, at variables 0 to 5, are the step polynomials. Each one's value at all 64 points is computed once, so the stepper's step is four reads of those tables.
+
+### The composition
+
+After step k the state is four polynomials in 14 variables. The next step substitutes them into the step polynomials. Each monomial of the step's six variables becomes the product of its variables' replacements, made from the product of the monomial less its highest variable and kept for the rest of the step. A list holding `nil` is refused, so `PRODUCTS` starts as 64 zeros and a second list, `MADE`, marks each slot that has been filled:
+
+{{function shale/cook_levin.shale product_of}}
+
+`substitute` is a builtin already, a text replacement, and a function by a builtin's name is refused, so the substitution is `substituted`. Every product is made first, since a product is itself summed in `SUMS`, and then each term's coefficient times its product is summed in:
+
+{{function shale/cook_levin.shale substituted}}
+
+The proof then takes each final polynomial's value at all 16,384 points by the zeta transform, as the Roc port does, and holds every point to the machine.
+
+### The check
+
+`shale/check.shale` (`ac3ee9f`) runs the port twice, each run a child `shale` with `--verbose`, niced, and holds each run's output byte for byte to its golden, leaving out the runner's own lines. Its run for this book, on 2026-11-25, printed:
+
+- `part=search`: 4,712 bytes, the golden's, in 210 ms and 13,162,754 steps.
+- `part=composition`: 401 bytes, the golden's, in 5,002 ms and 396,539,820 steps, ending in the proof's line: 16,384 points, 0 differing.
+
+By `README.md`'s breakdown, of the composition's 397 million steps, the tables and the step polynomials take about 8 million, steps 1 to 5 about 22 million, step 6 about 193 million, and the proof about 174 million, at about 70 million steps a second.
+
+### What the port cost
+
+- **Memory.** By `README.md`, a run's values are freed only when it ends, so every polynomial the composition makes on its way is held, and it needs between 100 and 300 MB of arena, against 16 MiB by default. The port's `-- budget:` line gives it 400 MB and a billion steps. Shale's `yield()` copies the values still reachable into an arena of their own, at most 256 MiB, and lets the rest go; the port has yet to try it.
+- **Bits.** The OR and AND of masks are two 16,384-entry tables and two reads each, and a single bit is a `//` and a `%`.
+- **Lists.** A list holds values only, so an unfilled slot is marked in a list beside it.
+- **Names.** `substitute` is a builtin and `not` a keyword, so the port's names are `substituted` and `negation`.
+- **Time.** The composition and the proof take about 5 s here, where the Roc release build takes about 30 ms ({{chapter The Roc port}}) and node runs the JavaScript in about 0.3 s ({{chapter The oracles}}).
 
 ## What comes next
 
