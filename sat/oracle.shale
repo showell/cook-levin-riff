@@ -1,0 +1,187 @@
+-- sat/oracle.shale: Matt Pizenberg's rocsat (github.com/mpizenberg/rocsat)
+-- as an oracle for the SAT encoding (src/sat.h). For each of the 16 puzzles:
+--
+--   - its CNF (out/sat/<lang>.cnf) is SAT, and each model's program solves
+--     the puzzle on the machine (`sat solves`, the C interpreter);
+--   - its solutions are counted by blocking: each model's 12 program
+--     literals, negated, are added as a clause and rocsat runs again, until
+--     UNSAT; the count is the machine's, every model a new program;
+--   - its shortest length is proved: with lines past shortest - 1 forced to
+--     nada the CNF is UNSAT, with a DRAT proof written beside it
+--     (out/sat/<lang>-short.drat), and with lines past shortest it is SAT.
+--
+-- One line a puzzle, then the totals. Fails loudly when rocsat is not
+-- built: build it as the README's "SAT" section says, or name another
+-- binary with rocsat=PATH (a Shale path). Not in build.shale's tiers: it
+-- starts about 4,150 programs (rocsat runs about 3 ms each).
+--
+-- Run from the repository's root.
+-- budget: programs=6000 steps=400000000 reads=100000 read_bytes=4000000000 changes=100000 change_bytes=4000000000 arena_bytes=1000000000
+
+const OUT = "out/sat"
+const SAT = "out/tcc/sat"
+const WANT_SAT = "oracle: the sat CLI this script just compiled"
+const WANT_ROCSAT = "oracle: rocsat, built in build:rocsat from its pinned nightly"
+
+function yn(b)
+  if b then return "yes" end
+  return "no"
+end
+
+-- The CNF of `args` (sat_main.c's: LANG, then len=N), as text.
+function cnf_of(args)
+  local argv = {real(SAT)}
+  for a in args do push(argv, a) end
+  return must(run(argv, {timeout_ms = 20000, whole = 4000000, want = WANT_SAT})).out
+end
+
+-- Splits DIMACS text at its `p cnf V C` line: {vars, clauses, body}, the
+-- body every line after it.
+function split_cnf(text)
+  local at = find(text, "\np cnf ")
+  if at == nil then fail("no `p cnf` line") end
+  local rest = sub(text, at + 1, #text)
+  local nl = find(rest, "\n")
+  local head = words(sub(rest, 1, nl - 1))
+  return {vars = tonumber(head[3]), clauses = tonumber(head[4]), body = sub(rest, nl + 1, #rest)}
+end
+
+-- rocsat on the file at `path` (proof to `drat` when given): {sat, model},
+-- the model a list of the 12 program variables' values (0 or 1).
+function solve(rocsat, path, drat)
+  local argv = {real(rocsat), "solve", real(path)}
+  if drat ~= nil then push(argv, real(drat)) end
+  local r = run(argv, {timeout_ms = 20000, whole = 200000, want = WANT_ROCSAT})
+  local code = get(r, "code", -1)
+  if code == 20 then
+    if find(r.out, "s UNSATISFIABLE") == nil then fail("rocsat exited 20 without `s UNSATISFIABLE`") end
+    return {sat = false}
+  end
+  if code ~= 10 or find(r.out, "s SATISFIABLE") == nil then
+    print(r.out)
+    fail("rocsat on " .. path .. " exited " .. code)
+  end
+  local model = {}
+  for v = 1, 12 do push(model, -1) end
+  for l in re_lines(r.out, "^v ") do
+    for w in words(l.text) do
+      local x = parse_int(w)
+      if x ~= nil and x ~= 0 and abs(x) <= 12 then
+        if x > 0 then model[x] = 1 else model[-x] = 0 end
+      end
+    end
+  end
+  for v = 1, 12 do
+    if model[v] < 0 then fail("rocsat's model leaves program variable " .. v .. " out") end
+  end
+  return {sat = true, model = model}
+end
+
+-- The program code a model names: op i is 2 * v[2i - 1] + v[2i].
+function code_of(model)
+  local code = 0
+  local place = 1
+  for i = 1, 6 do
+    code = code + (2 * model[2 * i - 1] + model[2 * i]) * place
+    place = place * 4
+  end
+  return code
+end
+
+-- The clause that excludes a model's program.
+function blocking(model)
+  local lits = {}
+  for v = 1, 12 do
+    if model[v] == 1 then push(lits, "-" .. v) else push(lits, "" .. v) end
+  end
+  return join(lits, " ") .. " 0\n"
+end
+
+-- Every model of puzzle `lang`, by blocking; gives the codes.
+function all_models(rocsat, lang)
+  local cnf = split_cnf(cnf_of({"" .. lang}))
+  local path = OUT .. "/" .. lang .. ".cnf"
+  local blocks = ""
+  local n = 0
+  local codes = {}
+  local seen = {}
+  while true do
+    replace(path, "p cnf " .. cnf.vars .. " " .. (cnf.clauses + n) .. "\n" .. cnf.body .. blocks)
+    local s = solve(rocsat, path, nil)
+    if not s.sat then break end
+    local code = code_of(s.model)
+    if has_key(seen, "" .. code) then fail("puzzle " .. lang .. ": rocsat gave program " .. code .. " twice") end
+    seen["" .. code] = true
+    push(codes, code)
+    blocks = blocks .. blocking(s.model)
+    n = n + 1
+  end
+  return codes
+end
+
+-- Whether every code solves `lang` on the machine.
+function machine_says_all_solve(lang, codes)
+  if #codes == 0 then return true end
+  local argv = {real(SAT), "solves", "" .. lang}
+  for c in codes do push(argv, "" .. c) end
+  local r = run(argv, {timeout_ms = 20000, tail = 1, want = WANT_SAT})
+  return get(r, "code", -1) == 0
+end
+
+-- The CNF with lines past `len` forced to nada, solved (a proof to `drat`).
+function bounded(rocsat, lang, len, drat)
+  local path = OUT .. "/" .. lang .. "-len" .. len .. ".cnf"
+  replace(path, cnf_of({"" .. lang, "len=" .. len}))
+  return solve(rocsat, path, drat)
+end
+
+local rocsat = arg("rocsat", "build:rocsat/src/rocsat")
+if not exists(rocsat) then
+  fail("rocsat is not built at " .. rocsat .. ": see README.md, \"SAT\", or give rocsat=PATH")
+end
+mkdir(OUT)
+mkdir("out/tcc")
+must(run({"tcc", "-Wall", "-Werror", "-o", real("out/tcc") .. "/sat", "src/sat_main.c"}, {timeout_ms = 60000, tail = 20}))
+
+local facts = {}
+for l in lines(must(run({real(SAT), "facts"}, {timeout_ms = 60000, tail = 20, want = WANT_SAT})).out) do
+  local w = words(l)
+  if #w == 5 then
+    push(facts, {lang = tonumber(w[1]), count = tonumber(w[2]), shortest = tonumber(w[3]), vars = tonumber(w[4]), clauses = tonumber(w[5])})
+  end
+end
+if #facts ~= 16 then fail("`sat facts` gave " .. #facts .. " languages, not 16") end
+
+local failures = 0
+local total = 0
+for f in facts do
+  local codes = all_models(rocsat, f.lang)
+  local ok_models = machine_says_all_solve(f.lang, codes)
+  local ok_count = #codes == f.count
+  -- The shortest length: nothing shorter (UNSAT, with a proof), and that long SAT.
+  local below = "none below 0"
+  local ok_below = true
+  if f.shortest > 0 then
+    local drat = OUT .. "/" .. f.lang .. "-short.drat"
+    local s = bounded(rocsat, f.lang, f.shortest - 1, drat)
+    ok_below = not s.sat and exists(drat)
+    below = "len<=" .. (f.shortest - 1) .. " UNSAT"
+    if s.sat then below = "len<=" .. (f.shortest - 1) .. " SAT" end
+    if exists(drat) then below = below .. " (DRAT " .. #read(drat) .. " bytes)" end
+  end
+  local at = bounded(rocsat, f.lang, f.shortest, nil)
+  local ok_at = at.sat and machine_says_all_solve(f.lang, {code_of(at.model)})
+  local ok = ok_models and ok_count and ok_below and ok_at
+  local mark = "ok  "
+  if not ok then
+    mark = "FAIL"
+    failures = failures + 1
+  end
+  print(mark .. " language " .. pad(f.lang, -2) .. " (" .. f.vars .. " vars, " .. f.clauses .. " clauses): " .. #codes .. " models of " .. f.count .. ", each solves it: " .. yn(ok_models) .. "; shortest " .. f.shortest .. ": " .. below .. ", len<=" .. f.shortest .. " SAT: " .. yn(at.sat))
+  total = total + #codes
+  yield()
+end
+print("models in all: " .. total .. " of 4096")
+if total ~= 4096 then failures = failures + 1 end
+if failures > 0 then fail(failures .. " puzzle(s) failed") end
+print("rocsat agrees with the machine on all 16 puzzles")

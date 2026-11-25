@@ -9,9 +9,10 @@
 //                                    `LANG COUNT SHORTEST VARS CLAUSES`, its
 //                                    solving programs, the shortest one's
 //                                    length, and its CNF's size
-//   sat solves LANG CODE             whether program CODE (vm.h's code)
-//                                    solves LANG on the machine: prints yes
-//                                    and exits 0, or no and exits 1
+//   sat solves LANG CODE...          whether each program CODE (vm.h's
+//                                    code) solves LANG on the machine: yes
+//                                    or no a line; exits 0 when every one
+//                                    does, else 1
 
 #include "vm.c"
 #include "sat.c"
@@ -19,7 +20,7 @@
 #include <string.h>
 
 static int usage(void) {
-    fprintf(stderr, "usage: sat LANG [len=N] [fix=K:OP]... | sat facts | sat solves LANG CODE\n");
+    fprintf(stderr, "usage: sat LANG [len=N] [fix=K:OP]... | sat facts | sat solves LANG CODE...\n");
     return 2;
 }
 
@@ -59,13 +60,18 @@ static int facts(void) {
 
 int main(int argc, char **argv) {
     if (argc == 2 && strcmp(argv[1], "facts") == 0) return facts() || fflush(stdout) != 0;
-    if (argc == 4 && strcmp(argv[1], "solves") == 0) {
+    if (argc >= 4 && strcmp(argv[1], "solves") == 0) {
         long lang = number(argv[2], 0, NUM_LANGUAGES - 1);
-        long code = number(argv[3], 0, NUM_PROGRAMS - 1);
-        if (lang < 0 || code < 0) return usage();
-        int yes = sat_solves((int)lang, (uint32_t)code);
-        printf("%s\n", yes ? "yes" : "no");
-        return yes ? 0 : 1;
+        if (lang < 0) return usage();
+        int all = 1;
+        for (int a = 3; a < argc; a++) {
+            long code = number(argv[a], 0, NUM_PROGRAMS - 1);
+            if (code < 0) return usage();
+            int yes = sat_solves((int)lang, (uint32_t)code);
+            printf("%s\n", yes ? "yes" : "no");
+            all = all && yes;
+        }
+        return all && fflush(stdout) == 0 ? 0 : 1;
     }
     if (argc < 2) return usage();
     long lang = number(argv[1], 0, NUM_LANGUAGES - 1);
