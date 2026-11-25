@@ -16,7 +16,7 @@
 -- Run from the repository's root.
 
 const OUT = "out"
-const TESTS = {"tests/test_vm.c", "tests/test_reference.c", "tests/test_golden.c", "tests/test_ring_int.c", "tests/test_poly.c"}
+const TESTS = {"tests/test_vm.c", "tests/test_reference.c", "tests/test_golden.c", "tests/test_ring_int.c", "tests/test_poly.c", "tests/test_stepper.c", "tests/test_cross_check.c"}
 const GOLDEN = "tests/golden/find_solutions.txt"
 -- Why `run` may start a binary git does not track: this build just made it.
 const RAN = "build: a test binary this build just compiled"
@@ -30,6 +30,16 @@ function check(ok, line)
   end
   print("FAIL " .. line)
   return 1
+end
+
+-- A program killed by a signal (an abort) has no exit code.
+function exited_0(r)
+  return get(r, "code", -1) == 0
+end
+
+function how_it_ended(r)
+  if has_key(r, "code") then return "exit " .. r.code end
+  return "ended " .. r.ended
 end
 
 function test_count(src)
@@ -77,8 +87,9 @@ function run_tests(build, src)
   local want = test_count(src)
   local r = run({real(bin)}, {timeout_ms = 60000, tail = 30, env = {ASAN_OPTIONS = "detect_leaks=1"}, want = RAN})
   local said = src .. ": " .. want .. " tests passed"
-  local ok = r.code == 0 and find(r.out, said) ~= nil
+  local ok = exited_0(r) and find(r.out, said) ~= nil
   local bad = check(ok, build .. ": " .. src .. ": " .. want .. " tests, " .. r.ms .. " ms")
+  if not exited_0(r) then print("     " .. how_it_ended(r)) end
   if not ok then print(r.out) end
   return bad
 end
@@ -88,8 +99,8 @@ function run_golden(build)
   if bin == nil then return 1 end
   local r = run({real(bin)}, {timeout_ms = 60000, whole = 65536, want = RAN})
   local want = read(GOLDEN)
-  local same = r.code == 0 and r.out == want
-  return check(same, build .. ": main's stdout is " .. GOLDEN .. ": " .. #r.out .. " bytes of " .. #want .. ", exit " .. r.code)
+  local same = exited_0(r) and r.out == want
+  return check(same, build .. ": main's stdout is " .. GOLDEN .. ": " .. #r.out .. " bytes of " .. #want .. ", " .. how_it_ended(r))
 end
 
 local failures = 0
