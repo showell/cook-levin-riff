@@ -1,0 +1,208 @@
+[] is solved by 844 possible program
+See an example program below.
+   it accepts []
+   it rejects [0, 1, 2, 3]
+--
+nada # do nothing
+nada # do nothing
+nada # do nothing
+nada # do nothing
+nada # do nothing
+nada # do nothing
+--
+
+[0] is solved by 681 possible program
+See an example program below.
+   it accepts [0]
+   it rejects [1, 2, 3]
+--
+zero # accept original input if AX = 0
+nada # do nothing
+nada # do nothing
+nada # do nothing
+nada # do nothing
+nada # do nothing
+--
+
+[1] is solved by 303 possible program
+See an example program below.
+   it accepts [1]
+   it rejects [0, 2, 3]
+--
+decr # reject zero or decrement AX
+zero # accept original input if AX = 0
+nada # do nothing
+nada # do nothing
+nada # do nothing
+nada # do nothing
+--
+
+[0, 1] is solved by 172 possible program
+See an example program below.
+   it accepts [0, 1]
+   it rejects [2, 3]
+--
+zero # accept original input if AX = 0
+decr # reject zero or decrement AX
+zero # accept original input if AX = 0
+nada # do nothing
+nada # do nothing
+nada # do nothing
+--
+
+[2] is solved by 248 possible program
+See an example program below.
+   it accepts [2]
+   it rejects [0, 1, 3]
+--
+decr # reject zero or decrement AX
+decr # reject zero or decrement AX
+zero # accept original input if AX = 0
+nada # do nothing
+nada # do nothing
+nada # do nothing
+--
+
+[0, 2] is solved by 883 possible program
+See an example program below.
+   it accepts [0, 2]
+   it rejects [1, 3]
+--
+mod2 # subtract 2 from AX if AX >= 2
+zero # accept original input if AX = 0
+nada # do nothing
+nada # do nothing
+nada # do nothing
+nada # do nothing
+--
+
+[1, 2] is solved by 74 possible program
+See an example program below.
+   it accepts [1, 2]
+   it rejects [0, 3]
+--
+decr # reject zero or decrement AX
+zero # accept original input if AX = 0
+decr # reject zero or decrement AX
+zero # accept original input if AX = 0
+nada # do nothing
+nada # do nothing
+--
+
+[0, 1, 2] is solved by 13 possible program
+See an example program below.
+   it accepts [0, 1, 2]
+   it rejects [3]
+--
+zero # accept original input if AX = 0
+decr # reject zero or decrement AX
+zero # accept original input if AX = 0
+decr # reject zero or decrement AX
+zero # accept original input if AX = 0
+nada # do nothing
+--
+
+[3] is solved by 63 possible program
+See an example program below.
+   it accepts [3]
+   it rejects [0, 1, 2]
+--
+decr # reject zero or decrement AX
+decr # reject zero or decrement AX
+decr # reject zero or decrement AX
+zero # accept original input if AX = 0
+nada # do nothing
+nada # do nothing
+--
+
+[0, 3] is solved by 12 possible program
+See an example program below.
+   it accepts [0, 3]
+   it rejects [1, 2]
+--
+zero # accept original input if AX = 0
+decr # reject zero or decrement AX
+decr # reject zero or decrement AX
+decr # reject zero or decrement AX
+zero # accept original input if AX = 0
+nada # do nothing
+--
+
+[1, 3] is solved by 520 possible program
+See an example program below.
+   it accepts [1, 3]
+   it rejects [0, 2]
+--
+mod2 # subtract 2 from AX if AX >= 2
+decr # reject zero or decrement AX
+zero # accept original input if AX = 0
+nada # do nothing
+nada # do nothing
+nada # do nothing
+--
+
+[0, 1, 3] is solved by 150 possible program
+See an example program below.
+   it accepts [0, 1, 3]
+   it rejects [2]
+--
+zero # accept original input if AX = 0
+mod2 # subtract 2 from AX if AX >= 2
+decr # reject zero or decrement AX
+zero # accept original input if AX = 0
+nada # do nothing
+nada # do nothing
+--
+
+[2, 3] is solved by 13 possible program
+See an example program below.
+   it accepts [2, 3]
+   it rejects [0, 1]
+--
+decr # reject zero or decrement AX
+decr # reject zero or decrement AX
+zero # accept original input if AX = 0
+decr # reject zero or decrement AX
+zero # accept original input if AX = 0
+nada # do nothing
+--
+
+[0, 2, 3] is solved by 1 possible program
+See an example program below.
+   it accepts [0, 2, 3]
+   it rejects [1]
+--
+zero # accept original input if AX = 0
+decr # reject zero or decrement AX
+decr # reject zero or decrement AX
+zero # accept original input if AX = 0
+decr # reject zero or decrement AX
+zero # accept original input if AX = 0
+--
+
+[1, 2, 3] is solved by 15 possible program
+See an example program below.
+   it accepts [1, 2, 3]
+   it rejects [0]
+--
+decr # reject zero or decrement AX
+mod2 # subtract 2 from AX if AX >= 2
+zero # accept original input if AX = 0
+decr # reject zero or decrement AX
+zero # accept original input if AX = 0
+nada # do nothing
+--
+
+[0, 1, 2, 3] is solved by 104 possible program
+See an example program below.
+   it accepts [0, 1, 2, 3]
+   it rejects []
+--
+mod2 # subtract 2 from AX if AX >= 2
+zero # accept original input if AX = 0
+decr # reject zero or decrement AX
+zero # accept original input if AX = 0
+nada # do nothing
+nada # do nothing
+--
+
