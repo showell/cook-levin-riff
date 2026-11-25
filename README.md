@@ -16,9 +16,15 @@ variables, and composing six steps gives the whole program as polynomials.
   Python names it), assemble and disassemble, the language codes.
 - `src/search.c`: `find_solutions`, the search and its report.
 - `src/main.c`: what the Python prints when it runs, byte for byte.
+- `src/ring_int.c`: the coefficient ring, int64 with every add, multiply,
+  negate and power checked; an overflow stops the program naming the
+  operation and its operands (Python's integers never overflow).
+- `src/poly.c`: the general multivariate polynomial of poly.py, its
+  canonical order and its printing exactly Python's `str`.
 - `tests/`: the Python's asserts, every program on every input against a
   table of each opcode's rule, and the golden test against the Python's
-  output (`tests/golden/find_solutions.txt`).
+  output (`tests/golden/find_solutions.txt`); Poly's strings against
+  poly.py's, a product's and a power's as golden files.
 
 ## Building and testing
 
@@ -35,8 +41,8 @@ to `out/`.
 ## Status
 
 The machine and the search are ported, and their output matches the
-Python's byte for byte. Still to come: the general polynomial (`poly.c`),
-the stepper and its cross-check in `find_solutions` (a TODO hook in
+Python's byte for byte, and so does the general polynomial's printing. Still
+to come: the stepper and its cross-check in `find_solutions` (a TODO hook in
 `src/search.c` for now), then a Boolean ring that composes all six steps.
 
 ## License
