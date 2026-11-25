@@ -567,7 +567,85 @@ A gate on a constant is folded, and a gate already built from the same inputs is
 
 `sat/oracle.shale` hands the formulas to [rocsat](https://github.com/mpizenberg/rocsat), Matt Pizenberg's CDCL SAT solver, written in Roc (`f977bcc`). For each puzzle it solves the formula and runs the model's program on the machine. It counts the solutions by adding a clause that blocks each model and solving again until rocsat says UNSAT, and holds that count to the machine's. Then it proves the shortest length: one line shorter is UNSAT, and the shortest length itself is SAT.
 
-An UNSAT answer claims that the formula is unsatisfiable, and rocsat backs each one with a DRAT proof, a list of clause additions and deletions that a separate checker can replay. Here an UNSAT at length N - 1 says that every program of N - 1 lines fails the puzzle, and its proof is written to `out/sat/`. The proofs are written and left unchecked by the oracle (`README.md`, "SAT"). The oracle starts rocsat 4,143 times, so it takes about a minute and runs as its own script, `sat/oracle.shale`, beside `build.shale`'s quicker tiers. Its run for this book, on 2026-11-25, took 58 s and ended "rocsat agrees with the machine on all 16 puzzles": 4,096 models in all, and every shortest length confirmed by an UNSAT one line shorter.
+An UNSAT answer claims that the formula is unsatisfiable, and rocsat backs each one with a DRAT proof, a list of clause additions and deletions that a separate checker can replay. Here an UNSAT at length N - 1 says that every program of N - 1 lines fails the puzzle, and the oracle checks its proof with the repository's own checker, `src/drat.c`, as {{chapter The solver's work, in full}} shows. The oracle starts rocsat 4,143 times, so it takes about a minute and runs as its own script, `sat/oracle.shale`, beside `build.shale`'s quicker tiers. Its last run for this book, on 2026-11-25, spent 62.6 s in its programs and ended "rocsat agrees with the machine on all 16 puzzles": 4,096 models in all, and every shortest length confirmed by an UNSAT one line shorter, with all 15 proofs verified.
+
+## The solver's work, in full
+
+This chapter prints what rocsat was given and what it answered for two puzzles, whole, the way {{chapter The polynomials, in full}} prints the polynomials. Over each box are the counts that the book's app (`book/app/SatFiles.roc`) makes from the text it shows. The chapter states one count for each box again in its source, and the build stops if the text has another.
+
+### Where the files come from
+
+The formulas come from the repository's C: `book/book.shale` builds `src/sat_main.c` at each build of the book and writes them to `book/build/sat/`. rocsat's answers and proofs are data files in `sat/proofs/`, which `sat/oracle.shale` writes on every run (`19bff9e`). Two runs of the oracle on 2026-11-25 wrote the same bytes, and the 15 proofs match an earlier run's byte for byte, so rocsat's search is deterministic, and the book builds from the committed files alone. Before it shows them, the build checks each one again: every proof with the repository's DRAT checker, `src/drat.c`, against the formula it has just written, and every answer against its formula's clauses and, as a program, on the machine.
+
+### The checker
+
+A DRAT proof is a list of lines, each a clause added, a lemma, or a clause deleted, after a `d`. `src/drat.c` replays it forward. Each lemma has to follow by reverse unit propagation: set all its literals false, propagate over the formula and the lemmas so far, and some clause must come out with every literal false. Each deletion has to name a clause the database holds, and it is applied. The proof ends at the empty clause, which follows when propagation over the database alone reaches a conflict. A lemma that fails this test may still pass as a RAT on its first literal; all 15 of rocsat's proofs pass by the first test alone.
+
+`tests/test_drat.c` holds the checker both ways in 12 tests: hand-made proofs that pass, planted ones that fail (a lemma the formula leaves open, a proof that stops short of the empty clause, a deletion of a clause a later lemma needs), and each committed proof, which verifies against its formula and fails against the formula one line longer.
+
+### {0, 2, 3}, the puzzle with one answer
+
+`is_not_one` accepts exactly {0, 2, 3} (code 13), and one program of the 4,096 solves it (`tests/golden/find_solutions.txt`). Here is its formula, `sat 13`, in full. The `c` lines at its top name the variables: the program's 12 bits, then each input's state after each step as the literals that carry it, `T` and `F` where folding left a constant.
+
+```dimacs book/build/sat/13-len6.cnf
+the CNF of {0, 2, 3}, written by src/sat_main.c at the book's build
+1216
+```
+
+rocsat's answer is its statistics line, its verdict and a value for every variable:
+
+```dimacs sat/proofs/13-len6.model
+rocsat's answer to that CNF, as sat/oracle.shale kept it
+416
+```
+
+Instruction i is 2·v[2i − 1] + v[2i], so the first 12 values read as `zero, decr, decr, zero, decr, zero`. The build decodes the program from the answer and holds this sentence to it, and `sat solves 13` confirms on the machine that the program accepts exactly {0, 2, 3}.
+
+### Five lines are too few
+
+With line 6 forced to `nada` (`sat 13 len=5`), the formula is the one above with two unit clauses at its top, `-11 0` and `-12 0`, 1,218 clauses in all. rocsat answers UNSAT and writes this proof:
+
+```dimacs sat/proofs/13-len5.drat
+rocsat's DRAT proof that the CNF of {0, 2, 3} at length 5 is unsatisfiable
+286
+```
+
+The checker, run on it at the book's build, says `verified: 286 lemmas (0 by RAT), 387 deletions, over 416 variables and 1218 clauses; the empty clause at line 673`. A program of fewer than five lines has its line 6 at `nada` too, so the formula covers every program of five lines or fewer, and the proof shows that each one fails the puzzle. No program of five or fewer lines decides {0, 2, 3}. Its shortest program is the six-line one above.
+
+### The largest proof
+
+Of the 15 proofs, the largest by bytes is that of `is_big`, {2, 3} (code 12). Its shortest program has five lines, and this proof shows that four are too few:
+
+```dimacs sat/proofs/12-len4.drat
+rocsat's DRAT proof that the CNF of {2, 3} at length 4 is unsatisfiable
+490
+```
+
+The checker says `verified: 490 lemmas (0 by RAT), 788 deletions, over 416 variables and 1220 clauses; the empty clause at line 1278`.
+
+### All 15 proofs
+
+Each puzzle whose shortest program has a line or more has one proof; `grumpy`, {} (code 0), is solved by the empty program. The build checks each proof again and holds each row to what it finds. By size:
+
+| code | puzzle | language | shortest | proof bytes | lemmas | verified |
+|---|---|---|---|---|---|---|
+| 12 | `is_big` | {2, 3} | 5 | 14,698 | 490 | yes |
+| 14 | `is_not_tiny` | {1, 2, 3} | 5 | 13,743 | 463 | yes |
+| 15 | `always_true` | {0, 1, 2, 3} | 4 | 12,170 | 485 | yes |
+| 8 | `is_huge` | {3} | 4 | 10,992 | 452 | yes |
+| 6 | `is_middling` | {1, 2} | 4 | 10,892 | 449 | yes |
+| 1 | `is_tiny` | {0} | 1 | 10,847 | 821 | yes |
+| 11 | `is_not_two` | {0, 1, 3} | 4 | 10,805 | 446 | yes |
+| 9 | `is_extreme` | {0, 3} | 5 | 10,474 | 378 | yes |
+| 5 | `is_even` | {0, 2} | 2 | 9,876 | 744 | yes |
+| 7 | `is_not_huge` | {0, 1, 2} | 5 | 9,171 | 347 | yes |
+| 13 | `is_not_one` | {0, 2, 3} | 6 | 9,012 | 286 | yes |
+| 3 | `is_small` | {0, 1} | 3 | 8,890 | 691 | yes |
+| 10 | `is_odd` | {1, 3} | 3 | 8,862 | 693 | yes |
+| 2 | `is_one` | {1} | 2 | 8,731 | 566 | yes |
+| 4 | `is_two` | {2} | 3 | 7,440 | 477 | yes |
+
+The proofs run from 7,440 to 14,698 bytes and from 286 to 821 lemmas. The largest by bytes has fewer lemmas than five others, since its lemmas are longer.
 
 ## The oracles
 
@@ -596,9 +674,9 @@ digraph {
 ### What each one checks
 
 - **Python**, the original, is the source of `tests/golden/find_solutions.txt` and of the step polynomials' strings, `tests/golden/step_*.txt`.
-- **C** prints that report byte for byte (`tests/test_golden.c`), checks the stepper against the interpreter on all 4,096 × 4 runs, and proves the composition at all 2^14 points (`tests/test_compose.c`). `shale build.shale` ran its fast tier for this book: ten test files and the golden check, all passing.
+- **C** prints that report byte for byte (`tests/test_golden.c`), checks the stepper against the interpreter on all 4,096 × 4 runs, and proves the composition at all 2^14 points (`tests/test_compose.c`). `shale build.shale` ran its fast tier for this book: eleven test files and the golden check, all passing.
 - **Roc** prints the same report, the four step polynomials as the C's `bp_str` prints them (`roc/golden/step_polynomials.txt`) and the composition's counts and proof (`roc/golden/composition.txt`). `roc/check.shale` is its gate.
-- **SAT** reaches the 16 counts through `tests/test_sat.c`'s propagation and again through rocsat's blocked models, and each shortest length through an UNSAT and a SAT.
+- **SAT** reaches the 16 counts through `tests/test_sat.c`'s propagation and again through rocsat's blocked models, and each shortest length through an UNSAT, with a DRAT proof that `src/drat.c` verifies, and a SAT.
 - **JavaScript**, `js/cook_levin.js`, prints the report and then the composition, byte for byte the two goldens, under three runners.
 - **Nibble's wasm** is `src/vm.c` itself, and `web/page_check.mjs` holds it to the C on all 4,096 × 4 runs and to the 16-puzzle table.
 
@@ -640,7 +718,6 @@ On this box, the release build of `composition 6` composes all six steps and run
 
 A few steps stand open, each small:
 
-- **The DRAT proofs** are written to `out/sat/` and left unchecked; a checker such as drat-trim would close that loop.
 - **The C's dense table.** The C composition could sum like terms in the Roc port's dense table, and its time would then measure the language.
 - **The compiled JavaScript.** Its slowness is unprofiled. `README.md` guesses that an array's items are values of unknown kind to the compiler, so each read and write passes the runtime's tag checks.
 - **Nondeterminism.** The machine is deterministic. The SAT encoding already treats the program as the unknown, which is the theorem's "a certificate exists"; a machine with choice instructions would make the riff closer to the theorem.

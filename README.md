@@ -178,15 +178,40 @@ in Roc, as an independent oracle. For each puzzle, it first solves the CNF
 and checks the model's program on the machine. It then counts the solutions
 by adding a clause that blocks each model and solving again until rocsat
 says UNSAT, and checks that count against the machine's. Finally it proves
-the shortest length: one line shorter is UNSAT, with rocsat's DRAT proof
-written to `out/sat/`, and the shortest length itself is SAT. The DRAT
-proofs are written but not checked here. The script prints one line per
-puzzle and fails if any check fails. It runs about 4,150 programs in about
-a minute, so it isn't in `build.shale`'s tiers:
+the shortest length: one line shorter is UNSAT, and the shortest length
+itself is SAT. The script prints one line per puzzle, then a table of the
+15 DRAT proofs, and fails if any check fails. It runs about 4,250 programs
+in about a minute, so it isn't in `build.shale`'s tiers:
 
 ```sh
 shale sat/oracle.shale     # needs rocsat built at build:rocsat/src/rocsat (or rocsat=PATH)
 ```
+
+Each UNSAT comes with rocsat's DRAT proof, and `src/drat.c` checks it, so
+the shortest lengths rest on no trust in the solver. The checker replays
+the proof forward: each added lemma must give a conflict by unit
+propagation once its literals are set false (RUP), over the formula and the
+lemmas so far; each deletion removes a clause the database holds, or the
+proof is refused; and the proof ends at the empty clause, or with the
+database refuted by propagation. A lemma that fails RUP is tried as a RAT
+on its first literal. All 15 of rocsat's proofs pass by RUP alone: 286 to
+821 lemmas each, 7,440 to 14,698 bytes, each checked in 19 to 44 ms by the tcc build.
+`drat model` holds each SAT answer's `v` lines to every clause too, beside
+the machine's check of its program.
+
+```sh
+out/tcc/drat check out/sat/13-len5.cnf sat/proofs/13-len5.drat   # verified: 286 lemmas (0 by RAT), ...
+out/tcc/drat model out/sat/13-len6.cnf sat/proofs/13-len6.model  # model: every one of 1216 clauses ...
+```
+
+The oracle keeps rocsat's outputs in `sat/proofs/`: each proof,
+`<lang>-len<N>.drat`, and its whole answer at the shortest length,
+`<lang>-len<N>.model`. It writes them on every run, so `git status` after a
+run says whether rocsat answered as before; its search is deterministic.
+`tests/test_drat.c` checks the committed proofs against the CNFs `sat.c`
+makes, and holds each to fail against the formula one line longer, which is
+satisfiable, beside small
+hand-made proofs that must pass and planted bad ones that must fail.
 
 rocsat builds with its pinned Roc nightly (`roc-version`,
 `nightly-2026-08-18-e9be50a`), via `make build`. Its `scripts/install-roc`

@@ -7,8 +7,17 @@
 --     literals, negated, are added as a clause and rocsat runs again, until
 --     UNSAT; the count is the machine's, every model a new program;
 --   - its shortest length is proved: with lines past shortest - 1 forced to
---     nada the CNF is UNSAT, with a DRAT proof written beside it
---     (out/sat/<lang>-short.drat), and with lines past shortest it is SAT.
+--     nada the CNF is UNSAT, with a DRAT proof that src/drat.c's checker
+--     (out/tcc/drat check) verifies against that CNF, and with lines past
+--     shortest it is SAT, with a model that satisfies every clause (out/tcc/
+--     drat model) and whose program solves the puzzle on the machine.
+--
+-- rocsat's outputs for the book are kept in sat/proofs/: each puzzle's DRAT
+-- proof, <lang>-len<shortest - 1>.drat, and its whole answer at the shortest
+-- length, <lang>-len<shortest>.model. The script writes them each run, so
+-- `git status` after a run says whether rocsat answered as it did before;
+-- its search is deterministic, and two runs on 2026-11-25 wrote the same
+-- bytes. The book (book/book.shale) re-verifies them without rocsat.
 --
 -- One line a puzzle, then the totals. Fails loudly when rocsat is not
 -- built: build it as the README's "SAT" section says, or name another
@@ -20,7 +29,10 @@
 
 const OUT = "out/sat"
 const SAT = "out/tcc/sat"
+const DRAT = "out/tcc/drat"
+const PROOFS = "sat/proofs"
 const WANT_SAT = "oracle: the sat CLI this script just compiled"
+const WANT_DRAT = "oracle: the DRAT checker this script just compiled"
 const WANT_ROCSAT = "oracle: rocsat, built in build:rocsat from its pinned nightly"
 
 function yn(b)
@@ -46,8 +58,9 @@ function split_cnf(text)
   return {vars = tonumber(head[3]), clauses = tonumber(head[4]), body = sub(rest, nl + 1, #rest)}
 end
 
--- rocsat on the file at `path` (proof to `drat` when given): {sat, model},
--- the model a list of the 12 program variables' values (0 or 1).
+-- rocsat on the file at `path` (proof to `drat` when given): {sat, model,
+-- out}, the model a list of the 12 program variables' values (0 or 1), and
+-- out rocsat's whole answer.
 function solve(rocsat, path, drat)
   local argv = {real(rocsat), "solve", real(path)}
   if drat ~= nil then push(argv, real(drat)) end
@@ -55,7 +68,7 @@ function solve(rocsat, path, drat)
   local code = get(r, "code", -1)
   if code == 20 then
     if find(r.out, "s UNSATISFIABLE") == nil then fail("rocsat exited 20 without `s UNSATISFIABLE`") end
-    return {sat = false}
+    return {sat = false, out = r.out}
   end
   if code ~= 10 or find(r.out, "s SATISFIABLE") == nil then
     print(r.out)
@@ -74,7 +87,7 @@ function solve(rocsat, path, drat)
   for v = 1, 12 do
     if model[v] < 0 then fail("rocsat's model leaves program variable " .. v .. " out") end
   end
-  return {sat = true, model = model}
+  return {sat = true, model = model, out = r.out}
 end
 
 -- The program code a model names: op i is 2 * v[2i - 1] + v[2i].
@@ -135,13 +148,31 @@ function bounded(rocsat, lang, len, drat)
   return solve(rocsat, path, drat)
 end
 
+-- The checker on a CNF and a proof (`check`) or a solver's answer (`model`):
+-- {ok, line}, its one line said.
+function drat_says(what, cnf, file)
+  local r = run({real(DRAT), what, real(cnf), real(file)}, {timeout_ms = 60000, tail = 3, want = WANT_DRAT})
+  return {ok = get(r, "code", -1) == 0, line = trim(r.out)}
+end
+
+-- The number of lemma lines of a DRAT proof (every line but a `d`).
+function lemma_count(text)
+  local n = 0
+  for l in lines(text) do
+    if l ~= "" and not starts_with(l, "d ") then n = n + 1 end
+  end
+  return n
+end
+
 local rocsat = arg("rocsat", "build:rocsat/src/rocsat")
 if not exists(rocsat) then
   fail("rocsat is not built at " .. rocsat .. ": see README.md, \"SAT\", or give rocsat=PATH")
 end
 mkdir(OUT)
 mkdir("out/tcc")
+mkdir(PROOFS)
 must(run({"tcc", "-Wall", "-Werror", "-o", real("out/tcc") .. "/sat", "src/sat_main.c"}, {timeout_ms = 60000, tail = 20}))
+must(run({"tcc", "-Wall", "-Werror", "-o", real("out/tcc") .. "/drat", "src/drat_main.c"}, {timeout_ms = 60000, tail = 20}))
 
 local facts = {}
 for l in lines(must(run({real(SAT), "facts"}, {timeout_ms = 60000, tail = 20, want = WANT_SAT})).out) do
@@ -154,6 +185,7 @@ if #facts ~= 16 then fail("`sat facts` gave " .. #facts .. " languages, not 16")
 
 local failures = 0
 local total = 0
+local proofs = {}
 for f in facts do
   local codes = all_models(rocsat, f.lang)
   local ok_models = machine_says_all_solve(f.lang, codes)
@@ -162,15 +194,32 @@ for f in facts do
   local below = "none below 0"
   local ok_below = true
   if f.shortest > 0 then
-    local drat = OUT .. "/" .. f.lang .. "-short.drat"
+    local name = f.lang .. "-len" .. (f.shortest - 1)
+    local drat = OUT .. "/" .. name .. ".drat"
+    if exists(drat) then remove(drat) end
     local s = bounded(rocsat, f.lang, f.shortest - 1, drat)
     ok_below = not s.sat and exists(drat)
     below = "len<=" .. (f.shortest - 1) .. " UNSAT"
     if s.sat then below = "len<=" .. (f.shortest - 1) .. " SAT" end
-    if exists(drat) then below = below .. " (DRAT " .. #read(drat) .. " bytes)" end
+    if exists(drat) then
+      local text = read(drat)
+      local said = drat_says("check", OUT .. "/" .. name .. ".cnf", drat)
+      ok_below = ok_below and said.ok
+      below = below .. " (DRAT " .. #text .. " bytes, " .. lemma_count(text) .. " lemmas, verified: " .. yn(said.ok) .. ")"
+      if not said.ok then print("     " .. said.line) end
+      replace(PROOFS .. "/" .. name .. ".drat", text)
+      push(proofs, {lang = f.lang, shortest = f.shortest, bytes = #text, lemmas = lemma_count(text), verified = yn(said.ok)})
+    end
   end
   local at = bounded(rocsat, f.lang, f.shortest, nil)
   local ok_at = at.sat and machine_says_all_solve(f.lang, {code_of(at.model)})
+  if at.sat then
+    local model = PROOFS .. "/" .. f.lang .. "-len" .. f.shortest .. ".model"
+    replace(model, at.out)
+    local said = drat_says("model", OUT .. "/" .. f.lang .. "-len" .. f.shortest .. ".cnf", model)
+    if not said.ok then print("     " .. said.line) end
+    ok_at = ok_at and said.ok
+  end
   local ok = ok_models and ok_count and ok_below and ok_at
   local mark = "ok  "
   if not ok then
@@ -182,6 +231,9 @@ for f in facts do
   yield()
 end
 print("models in all: " .. total .. " of 4096")
+sort(proofs, "bytes", "desc")
+print(table(proofs, {"lang", "shortest", "bytes", "lemmas", "verified"}))
+print(#proofs .. " DRAT proofs verified by src/drat.c, kept in " .. PROOFS .. "/")
 if total ~= 4096 then failures = failures + 1 end
 if failures > 0 then fail(failures .. " puzzle(s) failed") end
 print("rocsat agrees with the machine on all 16 puzzles")

@@ -125,16 +125,17 @@ Polynomials := [].{
 		Str.from_utf8($out) ?? crash "Polynomials.with_commas: digits and commas are UTF-8"
 	}
 
-	## The stylesheet's rules for a polynomial's box, for the end of each
-	## page's head: a fixed height that scrolls down, and the one long line
-	## wrapped at any character, so the page never scrolls sideways.
+	## The stylesheet's rules for a polynomial's box, and SatFiles' boxes too,
+	## for the end of each page's head: a fixed height that scrolls down, and
+	## a long line wrapped at any character, so the page never scrolls
+	## sideways.
 	style : Str
 	style =
 		\\<style>
-		\\figure.polynomial { margin: 1rem 0; background: var(--shade); border-radius: 4px; }
-		\\figure.polynomial figcaption { padding: 0.5rem 1rem 0; color: var(--quiet); font: 0.72rem/1.5 var(--mono); }
-		\\figure.polynomial pre { margin: 0; padding: 0.3rem 1rem 0.75rem; background: none; max-height: 16rem; overflow-x: hidden; overflow-y: auto; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-all; font-size: 0.72rem; }
-		\\@media (max-width: 700px) { figure.polynomial { margin-inline: -0.5rem; } figure.polynomial figcaption, figure.polynomial pre { padding-inline: 0.6rem; } }
+		\\figure.scrolling { margin: 1rem 0; background: var(--shade); border-radius: 4px; }
+		\\figure.scrolling figcaption { padding: 0.5rem 1rem 0; color: var(--quiet); font: 0.72rem/1.5 var(--mono); }
+		\\figure.scrolling pre { margin: 0; padding: 0.3rem 1rem 0.75rem; background: none; max-height: 16rem; overflow-x: hidden; overflow-y: auto; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-all; font-size: 0.72rem; }
+		\\@media (max-width: 700px) { figure.scrolling { margin-inline: -0.5rem; } figure.scrolling figcaption, figure.scrolling pre { padding-inline: 0.6rem; } }
 		\\</style>
 }
 
@@ -206,7 +207,7 @@ box_html = |{ title, origin, stats, text }| {
 	safe_origin = BookText.escaped_text(origin)
 	safe_text = BookText.escaped_text(text)
 	box =
-		\\<figure class="polynomial"><figcaption><code>${safe_title}</code>: ${safe_origin}<br>${facts}</figcaption><pre><code class="language-text">${safe_text}</code></pre></figure>
+		\\<figure class="scrolling"><figcaption><code>${safe_title}</code>: ${safe_origin}<br>${facts}</figcaption><pre><code class="language-text">${safe_text}</code></pre></figure>
 	box
 }
 
