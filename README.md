@@ -56,52 +56,54 @@ to `out/`.
 
 ## Playground
 The machine's assembly language is called **Nibble**. `web/` is a puzzle
-page for it, with puzzles of two kinds. A language puzzle is one of the 16
-languages ("accept exactly {0, 3}"); an AX puzzle names how each input
-should end instead: accepted, rejected, or run off the end with `AX` at a
-given value ("make AX one less": reject 0, and end 1, 2 and 3 with `AX` at
-0, 1 and 2). Each is solved by picking the instructions. There is no Run
+page for it, with 16 puzzles, one for each of the 16 languages: accept
+exactly its inputs ("accept {0, 3}") and reject the rest. Each is solved by
+picking the instructions. There is no Run
 button: every pick runs the program, and the trace shows `AX` after every
 step on all four inputs (a row a step, a column an input, so it fits a
 phone), then how each run ended and what the puzzle wants, and says which
 input went wrong.
 
-The first five puzzles are one-line lessons, each with a sentence on one
-opcode: {0} (`zero`), `one_less` (`decr`), `last_bit` (`mod2`), `unchanged`
-(`nada`) and the nada example, { } (all `nada`, since a run that ends
-without accepting rejects). The other fourteen languages ramp up, by the
-length of the shortest program, fewest lines first, then by how many of the
-4,096 programs solve each, most first: {0, 2} and {1} (two lines) come next,
-and `is_not_one` (six lines, one program) is last. Each puzzle says how
-short its best program is ("This can be solved with a two-line Nibble
-program", a program's length being its instructions before its trailing
-`nada`s), and its lines past that length are locked to `nada`; every line
-starts as `nada`, so the player chooses where to replace it. All `nada`
-solves two puzzles, `unchanged` and { }: each is a one-line puzzle whose
-line starts as another op (`mod2` and `zero`), and the player solves it by
-making that line `nada`. Every puzzle opens unsolved. The moment a pick
-solves it, the page says so, with how many six-line programs solve it, and
-the next puzzle opens. Progress stays in the browser, kept by puzzle code
-(a language's, 0 to 15, or an AX puzzle's, 16 to 18), so a new order keeps
-it.
+The first four puzzles are lessons, each with a sentence on one opcode:
+`is_tiny`, {0}, one line (`zero`); `is_one`, {1}, whose line 1 is given and
+locked as `decr`, so the player picks line 2 (`zero`); `is_even`, {0, 2},
+the same with line 1 given as `mod2`; and `grumpy`, { } ("Reject all
+inputs"), one line that opens as `zero`, which `nada`, `decr` or `mod2`
+each solve, since none of them ever accepts on its own. The other twelve
+languages ramp up, by the length of the shortest program, fewest lines
+first, then by how many of the 4,096 programs solve each, most first, then
+by code: `is_odd` (three lines) comes next, and `is_not_one` (six lines,
+one program) is last. Each puzzle says how short its best program is ("This
+can be solved with a three-line Nibble program", a program's length being
+its instructions before its trailing `nada`s), and its lines past that
+length are locked to `nada`; every other line starts as `nada`, so the
+player chooses where to replace it. A given line is locked too, its op
+highlighted, and the hint says so ("Line 1 is given; pick line 2"). The
+table records each puzzle's open lines (`lines`), its given ones (`given`,
+the first lines, locked to their op in `start`) and the program it opens
+with (`start`); `web/puzzles.c` checks that each start leaves its puzzle
+unsolved and that some program solves it within its lines. Every puzzle
+opens unsolved. The moment a pick solves it, the page says so, with how
+many six-line programs solve it, and the next puzzle opens. Nothing is
+kept between visits: a reload starts at puzzle 1 with only it open.
 
 The page runs this repository's C machine: `web/nibble.c` is `src/vm.c`
 compiled to wasm by `zig cc -target wasm32-freestanding`, with no libc
 (`VM_FREESTANDING` makes a stop a trap). The table of puzzles comes from
-C too: `web/puzzles.c` counts every program's language and its outcome on
-each input (with `run_progam_ax` for the final `AX`).
+C too: `web/puzzles.c` counts every program's language.
 
 ```sh
 shale web/build.shale      # the table, the wasm, the page in out/web/site, and its check
 ```
 
 The check, `web/page_check.mjs`, holds the wasm to the C on all 4,096 × 4
-runs and to the puzzle table (the AX puzzles' counts and wants included)
-and its order, then loads the page in headless Chromium at a phone's width
-(390px), solves the first puzzle by clicking, sees that neither the page nor
-the trace scrolls sideways and that the locked lines are locked, solves each
-AX lesson and the nada example by one click, and sees the progress outlive a
-reload and an older save; it saves a screenshot to `out/web/page.png`. The page's files are
+runs and to the 16-puzzle table and its order, then loads the page in
+headless Chromium at a phone's width (390px), solves the first puzzle by
+clicking, sees that neither the page nor the trace scrolls sideways and that
+the locked and given lines are locked, sees a reload start fresh with
+nothing in localStorage, and solves `is_one` and `is_even` by one click on
+line 2's `zero` and `grumpy` by one click; it saves screenshots to
+`out/web/page.png` and `out/web/page-given.png`. The page's files are
 named by their bytes, and its URLs are relative, so `out/web/site` can be
 served from any folder.
 
