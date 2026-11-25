@@ -10,7 +10,7 @@ Steve Howell wrote the first version by hand in Python, in [virtual-machine](htt
 
 ### What the book covers
 
-{{chapter The machine and Nibble}} sets out the machine and its puzzle page. {{chapter Programs as languages}} is the search over all 4,096 programs. {{chapter Arithmetization}} turns one step into polynomials. {{chapter Why composing blew up}} and {{chapter Six steps composed}} take the step through a whole program. {{chapter Cook-Levin as SAT}} turns the same machine into a formula for a SAT solver. {{chapter The oracles}} lines up every implementation that computes the answers, and {{chapter The Roc port}} reads the mathematics in Roc.
+{{chapter The machine}} sets out the machine. {{chapter Programs as languages}} is the search over all 4,096 programs, and {{chapter Nibble, the puzzle page}} turns its 16 languages into puzzles. {{chapter Arithmetization}} turns one step into polynomials. {{chapter Why composing blew up}} and {{chapter Six steps composed}} take the step through a whole program. {{chapter Cook-Levin as SAT}} turns the same machine into a formula for a SAT solver. {{chapter The oracles}} lines up every implementation that computes the answers, and {{chapter The Roc port}} reads the mathematics in Roc.
 
 ### Why the name fits
 
@@ -38,7 +38,7 @@ The Go port lives in a repository of its own, outside this record. By Steve's ac
 
 The cook-levin-riff log covers one day. The C port of the machine and the search came first (`8051ce2`), then the general polynomial (`ccde4f8`) and the stepper (`5b14d74`). The Boolean ring came at 15:59 (`0c233e3`), and all six steps composed, proved on all 2^14 points, at 16:23 (`1146d43`). The Nibble page (`b1fe11f`), the Roc port (`6206236`), the SAT encoding (`8de51b7`), rocsat as an oracle (`f977bcc`) and the JavaScript port (`e996749`, `c251895`) followed. The first commit is stamped 15:32 and the last 19:21.
 
-## The machine and Nibble
+## The machine
 
 The machine holds one register, `AX`, of 2 bits, so `AX` is 0, 1, 2 or 3. A run starts with `AX` set to the input. Its program is six instructions, each one of four opcodes, and the machine's assembly language is called Nibble.
 
@@ -58,31 +58,6 @@ A run that reaches the end of its six instructions rejects. So a program accepts
 ### Counting
 
 Each instruction is one of 4 opcodes, so there are 4^6 = 4,096 programs. Each language is a subset of {0, 1, 2, 3}, so there are 2^4 = 16 languages. Each program is a 12-bit number, two bits an instruction, and `assemble` and `disassemble` in `src/vm.c` convert between the two forms.
-
-### Nibble, the puzzle page
-
-[Nibble](https://roc.lynrummy.com/nibble/) is a puzzle page with one puzzle for each of the 16 languages: pick instructions until the program accepts exactly the puzzle's inputs. Every pick runs the program on all four inputs, and a trace shows `AX` after every step.
-
-The page runs this repository's C. `web/nibble.c` is `src/vm.c` compiled to wasm by `zig cc`, and the puzzle table is printed by `web/puzzles.c`, which counts every program's language (`README.md`, "Playground").
-
-The first four puzzles are lessons, one opcode each: `is_tiny` ({0}), `is_one` ({1}), `is_even` ({0, 2}) and `grumpy` ({ }). The other twelve ramp by effort: the length of the shortest program, with each `mod2` in it counted as one line more, since `mod2` takes more thought. A tie goes to the puzzle free of `mod2`, then to fewer `zero`s, then to more solutions. The table that `web/puzzles.c` prints puts them in this order:
-
-| # | puzzle | language | shortest | programs |
-|---|---|---|---|---|
-| 5 | `is_two` | {2} | 3 | 248 |
-| 6 | `is_small` | {0, 1} | 3 | 172 |
-| 7 | `is_huge` | {3} | 4 | 63 |
-| 8 | `is_middling` | {1, 2} | 4 | 74 |
-| 9 | `is_odd` | {1, 3} | 3 | 520 |
-| 10 | `is_big` | {2, 3} | 5 | 13 |
-| 11 | `is_extreme` | {0, 3} | 5 | 12 |
-| 12 | `is_not_huge` | {0, 1, 2} | 5 | 13 |
-| 13 | `is_not_two` | {0, 1, 3} | 4 | 150 |
-| 14 | `always_true` | {0, 1, 2, 3} | 4 | 104 |
-| 15 | `is_not_one` | {0, 2, 3} | 6 | 1 |
-| 16 | `is_not_tiny` | {1, 2, 3} | 5 | 15 |
-
-A program's length is its instructions before its trailing `nada`s. Past the lessons, every puzzle's last open line is fixed as `zero`, because an instruction after a program's last `zero` can only reject, as running off the end does.
 
 ## Programs as languages
 
@@ -131,6 +106,54 @@ Input 0 is accepted on line 1. Input 1 drops to 0 on line 2 and is rejected by t
 ### The common ones
 
 The empty language has 844 programs, since any program that rejects every input will do, and {0, 2} has 883: `mod2` then `zero` is two lines, and many longer programs reach the same verdicts.
+
+## Nibble, the puzzle page
+
+[Nibble](https://roc.lynrummy.com/nibble/) is a puzzle page with one puzzle for each of the 16 languages: pick instructions until the program accepts exactly the puzzle's inputs and rejects the rest. The search of {{chapter Programs as languages}} says every puzzle has an answer, and how many programs are answers.
+
+### What runs in the page
+
+The page runs this repository's C. `web/nibble.c` is `src/vm.c` compiled to freestanding wasm by `zig cc`, and the puzzle table is printed by `web/puzzles.c`, which counts every program's language and finds each puzzle's shortest program (`README.md`, "Playground"). The JavaScript in the page draws; the machine's verdicts are the C's. The page's check, `web/page_check.mjs`, holds the wasm to the C on all 4,096 programs and all four inputs, then plays every puzzle in headless Chromium by clicks.
+
+### Playing a puzzle
+
+Every pick runs the program at once on all four inputs, so the trace always shows the program as it stands. A trace shows each input's `AX` after every step, then how each run ended, what the puzzle wants, and a row marking each input correct or wrong. A wrong program's verdict names every way it is wrong, as in "Your program falsely accepts 0. It falsely rejects 1 and 3." When the program is right, the page says so above the program, folds the instruction buttons away so the whole trace shows, and says how many of the 4,096 programs solve the puzzle. Beside the buttons, the program's machine code shows its twelve bits, two a line, and its number. Each opcode button's tip says what it does to each `AX`: `decr` is "0->R, 1->0, 2->1, 3->2". A reload starts fresh at puzzle 1.
+
+### The lessons
+
+The first four puzzles are lessons, one opcode each:
+
+- **`is_tiny`** ({0}): one line, `zero`.
+- **`is_one`** ({1}): line 1 is given as `decr`, and the player picks line 2.
+- **`is_even`** ({0, 2}): line 1 is given as `mod2`, and the player picks line 2.
+- **`grumpy`** ({ }), "Reject all inputs": one line that opens as `zero`. Any of `nada`, `decr` or `mod2` solves it, since only `zero` ever accepts.
+
+A given line is drawn locked, in light blue, and the hint names it: "Line 1 is already fixed as decr. Your job: fix line 2."
+
+### The ramp
+
+The other twelve ramp by effort: the length of the shortest program, with each `mod2` in it counted as one line more, since `mod2` takes more thought. A tie goes to the puzzle free of `mod2`, then to fewer `zero`s, then to more solutions. The table that `web/puzzles.c` prints puts them in this order:
+
+| # | puzzle | language | shortest | programs |
+|---|---|---|---|---|
+| 5 | `is_two` | {2} | 3 | 248 |
+| 6 | `is_small` | {0, 1} | 3 | 172 |
+| 7 | `is_huge` | {3} | 4 | 63 |
+| 8 | `is_middling` | {1, 2} | 4 | 74 |
+| 9 | `is_odd` | {1, 3} | 3 | 520 |
+| 10 | `is_big` | {2, 3} | 5 | 13 |
+| 11 | `is_extreme` | {0, 3} | 5 | 12 |
+| 12 | `is_not_huge` | {0, 1, 2} | 5 | 13 |
+| 13 | `is_not_two` | {0, 1, 3} | 4 | 150 |
+| 14 | `always_true` | {0, 1, 2, 3} | 4 | 104 |
+| 15 | `is_not_one` | {0, 2, 3} | 6 | 1 |
+| 16 | `is_not_tiny` | {1, 2, 3} | 5 | 15 |
+
+A program's length is its instructions before its trailing `nada`s. Each puzzle says how short its best program is, and the lines past that are locked to `nada`. Past the lessons, every puzzle's last open line is fixed as `zero`, because an instruction after a program's last `zero` can only reject, as running off the end does, so every shortest program ends in `zero`. The last puzzle, `is_not_tiny`, also gives its `mod2` on line 2, the line where the solution folds 2 onto 0; the player still picks the `decr` on line 1.
+
+### Help for a newcomer
+
+The page's intro, behind a Help link after puzzle 1, says what a language is here, how the machine runs a program four times to find the language it recognizes, and works `decr, zero` through to {1}; the page's check holds that example to the machine.
 
 ## Arithmetization
 
