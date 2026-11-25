@@ -308,6 +308,13 @@ try {
   expect((await text("lesson")) === first.lesson, `the first puzzle's lesson says \`${await text("lesson")}\``);
   expect((await locks()) === wantLocks(first), `the first puzzle's lines are \`${await locks()}\`, not \`${wantLocks(first)}\``);
   expect((await text("intro")).includes("The first four puzzles teach you Nibble"), "the intro doesn't say the first four puzzles teach Nibble");
+  // The help on languages starts closed, opens, and its worked example is
+  // the machine's: decr, zero (code 2 + 1 * 4) recognizes {1}, bit 1.
+  expect(!(await evaluate("document.getElementById('languages-help').open")), "the help on languages starts open");
+  await click("#languages-help summary");
+  expect((await evaluate("document.getElementById('languages-help').open")) && (await text("languages-help")).includes("recognizes the language {1}"), "the help on languages doesn't open to its worked example");
+  expect(m.accepts(2 + 1 * 4) === 1 << 1, `the help's example, decr, zero, recognizes language ${m.accepts(6)}, not {1}`);
+  await click("#languages-help summary");
 
   // No Run button: the fresh all-nada program has run already, and is wrong.
   expect(!(await evaluate("!!document.getElementById('run')")), "the page has a Run button");
