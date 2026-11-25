@@ -13,8 +13,9 @@
 --    roc-apps' site names them; the JS's names for the wasm and the table
 --    are rewritten to their hashed names before the JS is hashed.
 -- 4. web/page_check.mjs holds the wasm to the C's table on all 4,096 x 4
---    runs and to its puzzle table, then loads the page in headless Chromium
---    and solves the first puzzle by clicking; it saves a screenshot to
+--    runs and to its puzzle table and order, then loads the page in headless
+--    Chromium at 390px, solves the first puzzle by clicking, sees nothing
+--    scroll sideways and the locked lines locked; it saves a screenshot to
 --    out/web/page.png.
 --
 -- One line a stage. Exits 0 only when every check passes.
