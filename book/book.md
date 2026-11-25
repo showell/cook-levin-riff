@@ -423,7 +423,7 @@ accepted after six steps, composed by the C's compose_main at the book's build
 
 ## The machine as a circuit
 
-The polynomials say that a run of the machine is arithmetic. The same fact can be drawn as hardware: a circuit that takes a language and a program and lights one wire, "decides", exactly when the program decides the language. It is combinational: the whole run is laid out in space, and every wire settles at once.
+This chapter builds the machine as hardware, a plain digital circuit with two inputs and one output. Its inputs are a language and a program, and its output is true when the program decides the language and false otherwise. It is combinational: the whole run is laid out in space, and every wire settles at once. {{chapter The Cook-Levin machine}} then puts the same circuit to Cook and Levin's use.
 
 ### The whole circuit
 
@@ -468,11 +468,11 @@ digraph {
 }
 ```
 
-Each step unit is the step of {{chapter Arithmetization}} built from gates: six wires in (`hb`, `lb`, `halted`, `accepted` and the line's `op_hb`, `op_lb`), four wires out, and between them the gates for complement, AND and OR that the step polynomials spell as 1 - x, xy and x + y - xy. Four cores of six units make 24 step units in all, every one the same.
+Each step unit has six wires in (`hb` and `lb`, the two bits of `AX`, the flags `halted` and `accepted`, and the line's `op_hb`, `op_lb`) and four wires out, the same four state wires for the next unit. Four cores of six units make 24 step units in all, every one the same.
 
 ### Inside a step unit
 
-A step unit is built from two-input AND and OR gates and inverters, and its layout is a classic one: decode, compute every opcode at once, select. Its gates are exactly `sat_step` in `src/sat.c`, and `tests/test_sat.c` holds them to the machine's step on all 64 settings of the unit's six input wires.
+A step unit is built from two-input AND and OR gates and inverters, and its layout is a classic one: decode, compute every opcode at once, select.
 
 One step unit
 ```dot
@@ -507,7 +507,7 @@ With `e` for the module's enable wire, every opcode is a handful of AND gates on
 | `decr` | `is_2` AND e | `is_3` AND e | 0 | 0 | `is_0` AND e |
 | `mod2` | (`is_1` OR `is_3`) AND e | 0 | 0 | 0 | 0 |
 
-Read across a row and the opcode's rule appears. `nada` passes the value through. `zero` passes it through too and adds one gate that fires on 0. `decr` shifts each wire down one place, 2 to 1 and 3 to 2, lets 1 fall to 0, and turns 0 into a halt. `mod2` sends both odd values to 1 and lets 2 fall to 0. The whole unit is 34 two-input gates as written, and the four cores' constants (`AX` fixed per core, `halted` and `accepted` 0 at the start) fold many of them away: the full circuit of 24 units comes to the 404 gates that {{chapter Cook-Levin as SAT}} counts.
+Read across a row and the opcode's rule appears. `nada` passes the value through. `zero` passes it through too and adds one gate that fires on 0. `decr` shifts each wire down one place, 2 to 1 and 3 to 2, lets 1 fall to 0, and turns 0 into a halt. `mod2` sends both odd values to 1 and lets 2 fall to 0. The whole unit is 34 two-input gates.
 
 `decr`, the busiest module, drawn alone
 ```dot
@@ -524,10 +524,6 @@ digraph {
 }
 ```
 
-The gates in the code, as the SAT encoding builds them:
-
-{{lines src/sat.c from "    Lit is_3 = AND(hb, lb);" to "    Lit lb_set = OR(becomes_3, becomes_1);"}}
-
 ### A program through it
 
 Load the want register with `0111` and the program register with `decr, mod2, zero, decr, zero, nada`, the five-line answer to `is_not_tiny`, whose bits are `10 11 01 10 01 00`. The four cores settle like this:
@@ -541,9 +537,46 @@ Load the want register with `0111` and the program register with `decr, mod2, ze
 
 All four comparators say yes, so the AND lights "decides". Change one program bit and some core's answer flips, its comparator reports a mismatch, and the light goes out.
 
-### Why the circuit matters
+## The Cook-Levin machine
 
-Fix the want register and leave the program register's twelve bits free, and the circuit asks a question: is there a setting of these twelve inputs that lights the output? That is circuit satisfiability, and {{chapter Cook-Levin as SAT}} writes this very circuit as clauses, gate by gate, for a SAT solver to answer.
+{{chapter The machine as a circuit}} is a checker: hand it a language and a program, and it says true or false. Cook and Levin's idea is to run a checker backwards. Fix the language, leave the program unknown, pin the output to true, and ask which programs fit. The circuit does the same work as before; only the question changes.
+
+### The circuit, turned around
+
+The want register is fixed at the puzzle's bits. The program register becomes twelve unknown wires, `x1` to `x12`. The output wire is required to be 1. Everything in between is the same 24 step units and four comparators, and every wire in them is now an unknown too, tied to the wires feeding it by the rule of its gate.
+
+The question the circuit now asks
+```dot
+digraph {
+  rankdir=TB;
+  node [shape=box, style=rounded];
+  x [label="program: x1 .. x12\nunknown"];
+  want [label="want register\nfixed"];
+  c [label="the same circuit\nevery wire an unknown"];
+  out [label="decides = 1\nrequired"];
+  x -> c;
+  want -> c;
+  c -> out;
+}
+```
+
+A setting of the twelve unknowns that satisfies every gate's rule and lights the output is a program that decides the language. The circuit has a satisfying setting exactly when the puzzle has an answer.
+
+### The tableau
+
+Cook's proof draws the run of a checking machine as a grid, the tableau: one row for each moment of the run, each row the machine's whole state, and each row fixed by the row above it through a small local rule. Here the grid has seven rows, the start and the six steps, and four columns, one per core. Each cell is a state of four bits, `hb`, `lb`, `halted` and `accepted`. The top row is known, since core `i` starts with `AX` = `i` and both flags 0, and each cell below it is one step unit applied to the cell above and to that row's line of the unknown program. The local rule is the step unit of {{chapter The machine as a circuit}}.
+
+For a general checker the grid is as wide as its tape and as tall as its running time, and when the time is polynomial in the input's length, the grid and its rules are polynomial in size too. That is the whole of the theorem's construction: any question a fast checker can answer becomes the question of whether such a grid can be filled in consistently.
+
+### The gates, counted
+
+The step unit's gates as the repository builds them, in `sat_step` (`src/sat.c`):
+
+{{lines src/sat.c from "    Lit is_3 = AND(hb, lb);" to "    Lit lb_set = OR(becomes_3, becomes_1);"}}
+
+`tests/test_sat.c` holds these gates to the machine's step on all 64 settings of the unit's six input wires. A unit is 34 gates when all six inputs are unknown, so 24 units would be 816. The top row's constants fold many away, since each core's `AX` is known at the start and both flags are 0, and a gate already built from the same two inputs is reused. The whole circuit comes to 404 gates over the 12 unknown program bits.
+
+{{chapter Cook-Levin as SAT}} takes the last step: each gate becomes three clauses, the required output becomes four more, and the circuit becomes one formula for a SAT solver.
 
 ## Cook-Levin as SAT
 
