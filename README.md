@@ -294,9 +294,10 @@ Every runner's output must match the goldens byte for byte, and the run
 fails unless all three do. On this box (2 cores, 2026-11-25, node v22),
 node takes about 0.3 s. The VM takes about 80 s. The compiled executable
 is 111,698 bytes, takes 0.6 to 1.0 s and peaks at 33 MB resident. So the
-compiled program is slower than node here. Its array reads and writes are
-values whose kind the compiler doesn't know, so each one goes through the
-runtime's tag checks.
+compiled program is slower than node here. It hasn't been profiled yet. The
+likely cause is that an array's items are values whose kind the compiler
+doesn't know, so every read and write of them goes through the runtime's
+tag checks.
 
 The VM and the compiler are roc-js-interpreter's, written in Roc. They are
 the one cross-repo piece of this repository: `js/oracle.shale` builds both
