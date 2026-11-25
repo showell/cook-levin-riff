@@ -65,9 +65,9 @@ phone), then how each run ended and what the puzzle wants, and says which
 input went wrong.
 
 The first four puzzles are lessons, each with a sentence on one opcode:
-`is_tiny`, {0}, one line (`zero`); `is_one`, {1}, whose line 1 is given and
+`is_tiny`, {0}, one line (`zero`); `is_one`, {1}, whose line 1 is fixed and
 locked as `decr`, so the player picks line 2 (`zero`); `is_even`, {0, 2},
-the same with line 1 given as `mod2`; and `grumpy`, { } ("Reject all
+the same with line 1 fixed as `mod2`; and `grumpy`, { } ("Reject all
 inputs"), one line that opens as `zero`, which `nada`, `decr` or `mod2`
 each solve, since none of them ever accepts on its own. The other twelve
 languages ramp up, by the length of the shortest program, fewest lines
@@ -77,12 +77,21 @@ one program) is last. Each puzzle says how short its best program is ("This
 can be solved with a three-line Nibble program", a program's length being
 its instructions before its trailing `nada`s), and its lines past that
 length are locked to `nada`; every other line starts as `nada`, so the
-player chooses where to replace it. A given line is locked too, its op
-highlighted, and the hint says so ("Line 1 is given; pick line 2"). The
-table records each puzzle's open lines (`lines`), its given ones (`given`,
-the first lines, locked to their op in `start`) and the program it opens
-with (`start`); `web/puzzles.c` checks that each start leaves its puzzle
-unsolved and that some program solves it within its lines. Every puzzle
+player chooses where to replace it. Past the lessons, a puzzle whose
+shortest program can end in `zero` has that `zero` fixed as a hint: its
+last open line opens as `zero` and is locked. All twelve do, since an op
+after a program's last `zero` can only reject, as running off the end
+does, so a shortest program always ends in one. A fixed line is locked and
+drawn light blue, its op highlighted, and the hint says so ("This can be
+solved with a four-line Nibble program. Line 4 is already fixed as zero.
+Your job: fix lines 1 to 3. Lines 5 to 6 are locked to nada."). The lessons
+leave theirs alone: on `is_tiny`, `is_one` and `is_even` the final `zero`
+is the lesson's answer. The table records each puzzle's open lines
+(`lines`), its fixed ones (`fixed`, a bitmask, line k's bit `1 << (k - 1)`,
+each locked to its op in `start`) and the program it opens with (`start`);
+`web/puzzles.c` checks that each start leaves its puzzle unsolved, that each
+fixed line is open and holds an op in `start`, that a line is left to pick,
+and that a shortest program solves it within its lines and fixed ones. Every puzzle
 opens unsolved. The moment a pick solves it, the page says so, with how
 many six-line programs solve it, and the next puzzle opens. Nothing is
 kept between visits: a reload starts at puzzle 1 with only it open.
@@ -100,10 +109,12 @@ The check, `web/page_check.mjs`, holds the wasm to the C on all 4,096 × 4
 runs and to the 16-puzzle table and its order, then loads the page in
 headless Chromium at a phone's width (390px), solves the first puzzle by
 clicking, sees that neither the page nor the trace scrolls sideways and that
-the locked and given lines are locked, sees a reload start fresh with
-nothing in localStorage, and solves `is_one` and `is_even` by one click on
-line 2's `zero` and `grumpy` by one click; it saves screenshots to
-`out/web/page.png` and `out/web/page-given.png`. The page's files are
+the locked and fixed lines are locked, sees a reload start fresh with
+nothing in localStorage, solves `is_one` and `is_even` by one click on
+line 2's `zero` and `grumpy` by one click, then opens puzzles 5 to 16 in
+turn, checks each one's locks (its fixed `zero` among them) and hint, and
+solves it by clicks; it saves screenshots to `out/web/page.png`,
+`out/web/page-given.png` and `out/web/page-fixed.png`. The page's files are
 named by their bytes, and its URLs are relative, so `out/web/site` can be
 served from any folder.
 

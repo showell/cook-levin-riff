@@ -11,11 +11,13 @@
 // - counts, from the wasm alone, the programs that accept each language and
 //   the length of the shortest (its ops before its trailing `nada`s), and
 //   holds the C's 16-puzzle table to them and to its order: the four
-//   lessons first (is_tiny; is_one and is_even, each with line 1 given, as
+//   lessons first (is_tiny; is_one and is_even, each with line 1 fixed, as
 //   decr and mod2; grumpy, opening as zero, which nada, decr and mod2 each
-//   solve), then the other twelve by shortest length, count and code; each
-//   example fits its open lines and its given ones, and each puzzle's start
-//   leaves it unsolved;
+//   solve), then the other twelve by shortest length, count and code, each
+//   with its last line fixed as zero exactly when some shortest program ends
+//   in zero; each example is a shortest and fits its open lines and its
+//   fixed ones, each puzzle leaves a line to pick, and each start leaves it
+//   unsolved;
 // - serves <site-dir> on a loopback port and loads it in headless Chromium
 //   (Playwright's, found by PLAYWRIGHT_BROWSERS_PATH, which Shale sets) at a
 //   phone's width; there it sees the first lesson's sentence, its lines past
@@ -27,9 +29,12 @@
 //   only it open and nothing in localStorage; solves it again, then is_one
 //   and is_even by one click each on line 2's zero (line 1 given and
 //   locked), and grumpy by one click (nada; decr and mod2 too, zero not),
-//   each opening the next; and sees a solved puzzle reopen at its start. A
-//   second screenshot, of is_one with its given line, goes beside the first
-//   (`-given` before `.png`).
+//   each opening the next; sees a solved puzzle reopen at its start; then
+//   opens puzzles 5 to 16 in turn, each with its locks (its fixed zero among
+//   them) and hint as it opens, and solves each by clicking its example's
+//   open lines. Two more screenshots go beside the first: is_one with its
+//   fixed line 1 (`-given` before `.png`), and is_odd with its fixed zero
+//   (`-fixed`).
 //
 // The browser is started as roc-apps' tools/chromium.mjs starts it (its
 // flags and its folder under TMPDIR, for Shale's confinement); this is a
@@ -55,14 +60,14 @@ function expect(ok, why) {
 
 const STEPS = 6;
 const PROGRAMS = 4096;
-// The lessons, by code (a member n is bit n), with their open lines, given
-// lines and start: {0}; {1} and {0, 2}, line 1 given as decr (2) and mod2
-// (3); { }, opening as zero (1).
+// The lessons, by code (a member n is bit n), with their open lines, fixed
+// lines (line k's bit 1 << k, from 0) and start: {0}; {1} and {0, 2}, line 1
+// fixed as decr (2) and mod2 (3); { }, opening as zero (1).
 const LESSONS = [
-  { code: 1, name: "is_tiny", lines: 1, given: 0, start: 0 },
-  { code: 2, name: "is_one", lines: 2, given: 1, start: 2 },
-  { code: 5, name: "is_even", lines: 2, given: 1, start: 3 },
-  { code: 0, name: "grumpy", lines: 1, given: 0, start: 1 },
+  { code: 1, name: "is_tiny", lines: 1, fixed: 0, start: 0 },
+  { code: 2, name: "is_one", lines: 2, fixed: 1, start: 2 },
+  { code: 5, name: "is_even", lines: 2, fixed: 1, start: 3 },
+  { code: 0, name: "grumpy", lines: 1, fixed: 0, start: 1 },
 ];
 const files = readdirSync(site);
 const wasmFile = files.find((f) => /^nibble\.[0-9a-f]{16}\.wasm$/.test(f));
@@ -93,6 +98,13 @@ for (let code = 0; code < PROGRAMS; code++) {
   shortest[lang] = Math.min(shortest[lang] ?? STEPS + 1, len);
 }
 expect(mismatches === 0, `${mismatches} of ${PROGRAMS * 4} runs differ between the wasm and the C`);
+// The languages some shortest program ends in zero for.
+const endsInZero = new Set();
+for (let code = 0; code < PROGRAMS; code++) {
+  const lang = m.accepts(code);
+  const len = shortest[lang];
+  if (len > 0 && Math.floor(code / 4 ** len) === 0 && Math.floor(code / 4 ** (len - 1)) % 4 === 1) endsInZero.add(lang);
+}
 
 const puzzles = table.puzzles;
 const solves = (p, code) => m.accepts(code) === p.code;
@@ -105,21 +117,31 @@ for (let i = 0; i < puzzles.length; i++) {
   expect(p.count === count[p.code], `${p.name}: the C counts ${p.count} programs, the wasm ${count[p.code]}`);
   expect(p.shortest === shortest[p.code], `${p.name}: the C says shortest ${p.shortest}, the wasm ${shortest[p.code]}`);
   expect(solves(p, p.example), `${p.name}: its example program ${p.example} doesn't solve it`);
-  // The page locks lines past `lines` to nada and the first `given` to the
-  // start's ops: the example must fit both.
+  // The page locks lines past `lines` to nada and the `fixed` ones to the
+  // start's ops: the example, a shortest, must fit both.
+  expect(p.given === undefined, `${p.name}: the old \`given\` field is left`);
   expect(Math.floor(p.example / 4 ** p.lines) === 0, `${p.name}: its example ${p.example} has an op past line ${p.lines}`);
-  for (let k = 0; k < p.given; k++) expect(opAt(p.example, k) === opAt(p.start, k), `${p.name}: its example's line ${k + 1} isn't the given one`);
-  expect(p.given < p.lines, `${p.name}: ${p.given} given of ${p.lines} lines leaves none to pick`);
+  expect(Math.floor(p.example / 4 ** p.shortest) === 0, `${p.name}: its example ${p.example} isn't a shortest`);
+  expect(p.fixed >> p.lines === 0, `${p.name}: a fixed line (${p.fixed}) is past its ${p.lines} lines`);
+  let picks = 0;
+  for (let k = 0; k < p.lines; k++) {
+    if (((p.fixed >> k) & 1) === 0) { picks++; continue; }
+    expect(opAt(p.example, k) === opAt(p.start, k), `${p.name}: its example's line ${k + 1} isn't the fixed one`);
+    expect(opAt(p.start, k) !== 0, `${p.name}: its fixed line ${k + 1} is nada in its start`);
+  }
+  expect(picks > 0, `${p.name}: its fixed lines (${p.fixed}) of ${p.lines} leave none to pick`);
   // It opens unsolved, with nothing on a locked line.
   expect(!solves(p, p.start), `${p.name}: its start program ${p.start} solves it`);
   expect(Math.floor(p.start / 4 ** p.lines) === 0, `${p.name}: its start program ${p.start} has an op on a locked line`);
   expect((p.lesson !== undefined) === (i < LESSONS.length), `${p.name}: a lesson sentence only on the first four`);
   if (i < LESSONS.length) {
     const l = LESSONS[i];
-    const got = `${p.code} ${p.name} ${p.lines} ${p.given} ${p.start}`;
-    expect(got === `${l.code} ${l.name} ${l.lines} ${l.given} ${l.start}`, `puzzle ${i + 1} is \`${got}\`, not ${l.name}'s`);
+    const got = `${p.code} ${p.name} ${p.lines} ${p.fixed} ${p.start}`;
+    expect(got === `${l.code} ${l.name} ${l.lines} ${l.fixed} ${l.start}`, `puzzle ${i + 1} is \`${got}\`, not ${l.name}'s`);
   } else {
-    expect(p.lines === p.shortest && p.given === 0 && p.start === 0, `${p.name}: ${p.lines} lines, ${p.given} given, start ${p.start}`);
+    // The hint: a shortest program's final zero, fixed, and nothing else.
+    const [fixed, start] = endsInZero.has(p.code) ? [1 << (p.lines - 1), 4 ** (p.lines - 1)] : [0, 0];
+    expect(p.lines === p.shortest && p.fixed === fixed && p.start === start, `${p.name}: ${p.lines} lines, fixed ${p.fixed}, start ${p.start}, not ${p.shortest}, ${fixed}, ${start}`);
     if (i > LESSONS.length) {
       const q = puzzles[i - 1];
       const after = q.shortest < p.shortest || (q.shortest === p.shortest && (q.count > p.count || (q.count === p.count && q.code < p.code)));
@@ -234,13 +256,14 @@ const first = puzzles[0];
 const button = (i) => `document.querySelector('[data-puzzle="${i}"]')`;
 const isSolvedMark = (i) => evaluate(`${button(i)}.classList.contains("solved")`);
 const isShut = (i) => evaluate(`${button(i)}.disabled`);
-// Each line as the page shows it: o (open), L (locked) or G (given: locked,
-// its row marked given), then its highlighted op.
+// Each line as the page shows it: o (open), L (locked) or G (fixed: locked,
+// its row marked given, the class the light-blue styling hangs on), then its
+// highlighted op.
 const locks = () => evaluate(`[...document.querySelectorAll(".slot")].map((r) => {
   const bs = [...r.querySelectorAll("button")], on = r.querySelector("button.on");
   const kind = bs.every((b) => b.disabled) ? (r.classList.contains("given") ? "G" : "L") : bs.some((b) => b.disabled) ? "?" : "o";
   return kind + (on ? on.dataset.op : "-"); }).join(" ")`);
-const wantLocks = (p) => Array.from({ length: STEPS }, (_, k) => (k < p.given ? "G" : k < p.lines ? "o" : "L") + OPS[opAt(p.start, k)]).join(" ");
+const wantLocks = (p) => Array.from({ length: STEPS }, (_, k) => ((p.fixed >> k) & 1 ? "G" : k < p.lines ? "o" : "L") + OPS[opAt(p.start, k)]).join(" ");
 const solvedNow = async () => (await text("verdict")).startsWith("Solved!");
 try {
   await open(url);
@@ -296,8 +319,8 @@ try {
   expect(shut, "after a reload a puzzle past the first is open");
   expect((await evaluate("localStorage.length")) === 0, `localStorage holds ${await evaluate("localStorage.length")} items`);
 
-  // Solved again, then the given-line lessons, each by one click on line
-  // 2's zero, line 1 given and locked.
+  // Solved again, then the fixed-line lessons, each by one click on line
+  // 2's zero, line 1 fixed and locked.
   await click('[data-slot="0"][data-op="zero"]');
   expect(await solvedNow(), "zero on line 1 doesn't solve the first puzzle");
   const given = [[1, "decr", "Your program falsely rejects 1."],
@@ -307,12 +330,12 @@ try {
     const p = puzzles[i];
     expect((await text("title")) === `Puzzle ${i + 1} of 16: ${p.name}`, `Next shows \`${await text("title")}\`, not ${p.name}`);
     expect((await locks()) === wantLocks(p), `${p.name}'s lines are \`${await locks()}\`, not \`${wantLocks(p)}\``);
-    expect((await locks()).startsWith(`G${op} onada L`), `${p.name}'s line 1 isn't given as ${op}`);
-    expect((await evaluate(`document.querySelector('[data-slot="0"][data-op="${op}"]').title`)) === `Given: line 1 is ${op}.`, `${p.name}'s given line's title isn't \`Given: line 1 is ${op}.\``);
+    expect((await locks()).startsWith(`G${op} onada L`), `${p.name}'s line 1 isn't fixed as ${op}`);
+    expect((await evaluate(`document.querySelector('[data-slot="0"][data-op="${op}"]').title`)) === `Fixed: line 1 is ${op}.`, `${p.name}'s fixed line's title isn't \`Fixed: line 1 is ${op}.\``);
     expect((await text("hint")) === `Line 1 is already fixed as ${op}. Your job: fix line 2. Lines 3 to 6 are locked to nada.`, `${p.name}'s hint says \`${await text("hint")}\``);
-    // The given op is shown light, as the locked nadas are: the locked rows' opacity.
+    // The fixed op is shown light, as the locked nadas are: the locked rows' opacity.
     const shade = await evaluate(`[getComputedStyle(document.querySelector('[data-slot="0"][data-op="${op}"]')).opacity, getComputedStyle(document.querySelector('[data-slot="3"][data-op="nada"]')).opacity].join(" ")`);
-    expect(shade.split(" ")[0] === shade.split(" ")[1] && Number(shade.split(" ")[0]) < 1, `${p.name}'s given ${op} isn't light like the locked nadas: opacities ${shade}`);
+    expect(shade.split(" ")[0] === shade.split(" ")[1] && Number(shade.split(" ")[0]) < 1, `${p.name}'s fixed ${op} isn't light like the locked nadas: opacities ${shade}`);
     expect((await text("lesson")) === p.lesson, `${p.name}'s lesson is \`${await text("lesson")}\``);
     expect((await text("verdict")) === opening, `${p.name} as it opens says \`${await text("verdict")}\``);
     if (i === 1) {
@@ -368,6 +391,42 @@ try {
   await click('[data-puzzle="1"]');
   expect(!(await solvedNow()) && (await text("found")) === "" && (await locks()) === wantLocks(puzzles[1]), `the solved is_one reopens solved: \`${await text("verdict")}\``);
   expect(await isSolvedMark(1), "reopening is_one unmarks it");
+
+  // Puzzles 5 to 16 in turn: each as it opens, its locks (the fixed zero
+  // among them, light like a lesson's fixed line) and its hint; then solved
+  // by clicking its example's open lines, which opens the next.
+  const LINES = ["an empty", "a one-line", "a two-line", "a three-line", "a four-line", "a five-line", "a six-line"];
+  const span = (a, b) => (a === b ? `line ${a}` : `lines ${a} to ${b}`);
+  const lockedText = (n) => (n === STEPS ? "" : ` ${n + 1 === STEPS ? "Line" : "Lines"} ${n + 1 === STEPS ? n + 1 : `${n + 1} to ${STEPS}`} ${n + 1 === STEPS ? "is" : "are"} locked to nada.`);
+  let fixedSolved = 0;
+  await click(`[data-puzzle="${LESSONS.length}"]`);
+  for (let i = LESSONS.length; i < puzzles.length; i++) {
+    const p = puzzles[i];
+    expect((await text("title")) === `Puzzle ${i + 1} of 16: ${p.name}`, `puzzle ${i + 1} shows \`${await text("title")}\`, not ${p.name}`);
+    expect((await locks()) === wantLocks(p), `${p.name}'s lines are \`${await locks()}\`, not \`${wantLocks(p)}\``);
+    expect(!(await solvedNow()), `${p.name} opens solved`);
+    const n = p.lines;
+    const hint = p.fixed
+      ? `This can be solved with ${LINES[n]} Nibble program. Line ${n} is already fixed as zero. Your job: fix ${span(1, n - 1)}.${lockedText(n)}`
+      : `This can be solved with ${LINES[n]} Nibble program${n === STEPS ? "" : `, so ${span(n + 1, STEPS)} ${n + 1 === STEPS ? "is" : "are"} locked to nada`}.`;
+    expect((await text("hint")) === hint, `${p.name}'s hint says \`${await text("hint")}\`, not \`${hint}\``);
+    if (p.fixed) {
+      const last = `[data-slot="${n - 1}"][data-op="zero"]`;
+      expect((await evaluate(`document.querySelector('${last}').title`)) === `Fixed: line ${n} is zero.`, `${p.name}'s fixed zero's title is \`${await evaluate(`document.querySelector('${last}').title`)}\``);
+      const look = await evaluate(`(() => { const b = document.querySelector('${last}'); return [b.classList.contains("on"), b.disabled, getComputedStyle(b).opacity, b.closest(".slot").classList.contains("given")].join(" "); })()`);
+      expect(look === "true true 0.45 true", `${p.name}'s fixed zero isn't drawn as a fixed line (on, locked, light): \`${look}\``);
+      if (i === LESSONS.length) await screenshot(shotFile.replace(/\.png$/, "-fixed.png"));
+    }
+    for (let k = 0; k < n; k++) {
+      const op = OPS[opAt(p.example, k)];
+      if (op === "nada" || (p.fixed >> k) & 1 || (await solvedNow())) continue;
+      await click(`[data-slot="${k}"][data-op="${op}"]`);
+    }
+    expect(await solvedNow(), `${p.name}'s example, clicked in, says \`${await text("verdict")}\``);
+    if (p.fixed && (await solvedNow())) fixedSolved++;
+    if (i + 1 < puzzles.length) await click("#next");
+  }
+  expect(fixedSolved === puzzles.filter((p, i) => i >= LESSONS.length && p.fixed).length, `${fixedSolved} fixed-zero puzzles solved by clicks`);
   expect((await evaluate("localStorage.length")) === 0, "the page stored something in localStorage");
   expect(thrown.length === 0, `the page threw: ${thrown.join("; ")}`);
 } finally {
@@ -381,4 +440,5 @@ try {
 
 if (failures > 0) { console.error(`page_check: ${failures} of ${checks} checks failed`); process.exit(1); }
 const hardest = puzzles[puzzles.length - 1];
-console.log(`ok   page_check: the wasm matches the C on all ${PROGRAMS * 4} runs and its ${puzzles.length}-puzzle table (${first.name} ${first.count} programs, shortest ${first.shortest}; ... ${hardest.name} ${hardest.count}, shortest ${hardest.shortest}); in Chromium at ${WIDTH}px with no sideways scroll the first puzzle was solved by clicks, a reload started fresh with nothing stored, is_one and is_even were solved by line 2's zero and grumpy by one click (${checks} checks)`);
+const fixedCount = puzzles.filter((p, i) => i >= LESSONS.length && p.fixed).length;
+console.log(`ok   page_check: the wasm matches the C on all ${PROGRAMS * 4} runs and its ${puzzles.length}-puzzle table (${first.name} ${first.count} programs, shortest ${first.shortest}; ... ${hardest.name} ${hardest.count}, shortest ${hardest.shortest}); in Chromium at ${WIDTH}px with no sideways scroll the first puzzle was solved by clicks, a reload started fresh with nothing stored, is_one and is_even were solved by line 2's zero and grumpy by one click, and puzzles 5 to 16 opened with their locks and were solved by clicks, ${fixedCount} of them with a fixed zero (${checks} checks)`);

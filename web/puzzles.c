@@ -6,11 +6,11 @@
 //             those and reject the rest. Each has its name, how many programs
 //             solve it (`count`), and the length of the shortest (`shortest`);
 //             then the page's: how many lines are open (`lines`, the rest
-//             locked to nada), how many of those are given (`given`, the
-//             first lines, locked to their op in `start`), the program it
-//             opens with (`start`), and one program that solves it within
-//             those (`example`, its code: the shortest whose given lines are
-//             `start`'s).
+//             locked to nada), which of those are fixed (`fixed`, a bitmask,
+//             line k's bit 1 << (k - 1), each locked to its op in `start`),
+//             the program it opens with (`start`), and one program that
+//             solves it within those (`example`, its code: a shortest whose
+//             fixed lines are `start`'s).
 //   runs      run_progam's Status for every program on every input, as JSON:
 //             a string of 4,096 x 4 digits, program-major, for the check to
 //             hold the wasm to.
@@ -18,11 +18,13 @@
 // A program's length is its instructions before its trailing `nada`s: a
 // program of all `nada`s has length 0. The first four puzzles are the
 // lessons, in LESSONS' order, each with a sentence on the opcode it shows
-// (`lesson`): is_tiny ({0}, zero), is_one ({1}, line 1 given as decr),
-// is_even ({0, 2}, line 1 given as mod2) and grumpy ({ }, one line opening as
+// (`lesson`): is_tiny ({0}, zero), is_one ({1}, line 1 fixed as decr),
+// is_even ({0, 2}, line 1 fixed as mod2) and grumpy ({ }, one line opening as
 // zero, which nada, decr or mod2 solves). The other twelve ramp up: by
 // shortest length, fewest lines first; a tie by count, most first, then by
-// code. Each opens as all nada with its shortest length open.
+// code. Each has its shortest length open, and opens as all nada, but for
+// a hint: when some shortest program ends in zero, its last line is fixed
+// as zero.
 
 #include "../src/vm.c"
 
@@ -32,12 +34,13 @@ typedef struct {
     int code;
     const char *text;
     int lines;      // open lines
-    int given;      // the first lines, locked to start's ops
+    int fixed;      // the lines locked to start's ops, line k (from 0) bit k
     uint32_t start; // the program it opens with
 } Lesson;
 
 // The languages' codes are their members' bits: {0} is 1, { } is 0.
 static const Lesson LESSONS[NUM_LESSONS] = {
+    // fixed: is_one's and is_even's line 1 (bit 0).
     {1, "zero accepts when AX is 0; otherwise the run goes on to the next line.", 1, 0, 0},
     {2, "decr takes 1 from AX, and rejects when AX is already 0.", 2, 1, OP_DECR},
     {5, "mod2 takes 2 from AX when AX is 2 or 3, which leaves AX's last bit.", 2, 1, OP_MOD2},
@@ -77,9 +80,9 @@ typedef struct {
     int count;
     int shortest;
     int lines;
-    int given;
+    int fixed;
     uint32_t start;
-    int fits;       // programs that solve it within its lines and given ones
+    int fits;       // programs that solve it within its lines and fixed ones
     int example_len;
     uint32_t example;
 } Puzzle;
@@ -92,14 +95,23 @@ static int easier(const Puzzle *a, const Puzzle *b) {
     return a->code < b->code;
 }
 
-// Program n fits puzzle z's page: nothing past its open lines, and its given
+// Program n fits puzzle z's page: nothing past its open lines, and its fixed
 // lines as `start` has them.
 static int fits(const Puzzle *z, uint32_t n, int len) {
     if (len > z->lines) return 0;
-    for (int k = 0; k < z->given; k++) {
-        if (op_at(n, k) != op_at(z->start, k)) return 0;
+    for (int k = 0; k < z->lines; k++) {
+        if ((z->fixed >> k & 1) && op_at(n, k) != op_at(z->start, k)) return 0;
     }
     return 1;
+}
+
+// Some shortest program that solves language y ends in zero.
+static int shortest_ends_in_zero(const int *accepts, const int *lens, int y, int shortest) {
+    if (shortest == 0) return 0;
+    for (uint32_t n = 0; n < NUM_PROGRAMS; n++) {
+        if (accepts[n] == y && lens[n] == shortest && op_at(n, shortest - 1) == OP_ZERO) return 1;
+    }
+    return 0;
 }
 
 static void fail_puzzle(const char *why, int code) {
@@ -126,10 +138,29 @@ static void print_puzzles(void) {
     for (int y = 0; y < NUM_LANGUAGES; y++) {
         Puzzle *z = &puzzles[y];
         int l = lesson_of(y);
-        z->lines = l < NUM_LESSONS ? LESSONS[l].lines : z->shortest;
-        z->given = l < NUM_LESSONS ? LESSONS[l].given : 0;
-        z->start = l < NUM_LESSONS ? LESSONS[l].start : 0;
-        if (z->given >= z->lines) fail_puzzle("no open line is left to choose", y);
+        if (l < NUM_LESSONS) {
+            z->lines = LESSONS[l].lines;
+            z->fixed = LESSONS[l].fixed;
+            z->start = LESSONS[l].start;
+        } else {
+            // The hint: a shortest program's final zero, fixed.
+            z->lines = z->shortest;
+            z->fixed = 0;
+            z->start = 0;
+            if (shortest_ends_in_zero(accepts, lens, y, z->shortest)) {
+                z->fixed = 1 << (z->lines - 1);
+                uint32_t place = 1;
+                for (int k = 0; k < z->lines - 1; k++) place *= NUM_OPS;
+                z->start = OP_ZERO * place;
+            }
+        }
+        if (z->fixed >> z->lines) fail_puzzle("a fixed line is past its open lines", y);
+        int picks = 0;
+        for (int k = 0; k < z->lines; k++) {
+            if (!(z->fixed >> k & 1)) picks++;
+            else if (op_at(z->start, k) == OP_NADA) fail_puzzle("a fixed line's op isn't in its start", y);
+        }
+        if (picks == 0) fail_puzzle("no open line is left to choose", y);
         if (program_length(disassemble(z->start)) > z->lines) fail_puzzle("its start has an op on a locked line", y);
         if (accepts[z->start] == y) fail_puzzle("its start solves it", y);
         for (uint32_t n = 0; n < NUM_PROGRAMS; n++) {
@@ -141,6 +172,7 @@ static void print_puzzles(void) {
             }
         }
         if (z->fits == 0) fail_puzzle("no program solves it within its lines", y);
+        if (z->example_len != z->shortest) fail_puzzle("no shortest program fits its fixed lines", y);
     }
     // Sixteen: an insertion sort.
     for (int i = 1; i < NUM_LANGUAGES; i++) {
@@ -163,7 +195,7 @@ static void print_puzzles(void) {
         printf("  {\"code\": %d, \"name\": \"%s\", \"set\": [", z.code, NAMES[z.code]);
         for (size_t k = 0; k < lang.len; k++) printf("%s%d", k ? ", " : "", lang.items[k]);
         printf("], \"count\": %d, \"shortest\": %d, \"example\": %u", z.count, z.shortest, z.example);
-        printf(", \"lines\": %d, \"given\": %d, \"start\": %u", z.lines, z.given, z.start);
+        printf(", \"lines\": %d, \"fixed\": %d, \"start\": %u", z.lines, z.fixed, z.start);
         int l = lesson_of(z.code);
         if (l < NUM_LESSONS) printf(", \"lesson\": \"%s\"", LESSONS[l].text);
         printf("}%s\n", i + 1 < NUM_LANGUAGES ? "," : "");
