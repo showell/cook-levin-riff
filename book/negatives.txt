@@ -28,3 +28,4 @@ logic: The step is built in the ring as {{chapter Arithmetization}} builds it: N
 logic: The logic is the stepper's, gate for gate, NOT, AND and OR as in {{chapter Arithmetization}}.
 logic: Each AND and OR becomes a Tseitin variable, tied to its inputs by three clauses, and a NOT is a literal's sign:
 guarantee: No program of five or fewer lines decides {0, 2, 3}.
+guarantee: - the run **rejects implicitly** when it gets past the sixth instruction with neither of them having seen 00.

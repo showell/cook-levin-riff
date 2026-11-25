@@ -4,9 +4,15 @@ A small book about [cook-levin-riff](https://github.com/showell/cook-levin-riff)
 
 ## Introduction
 
-The machine in this book has one 2-bit register and four instructions, and every program is six instructions long. It is small enough that every program, every input and every step can be listed, so every claim about it can be checked by running all of them.
+Steve Howell devised a virtual machine with a single two-bit register, `AX`, and four instructions: `nada`, `zero`, `decr` and `mod2`. Every program is exactly six of those instructions. A run starts with `AX` holding the input, a number from 0 to 3, and ends in one of three ways:
 
-Steve Howell wrote the first version by hand in Python, in [virtual-machine](https://github.com/showell/virtual-machine): the machine (`virtual_machine.py`), a general polynomial library (`poly.py`) and a stepper that writes one step of the machine as polynomials (`stepper.py`). In the cook-levin-riff repository, the code was written by AI coding agents (Claude), with human supervision, as its `README.md` says in its second line.
+- **`zero` accepts** the input, the moment it finds `AX` at 00;
+- **`decr` rejects** it, the moment it finds `AX` at 00 (otherwise it takes 1 from `AX`);
+- the run **rejects implicitly** when it gets past the sixth instruction with neither of them having seen 00.
+
+`nada` leaves `AX` as it is, and `mod2` takes 2 from `AX` when it is 2 or 3. So each program sorts the four inputs into accepted and rejected, and the accepted ones are the language the program decides. The machine is small enough that every program, every input and every step can be listed, 4,096 programs in all, so every claim about it can be checked by running all of them.
+
+Steve wrote the first version by hand in Python, in [virtual-machine](https://github.com/showell/virtual-machine): the machine (`virtual_machine.py`), a general polynomial library (`poly.py`) and a stepper that writes one step of the machine as polynomials (`stepper.py`). In the cook-levin-riff repository, the code was written by AI coding agents (Claude), with human supervision, as its `README.md` says in its second line.
 
 ### What the book covers
 
