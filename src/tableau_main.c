@@ -10,7 +10,7 @@
 // of the SAT encoding for that puzzle's language with every program bit
 // free: each cell names the formula's literals for the four state wires
 // (hb, lb, halted, accepted), from sat_encode's trace; 0 and 1 are
-// constants, xN is variable N and -xN its complement. book/book.shale holds
+// constants, vN is variable N and -vN its complement. book/book.shale holds
 // the book's two tables to this output, byte for byte.
 // A unity build, as main.c is.
 
@@ -34,8 +34,8 @@ static void cell(StepState s) {
 static void literal(Lit x) {
     if (x == SAT_TRUE) printf("1");
     else if (x == SAT_FALSE) printf("0");
-    else if (x > 0) printf("x%d", x);
-    else printf("-x%d", -x);
+    else if (x > 0) printf("v%d", x);
+    else printf("-v%d", -x);
 }
 
 int main(void) {
@@ -61,7 +61,7 @@ int main(void) {
     printf("|---|---|---|---|---|---|\n");
     for (int k = 0; k <= MAX_STEPS; k++) {
         if (k == 0) printf("| start | |");
-        else printf("| %d | x%d x%d |", k, sat_op_hb(k), sat_op_lb(k));
+        else printf("| %d | v%d v%d |", k, sat_op_hb(k), sat_op_lb(k));
         for (int n = 0; n < NUM_INPUTS; n++) {
             SatState t = c.trace[n][k];
             printf(" ");

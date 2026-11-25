@@ -543,14 +543,14 @@ All four comparators say yes, so the AND lights "decides". Change one program bi
 
 ### The circuit, turned around
 
-The want register is fixed at the puzzle's bits. The program register becomes twelve unknown wires, `x1` to `x12`. The output wire is required to be 1. Everything in between is the same 24 step units and four comparators, and every wire in them is now an unknown too, tied to the wires feeding it by the rule of its gate.
+The want register is fixed at the puzzle's bits. The program register becomes twelve unknown wires, `v1` to `v12`. The output wire is required to be 1. Everything in between is the same 24 step units and four comparators, and every wire in them is now an unknown too, tied to the wires feeding it by the rule of its gate.
 
 The question the circuit now asks
 ```dot
 digraph {
   rankdir=TB;
   node [shape=box, style=rounded];
-  x [label="program: x1 .. x12\nunknown"];
+  x [label="program: v1 .. v12\nunknown"];
   want [label="want register\nfixed"];
   c [label="the same circuit\nevery wire an unknown"];
   out [label="decides = 1\nrequired"];
@@ -600,19 +600,19 @@ The bottom row's `accepted` flags read 0, 1, 1, 1, which is {1, 2, 3}, the langu
 
 ### The tableau of every program
 
-Now leave the program free. The same grid, as the SAT encoding builds it for {1, 2, 3}, names in each cell the formula's literals for the four state wires, `hb lb halted accepted`. A 1 or 0 is a constant, and `xN` is the formula's variable N. Variables 1 to 12 are the program's bits, two per line.
+Now leave the program free. The same grid, as the SAT encoding builds it for {1, 2, 3}, names in each cell the formula's literals for the four state wires, `hb lb halted accepted`. A 1 or 0 is a constant, and `vN` is the formula's variable N. Variables 1 to 12 are the program's bits, two per line.
 
 | step | line's bits | core 0 | core 1 | core 2 | core 3 |
 |---|---|---|---|---|---|
 | start | | 0 0 0 0 | 0 1 0 0 | 1 0 0 0 | 1 1 0 0 |
-| 1 | x1 x2 | 0 0 x15 x14 | 0 x68 0 0 | x67 x15 0 0 | x272 x68 0 0 |
-| 2 | x3 x4 | 0 0 x26 x25 | 0 x75 x72 x71 | x150 x151 x141 x138 | x295 x296 x286 x283 |
-| 3 | x5 x6 | 0 0 x36 x35 | 0 x88 x86 x85 | x180 x181 x173 x172 | x325 x326 x318 x317 |
-| 4 | x7 x8 | 0 0 x46 x45 | 0 x101 x99 x98 | x210 x211 x203 x202 | x355 x356 x348 x347 |
-| 5 | x9 x10 | 0 0 x56 x55 | 0 x114 x112 x111 | x240 x241 x233 x232 | x385 x386 x378 x377 |
-| 6 | x11 x12 | 0 0 x66 x65 | 0 x127 x125 x124 | x270 x271 x263 x262 | x415 x416 x408 x407 |
+| 1 | v1 v2 | 0 0 v15 v14 | 0 v68 0 0 | v67 v15 0 0 | v272 v68 0 0 |
+| 2 | v3 v4 | 0 0 v26 v25 | 0 v75 v72 v71 | v150 v151 v141 v138 | v295 v296 v286 v283 |
+| 3 | v5 v6 | 0 0 v36 v35 | 0 v88 v86 v85 | v180 v181 v173 v172 | v325 v326 v318 v317 |
+| 4 | v7 v8 | 0 0 v46 v45 | 0 v101 v99 v98 | v210 v211 v203 v202 | v355 v356 v348 v347 |
+| 5 | v9 v10 | 0 0 v56 v55 | 0 v114 v112 v111 | v240 v241 v233 v232 | v385 v386 v378 v377 |
+| 6 | v11 v12 | 0 0 v66 v65 | 0 v127 v125 v124 | v270 v271 v263 v262 | v415 v416 v408 v407 |
 
-Each variable here is a gate's output, and its three clauses tie it to the cell above and to its row's two program bits. Some cells are constants the whole way down, and the constants carry facts. Core 0 starts at `AX` = 0, and every opcode keeps 0 at 0 or halts, so its `AX` bits are the constant 0 in every row, and the encoder folds them away. Core 1 starts at 1, and its `hb` stays 0 because `AX` can only fall. Some literals repeat across cores: `x15` is core 0's `halted` after line 1 and core 2's `lb`, since both are the same function of `x1` and `x2`: line 1 is `decr`. The encoder builds that gate once and reuses it. Setting `x1` to `x12` to the program above and propagating fills every cell with the first table's values; the last four clauses then require the bottom row's `accepted` literals, `x65`, `x124`, `x262` and `x407`, to be 0, 1, 1 and 1.
+Each variable here is a gate's output, and its three clauses tie it to the cell above and to its row's two program bits. Some cells are constants the whole way down, and the constants carry facts. Core 0 starts at `AX` = 0, and every opcode keeps 0 at 0 or halts, so its `AX` bits are the constant 0 in every row, and the encoder folds them away. Core 1 starts at 1, and its `hb` stays 0 because `AX` can only fall. Some literals repeat across cores: `v15` is core 0's `halted` after line 1 and core 2's `lb`, since both are the same function of `v1` and `v2`: line 1 is `decr`. The encoder builds that gate once and reuses it. Setting `v1` to `v12` to the program above and propagating fills every cell with the first table's values; the last four clauses then require the bottom row's `accepted` literals, `v65`, `v124`, `v262` and `v407`, to be 0, 1, 1 and 1.
 
 ## Cook-Levin as SAT
 
