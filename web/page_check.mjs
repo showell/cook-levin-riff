@@ -301,7 +301,10 @@ try {
   // Each open button's tip says what its op does to each AX.
   const tips = await evaluate("['nada', 'zero', 'decr', 'mod2'].map((op) => document.querySelector(`[data-slot=\"0\"][data-op=\"${op}\"]`).title).join(' | ')");
   expect(tips === "nada: 0->0, 1->1, 2->2, 3->3 | zero: 0->A, 1->1, 2->2, 3->3 (A accepts) | decr: 0->R, 1->0, 2->1, 3->2 (R rejects) | mod2: 0->0, 1->1, 2->0, 3->1", `the buttons' tips are \`${tips}\``);
-  expect(await isShut(1), "the second puzzle is open before the first is solved");
+  // Every puzzle is open from the start: a player may jump ahead.
+  let anyShut = false;
+  for (let i = 1; i < puzzles.length; i++) anyShut = anyShut || (await isShut(i));
+  expect(!anyShut, "a puzzle past the first is shut before the first is solved");
   expect((await text("lesson")) === first.lesson, `the first puzzle's lesson says \`${await text("lesson")}\``);
   expect((await locks()) === wantLocks(first), `the first puzzle's lines are \`${await locks()}\`, not \`${wantLocks(first)}\``);
   expect((await text("intro")).includes("The first four puzzles teach you Nibble"), "the intro doesn't say the first four puzzles teach Nibble");
@@ -328,6 +331,9 @@ try {
   expect(!(await evaluate("document.getElementById('intro').hidden")) && (await evaluate("document.getElementById('help').hidden")), "the first puzzle doesn't show the intro without a Help link");
   expect((await text("found")) === `You found one of ${first.count.toLocaleString("en-US")} programs that do this.`, `after solving the page says \`${await text("found")}\``);
   expect(!(await isShut(1)), "solving the first puzzle doesn't open the second");
+  // A solved puzzle's number turns green: the solid good colour, not the panel's.
+  const colours = await evaluate(`[getComputedStyle(${button(0)}).backgroundColor, getComputedStyle(${button(1)}).backgroundColor].join(" | ")`);
+  expect(colours.split(" | ")[0] === "rgb(31, 122, 61)" && colours.split(" | ")[1] !== colours.split(" | ")[0], `the solved first puzzle's button isn't green: \`${colours}\``);
   // No sideways scroll at a phone's width: not the page, and not the trace,
   // whose box would scroll on its own.
   const widths = await evaluate(`(() => { const s = document.scrollingElement, t = document.getElementById("trace"), tb = t.querySelector("table");
@@ -340,14 +346,14 @@ try {
   expect(step1 === "accept AX=1 AX=2 AX=3", `the trace's first step shows \`${step1}\``);
   await screenshot(shotFile);
 
-  // A reload forgets it all: puzzle 1 fresh, only it open, nothing stored.
+  // A reload forgets it all: puzzle 1 fresh, none marked solved, nothing stored.
   await open(url);
   expect((await text("title")) === `Puzzle 1 of 16: ${first.name}`, `after a reload the page shows \`${await text("title")}\``);
   expect(!(await solvedNow()) && !(await isSolvedMark(0)), "after a reload the first puzzle is solved");
   expect((await locks()) === wantLocks(first), `after a reload the first puzzle's lines are \`${await locks()}\``);
-  let shut = true;
-  for (let i = 1; i < puzzles.length; i++) shut = shut && (await isShut(i));
-  expect(shut, "after a reload a puzzle past the first is open");
+  let marked = false;
+  for (let i = 0; i < puzzles.length; i++) marked = marked || (await isSolvedMark(i));
+  expect(!marked, "after a reload a puzzle is still marked solved");
   expect((await evaluate("localStorage.length")) === 0, `localStorage holds ${await evaluate("localStorage.length")} items`);
 
   // Solved again, then the fixed-line lessons, each by one click on line
