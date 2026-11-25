@@ -254,7 +254,7 @@ try {
 
   // No Run button: the fresh all-nada program has run already, and is wrong.
   expect(!(await evaluate("!!document.getElementById('run')")), "the page has a Run button");
-  expect((await text("verdict")) === "Input 0 should be accepted, and your program rejected it.", `the all-nada verdict says \`${await text("verdict")}\``);
+  expect((await text("verdict")) === "Your program falsely rejects 0.", `the all-nada verdict says \`${await text("verdict")}\``);
   expect((await evaluate("document.querySelectorAll('#trace tbody tr').length")) === STEPS + 2, "the trace hasn't a row a step, then result and want");
   expect((await evaluate("document.querySelectorAll('#trace thead th[data-input]').length")) === 4, "the trace hasn't a column an input");
 
@@ -300,8 +300,8 @@ try {
   // 2's zero, line 1 given and locked.
   await click('[data-slot="0"][data-op="zero"]');
   expect(await solvedNow(), "zero on line 1 doesn't solve the first puzzle");
-  const given = [[1, "decr", "Input 1 should be accepted, and your program rejected it."],
-    [2, "mod2", "Input 0 should be accepted, and your program rejected it."]];
+  const given = [[1, "decr", "Your program falsely rejects 1."],
+    [2, "mod2", "Your program falsely rejects 0 and 2."]];
   for (const [i, op, opening] of given) {
     await click("#next");
     const p = puzzles[i];
@@ -337,7 +337,7 @@ try {
   expect((await text("goal")) === "Reject all inputs.", `grumpy's goal is \`${await text("goal")}\``);
   expect((await locks()) === wantLocks(grumpy), `grumpy's lines are \`${await locks()}\``);
   expect((await text("lesson")) === grumpy.lesson, `grumpy's sentence is \`${await text("lesson")}\``);
-  expect((await text("verdict")) === "Input 0 should be rejected, and your program accepted it.", `grumpy as it opens says \`${await text("verdict")}\``);
+  expect((await text("verdict")) === "Your program falsely accepts 0.", `grumpy as it opens says \`${await text("verdict")}\``);
   await click('[data-slot="0"][data-op="nada"]');
   expect(await solvedNow(), `after nada on line 1 grumpy says \`${await text("verdict")}\``);
   expect((await isSolvedMark(3)) && !(await isShut(4)), "solving grumpy doesn't mark it and open the next");
@@ -349,6 +349,10 @@ try {
   expect(!(await solvedNow()), "zero on line 1 solves grumpy");
   await click("#next");
   expect((await text("title")) === `Puzzle 5 of 16: ${puzzles[4].name}`, `after grumpy Next shows \`${await text("title")}\``);
+  // Wrong both ways, every input named: zero on is_odd's line 1 accepts 0
+  // and rejects 1 and 3.
+  await click('[data-slot="0"][data-op="zero"]');
+  expect((await text("verdict")) === "Your program falsely accepts 0. It falsely rejects 1 and 3.", `zero on is_odd says \`${await text("verdict")}\``);
 
   // A solved puzzle reopens as a puzzle: unsolved, at its start, still
   // marked solved in the row.
