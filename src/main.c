@@ -4,6 +4,9 @@
 
 #include "vm.c"
 #include "search.c"
+#include "stepper.c"
+#include "poly.c"
+#include "ring_int.c"
 
 int main(void) {
     vm_test();

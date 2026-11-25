@@ -2,6 +2,8 @@
 
 #include "search.h"
 
+#include "stepper.h"
+
 #include <stdlib.h>
 
 void solutions_fill(Solutions *s) {
@@ -22,14 +24,20 @@ void print_lang(FILE *out, Lang lang) {
     fputc(']', out);
 }
 
-// TODO(stepper): the stepper's cross-check, which a later task fills once
-// stepper.c exists. Python's find_solutions asserts, for the example
-// program and each input 0..3, that `stepper.test_with_stepper(program, i)`
-// equals `i in lang`. It prints nothing, so the golden output does not
-// depend on it; until then this hook checks nothing.
+// Python's find_solutions asserts, for the example program and each input
+// 0..3, that `stepper.test_with_stepper(program, i)` equals `i in lang`.
+// It prints nothing, so the golden output does not depend on it; a
+// disagreement stops the program, as Python's assert raises.
+// tests/test_cross_check.c holds every program, not only the examples.
 static void cross_check_with_stepper(Program example, Lang lang) {
-    (void)example;
-    (void)lang;
+    for (int i = 0; i < NUM_INPUTS; i++) {
+        int accepted = test_with_stepper(example, i);
+        if (accepted != (lang_has(lang, i) != 0)) {
+            fprintf(stderr, "find_solutions: the stepper gives %d on input %d, the language says %d\n", accepted, i,
+                    lang_has(lang, i));
+            abort();
+        }
+    }
 }
 
 void find_solutions(FILE *out) {

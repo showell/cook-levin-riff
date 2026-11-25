@@ -10,6 +10,9 @@
 
 #include "../src/vm.c"
 #include "../src/search.c"
+#include "../src/stepper.c"
+#include "../src/poly.c"
+#include "../src/ring_int.c"
 
 static const char *GOLDEN = "tests/golden/find_solutions.txt";
 
