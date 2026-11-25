@@ -58,13 +58,27 @@ to `out/`.
 
 The machine's assembly language is called **Nibble**. `web/` is a puzzle
 page for it: each of the 16 languages is a puzzle ("accept exactly {0, 3}"),
-solved by picking each of the six instructions and pressing Run, which shows
-`AX` after every step on all four inputs and says which input went wrong.
-The puzzles go easiest first, by how many of the 4,096 programs solve each
-(883 for `is_even` down to 1 for `is_not_one`). Each says how short its
-best program is ("This can be solved with a two-line Nibble program", a
-program's length being its instructions before its trailing `nada`s), and
-once solved, how many programs solve it. Progress stays in the browser.
+solved by picking the instructions. There is no Run button: every pick runs
+the program, and the trace shows `AX` after every step on all four inputs
+(a row a step, a column an input, so it fits a phone) and says which input
+went wrong.
+
+The first five puzzles are lessons, each with a sentence on one opcode:
+{0} (`zero`), {1} (`decr, zero`), {0, 2} (`mod2, zero`), {2} (`decr, decr,
+zero`, where the trace shows `decr` rejecting at 0) and { } (all `nada`).
+The other eleven ramp up, by the length of the shortest program, fewest
+lines first, then by how many of the 4,096 programs solve each, most first
+(`is_odd`, three lines and 520 programs, down to `is_not_one`, six lines and
+one program). Each puzzle says how short its best program is ("This can be
+solved with a two-line Nibble program", a program's length being its
+instructions before its trailing `nada`s), and its lines past that length
+are locked to `nada`; every line starts as `nada`, so the player chooses
+where to replace it. The nada lesson is the exception: all `nada` solves
+it, so it is a one-line puzzle whose line starts as `zero`, and the player
+solves it by making that line `nada`. Every puzzle opens unsolved. The
+moment a pick solves it, the page says so, with how many six-line programs
+solve it, and the next puzzle opens. Progress stays in the browser, kept by
+language, so a new order keeps it.
 
 The page runs this repository's C machine: `web/nibble.c` is `src/vm.c`
 compiled to wasm by `zig cc -target wasm32-freestanding`, with no libc
@@ -76,11 +90,13 @@ shale web/build.shale      # the table, the wasm, the page in out/web/site, and 
 ```
 
 The check, `web/page_check.mjs`, holds the wasm to the C on all 4,096 × 4
-runs and to the puzzle table, then loads the page in headless Chromium at a
-phone's width, solves the first puzzle by clicking, and sees the progress
-outlive a reload; it saves a screenshot to `out/web/page.png`. The page's
-files are named by their bytes, and its URLs are relative, so `out/web/site`
-can be served from any folder.
+runs and to the puzzle table and its order, then loads the page in headless
+Chromium at a phone's width (390px), solves the first puzzle by clicking,
+sees that neither the page nor the trace scrolls sideways and that the
+locked lines are locked, and sees the progress outlive a reload and an older
+save; it saves a screenshot to `out/web/page.png`. The page's files are
+named by their bytes, and its URLs are relative, so `out/web/site` can be
+served from any folder.
 
 ## Status
 
