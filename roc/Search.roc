@@ -10,10 +10,10 @@ import Stepper
 
 Search :: [].{
 
-	## The whole report. A function of `{}`, not a constant: a constant is
-	## worked out by `roc check` itself, which has no step limit.
-	report : {} -> Str
-	report = |{}| {
+	## The whole report. Its inputs are all constants, so the compiler works
+	## it out as it builds, and the built program only prints it.
+	report : Str
+	report = {
 		codes = List.from_iter(U64.until(0, Machine.program_count)).map(|number| Machine.language_code(Machine.accepted_language(Machine.disassemble(number))))
 		sections = List.from_iter(U64.until(0, Machine.language_count)).map(|code| language_section(codes, code))
 		Str.join_with(sections, "")

@@ -4,6 +4,6 @@
 import Search
 
 main! = |_arguments| {
-	echo!(Search.report({}))
+	echo!(Search.report)
 	Ok({})
 }

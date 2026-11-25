@@ -1,0 +1,29 @@
+-- roc/bench.shale: the composition's time, Roc's release build against the
+-- C at -O2, on this box. From the repository's root:
+--
+--   shale roc/bench.shale
+--
+-- It builds roc/Composition.roc once with `--opt=speed` (LLVM; minutes, not
+-- seconds) and src/compose_main.c with gcc -O2, then runs each three times
+-- and prints every run's wall and CPU time. `composition 6` composes all six
+-- steps and runs the proof at 2^14 points; `composition 5` composes five
+-- steps and no proof, so the two show where the time goes. The C's
+-- compose_main composes all six and proves nothing (its test does).
+
+const WANT = "roc-bench: the Roc port's pinned compiler"
+const RAN = "roc-bench: a program this script just built"
+
+local pin = trim(read("roc/roc-version"))
+local roc = real("tools:roc-" .. pin .. "/roc")
+mkdir("out/roc")
+local b = must(run({roc, "build", "--opt=speed", "--output=" .. real("out/roc") .. "/composition-speed", "Composition.roc"}, {cwd = "roc", timeout_ms = 1200000, tail = 10, want = WANT, nice = 10}))
+print("built composition --opt=speed in " .. b.ms .. " ms")
+must(run({"gcc", "-O2", "-std=c11", "-o", real("out/roc") .. "/compose-c", real("src/compose_main.c")}, {timeout_ms = 120000, tail = 20}))
+print("built compose_main -O2")
+
+for argv in {{real("out/roc/composition-speed"), "6"}, {real("out/roc/composition-speed"), "5"}, {real("out/roc/compose-c")}} do
+  for _ = 1, 3 do
+    local r = must(run(argv, {timeout_ms = 120000, tail = 3, want = RAN}))
+    print(basename(argv[1]) .. " " .. join(slice(argv, 2, #argv), " ") .. ": " .. r.ms .. " ms wall, " .. r.cpu_ms .. " ms CPU")
+  end
+end
