@@ -21,10 +21,18 @@ variables, and composing six steps gives the whole program as polynomials.
   operation and its operands (Python's integers never overflow).
 - `src/poly.c`: the general multivariate polynomial of poly.py, its
   canonical order and its printing exactly Python's `str`.
+- `src/stepper.c`: stepper.py, one machine step as four polynomials in six
+  0/1 variables (NOT, AND and OR as 1 - x, x*y and x + y - x*y), built
+  once, unreduced (hb' has 786 terms, lb' 2,979), and `step` and
+  `test_with_stepper` over them; beside them a compiled form of each
+  polynomial over a 6-slot value array, for checking every program fast.
 - `tests/`: the Python's asserts, every program on every input against a
   table of each opcode's rule, and the golden test against the Python's
   output (`tests/golden/find_solutions.txt`); Poly's strings against
-  poly.py's, a product's and a power's as golden files.
+  poly.py's, a product's and a power's as golden files; the four step
+  polynomials' strings against stepper.py's (`tests/golden/step_*.txt`);
+  and the stepper against the interpreter on every one of the 4,096
+  programs and all 4 inputs (Python checks only the 16 example programs).
 
 ## Building and testing
 
@@ -40,10 +48,11 @@ to `out/`.
 
 ## Status
 
-The machine and the search are ported, and their output matches the
-Python's byte for byte, and so does the general polynomial's printing. Still
-to come: the stepper and its cross-check in `find_solutions` (a TODO hook in
-`src/search.c` for now), then a Boolean ring that composes all six steps.
+The machine, the search, the general polynomial and the stepper are
+ported. The output matches the Python's byte for byte, and so do the
+polynomials' printing, the four step polynomials included; `find_solutions`
+cross-checks the stepper on its example programs as the Python does. Still
+to come: a Boolean ring (x² = x) that composes all six steps.
 
 ## License
 
