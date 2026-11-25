@@ -411,6 +411,19 @@ try {
   // At a phone's width each outcome cell holds its words without clipping.
   const clipped = await evaluate("[...document.querySelectorAll('#trace tr[data-row=\"outcome\"] td')].filter((c) => c.scrollWidth > c.clientWidth).length");
   expect(clipped === 0, `${clipped} of the outcome row's cells are clipped at ${WIDTH}px`);
+  // The machine code follows every pick: is_two's zero on line 1 and its
+  // fixed zero on line 3, two bits a line, line 1 first, and its number.
+  expect((await text("machine-code")) === "01 00 01 00 00 00  (#17)", `is_two's machine code reads \`${await text("machine-code")}\``);
+  await click('[data-slot="0"][data-op="decr"]');
+  expect((await text("machine-code")) === "10 00 01 00 00 00  (#18)", `after decr on line 1 the machine code reads \`${await text("machine-code")}\``);
+  // Its "?" opens a line about the bits, and closes it again.
+  expect(await evaluate("document.getElementById('code-explain').hidden"), "the machine code's explanation shows before its ? is pressed");
+  await click("#code-help");
+  expect(!(await evaluate("document.getElementById('code-explain').hidden")) && (await text("code-explain")).startsWith("The machine code:"), "the machine code's ? doesn't open its explanation");
+  await click("#code-help");
+  expect(await evaluate("document.getElementById('code-explain').hidden"), "the machine code's ? doesn't close its explanation");
+  const sideways = await evaluate("document.scrollingElement.scrollWidth > document.scrollingElement.clientWidth");
+  expect(!sideways, `with the machine code beside the buttons the page scrolls sideways at ${WIDTH}px`);
 
   // A solved puzzle reopens as a puzzle: unsolved, at its start, still
   // marked solved in the row.
