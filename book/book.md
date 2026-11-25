@@ -75,24 +75,6 @@ The Cook-Levin theorem says that satisfiability of Boolean formulas is NP-comple
 
 Each number here comes from the repository: a commit, cited by its short hash, the `README.md`, a golden file, or a program run while the book was written, named where it is used. Code is quoted from the repository as it stands when the book is built. The Python repository's history is cited by links to its commits.
 
-## How it got here
-
-This chapter is the short history, as two git logs record it.
-
-### The Python, 2023
-
-The virtual-machine log opens on 2023-03-11 with [f01c1c3](https://github.com/showell/virtual-machine/commit/f01c1c3) and runs through 158 commits to 2023-04-08, all under Steve's address. The stepper arrived on its first day ([ba9388a](https://github.com/showell/virtual-machine/commit/ba9388a)), the polynomial library from 2023-03-12 ([6bb7429](https://github.com/showell/virtual-machine/commit/6bb7429)), and the step polynomials on 2023-03-14 ([a4e4765](https://github.com/showell/virtual-machine/commit/a4e4765)), the same day as `MAX_STEPS` of 6. The last 2023 commits, on 2023-04-08, begin with "Eliminate most poly-related stuff" ([72bf4c4](https://github.com/showell/virtual-machine/commit/72bf4c4)).
-
-### The composition that stalled, 2026
-
-Five commits marked "wip" followed on 2026-01-28. On 2026-04-16 a measuring harness, `compose.py`, was added with Claude as co-author ([1a5f6fa](https://github.com/showell/virtual-machine/commit/1a5f6fa)). Its message says that step 1 composed in about 0.9 s and that step 2 ran past 30 s in Python, and that those numbers motivated a port to Go. The same afternoon `compose.py` was removed, "porting six-step composition to Go instead" ([a2406b5](https://github.com/showell/virtual-machine/commit/a2406b5)). The next day an essay Claude had written about the project was parked as `DEEP_READ.md` ([94c3d31](https://github.com/showell/virtual-machine/commit/94c3d31)); it lists the six-step composition as the step the project stops before.
-
-The Go port lives in a repository of its own, outside this record. By Steve's account it drowned in big integers; that account is unchecked here.
-
-### The finish, 2026-11-25
-
-The cook-levin-riff log covers one day. The C port of the machine and the search came first (`8051ce2`), then the general polynomial (`ccde4f8`) and the stepper (`5b14d74`). The Boolean ring came at 15:59 (`0c233e3`), and all six steps composed, proved on all 2^14 points, at 16:23 (`1146d43`). The Nibble page (`b1fe11f`), the Roc port (`6206236`), the SAT encoding (`8de51b7`), rocsat as an oracle (`f977bcc`) and the JavaScript port (`e996749`, `c251895`) followed. The first commit is stamped 15:32 and the last 19:21.
-
 ## The machine
 
 The machine holds one register, `AX`, of 2 bits, so `AX` is 0, 1, 2 or 3. A run starts with `AX` set to the input. Its program is six instructions, each one of four opcodes, and the machine's assembly language is called Nibble.
@@ -258,6 +240,140 @@ A program's length is its instructions before its trailing `nada`s. Each puzzle 
 ### Help for a newcomer
 
 The page's intro, behind a Help link after puzzle 1, says what a language is here, how the machine runs a program four times to find the language it recognizes, and works `decr, zero` through to {1}; the page's check holds that example to the machine.
+
+## The machine as a circuit
+
+This chapter builds the machine as hardware, a plain digital circuit with two inputs and one output. Its inputs are a language and a program, and its output is true when the program decides the language and false otherwise. It is combinational: the whole run is laid out in space, and every wire settles at once. {{chapter The Cook-Levin machine}} then puts the same circuit to Cook and Levin's use.
+
+### The whole circuit
+
+The circuit has two registers on its left. The *want* register holds four bits, one per input, saying which inputs the language accepts: {1, 2, 3} is `0111`, input 0's bit first. The *program* register holds the twelve bits of a program, two per line. The program goes to four cores side by side, one per input, and each core answers whether its input is accepted. Four comparators check each answer against its want bit, and a final AND joins them.
+
+The circuit, end to end
+```dot
+digraph {
+  rankdir=TB;
+  node [shape=box, style=rounded];
+  prog [label="program register, 12 bits"];
+  want [label="want register\n0111"];
+  cores [shape=record, label="core 0\nAX=0|core 1\nAX=1|core 2\nAX=2|core 3\nAX=3"];
+  same [shape=record, label="same?|same?|same?|same?"];
+  all [label="AND"];
+  out [label="decides"];
+  prog -> cores;
+  cores -> same [label="accepted"];
+  want -> same;
+  same -> all;
+  all -> out;
+}
+```
+
+### One core
+
+A core is the machine itself, unrolled. Its `AX` register is wired to its input's number, and six step units sit in a chain, each fed by the one before it and by its own line's two bits from the program register. What leaves the sixth unit's `accepted` wire is the core's answer.
+
+One core: six step units in a chain
+```dot
+digraph {
+  rankdir=LR;
+  node [shape=box, style=rounded];
+  ax [label="AX = input\nhalted = 0\naccepted = 0"];
+  s1 [label="step 1"];
+  s2 [label="step 2"];
+  s3 [label="step 3"];
+  s4 [label="step 4"];
+  s5 [label="step 5"];
+  s6 [label="step 6"];
+  ax -> s1 -> s2 -> s3 -> s4 -> s5 -> s6;
+}
+```
+
+Each step unit has six wires in (`hb` and `lb`, the two bits of `AX`, the flags `halted` and `accepted`, and the line's `op_hb`, `op_lb`) and four wires out, the same four state wires for the next unit. Four cores of six units make 24 step units in all, every one the same.
+
+### Inside a step unit
+
+A step unit is built from two-input AND and OR gates and inverters, and its layout is a classic one: decode, compute every opcode at once, select.
+
+One step unit
+```dot
+digraph {
+  rankdir=TB;
+  node [shape=box, style=rounded];
+  ax [label="AX decoder\nis_0 is_1 is_2 is_3"];
+  op [label="op decoder + halted\nenable: nada zero decr mod2"];
+  mods [shape=record, label="nada|zero|decr|mod2"];
+  join [label="OR together\nbecomes_1 becomes_2 becomes_3\naccepts, halts"];
+  out [label="hb' lb' halted' accepted'"];
+  ax -> mods;
+  op -> mods;
+  mods -> join;
+  join -> out;
+}
+```
+
+- **The AX decoder** turns the two bits `hb`, `lb` into four one-hot wires, one per value: `is_0` is (complement of `hb`) AND (complement of `lb`), and so on, four AND gates.
+- **The op decoder** does the same to the line's two bits, giving one wire per opcode (`nada` 00, `zero` 01, `decr` 10, `mod2` 11). It then gates them with `halted`: a halted machine acts as `nada`, so `nada`'s enable is its wire OR `halted`, and each other opcode's enable is its wire AND the complement of `halted`.
+- **The four opcode modules** each say, for their own opcode, which value `AX` becomes, and whether the step accepts or halts. Value 0 is what remains when `becomes_1`, `becomes_2` and `becomes_3` are all 0, so it takes care of itself.
+- **The output stage** ORs the four modules' wires together, since only one module is enabled, then folds the one-hot value back into two bits: `hb'` is `becomes_2` OR `becomes_3`, and `lb'` is `becomes_1` OR `becomes_3`. The flags only ever turn on: `accepted'` is `accepted` OR the step's accept, and `halted'` likewise.
+
+### Each opcode as gates
+
+With `e` for the module's enable wire, every opcode is a handful of AND gates on the decoder's wires:
+
+| opcode | becomes_1 | becomes_2 | becomes_3 | accepts | halts |
+|---|---|---|---|---|---|
+| `nada` | `is_1` AND e | `is_2` AND e | `is_3` AND e | 0 | 0 |
+| `zero` | `is_1` AND e | `is_2` AND e | `is_3` AND e | `is_0` AND e | 0 |
+| `decr` | `is_2` AND e | `is_3` AND e | 0 | 0 | `is_0` AND e |
+| `mod2` | (`is_1` OR `is_3`) AND e | 0 | 0 | 0 | 0 |
+
+Read across a row and the opcode's rule appears. `nada` passes the value through. `zero` passes it through too and adds one gate that fires on 0. `decr` shifts each wire down one place, 2 to 1 and 3 to 2, lets 1 fall to 0, and turns 0 into a halt. `mod2` sends both odd values to 1 and lets 2 fall to 0. The whole unit is 34 two-input gates.
+
+`decr`, the busiest module, drawn alone
+```dot
+digraph {
+  rankdir=LR;
+  node [shape=box, style=rounded];
+  e [label="enable e"];
+  w [label="is_0  is_2  is_3"];
+  g [shape=record, label="AND|AND|AND"];
+  o [shape=record, label="halts|becomes_1|becomes_2"];
+  e -> g;
+  w -> g;
+  g -> o;
+}
+```
+
+### A program through it
+
+Load the want register with `0111` and the program register with `decr, mod2, zero, decr, zero, nada`, the five-line answer to `is_not_tiny`, whose bits are `10 11 01 10 01 00`. The four cores settle like this:
+
+| core | the run | accepted | want | same? |
+|---|---|---|---|---|
+| 0 | `decr` finds `AX` at 0: reject | 0 | 0 | yes |
+| 1 | `decr` to 0, `mod2` keeps 0, `zero`: accept | 1 | 1 | yes |
+| 2 | `decr` to 1, `mod2` keeps 1, `zero` passes, `decr` to 0, `zero`: accept | 1 | 1 | yes |
+| 3 | `decr` to 2, `mod2` folds 2 to 0, `zero`: accept | 1 | 1 | yes |
+
+All four comparators say yes, so the AND lights "decides". Change one program bit and some core's answer flips, its comparator reports a mismatch, and the light goes out.
+
+## How it got here
+
+This chapter is the short history, as two git logs record it.
+
+### The Python, 2023
+
+The virtual-machine log opens on 2023-03-11 with [f01c1c3](https://github.com/showell/virtual-machine/commit/f01c1c3) and runs through 158 commits to 2023-04-08, all under Steve's address. The stepper arrived on its first day ([ba9388a](https://github.com/showell/virtual-machine/commit/ba9388a)), the polynomial library from 2023-03-12 ([6bb7429](https://github.com/showell/virtual-machine/commit/6bb7429)), and the step polynomials on 2023-03-14 ([a4e4765](https://github.com/showell/virtual-machine/commit/a4e4765)), the same day as `MAX_STEPS` of 6. The last 2023 commits, on 2023-04-08, begin with "Eliminate most poly-related stuff" ([72bf4c4](https://github.com/showell/virtual-machine/commit/72bf4c4)).
+
+### The composition that stalled, 2026
+
+Five commits marked "wip" followed on 2026-01-28. On 2026-04-16 a measuring harness, `compose.py`, was added with Claude as co-author ([1a5f6fa](https://github.com/showell/virtual-machine/commit/1a5f6fa)). Its message says that step 1 composed in about 0.9 s and that step 2 ran past 30 s in Python, and that those numbers motivated a port to Go. The same afternoon `compose.py` was removed, "porting six-step composition to Go instead" ([a2406b5](https://github.com/showell/virtual-machine/commit/a2406b5)). The next day an essay Claude had written about the project was parked as `DEEP_READ.md` ([94c3d31](https://github.com/showell/virtual-machine/commit/94c3d31)); it lists the six-step composition as the step the project stops before.
+
+The Go port lives in a repository of its own, outside this record. By Steve's account it drowned in big integers; that account is unchecked here.
+
+### The finish, 2026-11-25
+
+The cook-levin-riff log covers one day. The C port of the machine and the search came first (`8051ce2`), then the general polynomial (`ccde4f8`) and the stepper (`5b14d74`). The Boolean ring came at 15:59 (`0c233e3`), and all six steps composed, proved on all 2^14 points, at 16:23 (`1146d43`). The Nibble page (`b1fe11f`), the Roc port (`6206236`), the SAT encoding (`8de51b7`), rocsat as an oracle (`f977bcc`) and the JavaScript port (`e996749`, `c251895`) followed. The first commit is stamped 15:32 and the last 19:21.
 
 ## Arithmetization
 
@@ -475,122 +591,6 @@ halted after six steps, composed by the C's compose_main at the book's build
 accepted after six steps, composed by the C's compose_main at the book's build
 10324
 ```
-
-## The machine as a circuit
-
-This chapter builds the machine as hardware, a plain digital circuit with two inputs and one output. Its inputs are a language and a program, and its output is true when the program decides the language and false otherwise. It is combinational: the whole run is laid out in space, and every wire settles at once. {{chapter The Cook-Levin machine}} then puts the same circuit to Cook and Levin's use.
-
-### The whole circuit
-
-The circuit has two registers on its left. The *want* register holds four bits, one per input, saying which inputs the language accepts: {1, 2, 3} is `0111`, input 0's bit first. The *program* register holds the twelve bits of a program, two per line. The program goes to four cores side by side, one per input, and each core answers whether its input is accepted. Four comparators check each answer against its want bit, and a final AND joins them.
-
-The circuit, end to end
-```dot
-digraph {
-  rankdir=TB;
-  node [shape=box, style=rounded];
-  prog [label="program register, 12 bits"];
-  want [label="want register\n0111"];
-  cores [shape=record, label="core 0\nAX=0|core 1\nAX=1|core 2\nAX=2|core 3\nAX=3"];
-  same [shape=record, label="same?|same?|same?|same?"];
-  all [label="AND"];
-  out [label="decides"];
-  prog -> cores;
-  cores -> same [label="accepted"];
-  want -> same;
-  same -> all;
-  all -> out;
-}
-```
-
-### One core
-
-A core is the machine itself, unrolled. Its `AX` register is wired to its input's number, and six step units sit in a chain, each fed by the one before it and by its own line's two bits from the program register. What leaves the sixth unit's `accepted` wire is the core's answer.
-
-One core: six step units in a chain
-```dot
-digraph {
-  rankdir=LR;
-  node [shape=box, style=rounded];
-  ax [label="AX = input\nhalted = 0\naccepted = 0"];
-  s1 [label="step 1"];
-  s2 [label="step 2"];
-  s3 [label="step 3"];
-  s4 [label="step 4"];
-  s5 [label="step 5"];
-  s6 [label="step 6"];
-  ax -> s1 -> s2 -> s3 -> s4 -> s5 -> s6;
-}
-```
-
-Each step unit has six wires in (`hb` and `lb`, the two bits of `AX`, the flags `halted` and `accepted`, and the line's `op_hb`, `op_lb`) and four wires out, the same four state wires for the next unit. Four cores of six units make 24 step units in all, every one the same.
-
-### Inside a step unit
-
-A step unit is built from two-input AND and OR gates and inverters, and its layout is a classic one: decode, compute every opcode at once, select.
-
-One step unit
-```dot
-digraph {
-  rankdir=TB;
-  node [shape=box, style=rounded];
-  ax [label="AX decoder\nis_0 is_1 is_2 is_3"];
-  op [label="op decoder + halted\nenable: nada zero decr mod2"];
-  mods [shape=record, label="nada|zero|decr|mod2"];
-  join [label="OR together\nbecomes_1 becomes_2 becomes_3\naccepts, halts"];
-  out [label="hb' lb' halted' accepted'"];
-  ax -> mods;
-  op -> mods;
-  mods -> join;
-  join -> out;
-}
-```
-
-- **The AX decoder** turns the two bits `hb`, `lb` into four one-hot wires, one per value: `is_0` is (complement of `hb`) AND (complement of `lb`), and so on, four AND gates.
-- **The op decoder** does the same to the line's two bits, giving one wire per opcode (`nada` 00, `zero` 01, `decr` 10, `mod2` 11). It then gates them with `halted`: a halted machine acts as `nada`, so `nada`'s enable is its wire OR `halted`, and each other opcode's enable is its wire AND the complement of `halted`.
-- **The four opcode modules** each say, for their own opcode, which value `AX` becomes, and whether the step accepts or halts. Value 0 is what remains when `becomes_1`, `becomes_2` and `becomes_3` are all 0, so it takes care of itself.
-- **The output stage** ORs the four modules' wires together, since only one module is enabled, then folds the one-hot value back into two bits: `hb'` is `becomes_2` OR `becomes_3`, and `lb'` is `becomes_1` OR `becomes_3`. The flags only ever turn on: `accepted'` is `accepted` OR the step's accept, and `halted'` likewise.
-
-### Each opcode as gates
-
-With `e` for the module's enable wire, every opcode is a handful of AND gates on the decoder's wires:
-
-| opcode | becomes_1 | becomes_2 | becomes_3 | accepts | halts |
-|---|---|---|---|---|---|
-| `nada` | `is_1` AND e | `is_2` AND e | `is_3` AND e | 0 | 0 |
-| `zero` | `is_1` AND e | `is_2` AND e | `is_3` AND e | `is_0` AND e | 0 |
-| `decr` | `is_2` AND e | `is_3` AND e | 0 | 0 | `is_0` AND e |
-| `mod2` | (`is_1` OR `is_3`) AND e | 0 | 0 | 0 | 0 |
-
-Read across a row and the opcode's rule appears. `nada` passes the value through. `zero` passes it through too and adds one gate that fires on 0. `decr` shifts each wire down one place, 2 to 1 and 3 to 2, lets 1 fall to 0, and turns 0 into a halt. `mod2` sends both odd values to 1 and lets 2 fall to 0. The whole unit is 34 two-input gates.
-
-`decr`, the busiest module, drawn alone
-```dot
-digraph {
-  rankdir=LR;
-  node [shape=box, style=rounded];
-  e [label="enable e"];
-  w [label="is_0  is_2  is_3"];
-  g [shape=record, label="AND|AND|AND"];
-  o [shape=record, label="halts|becomes_1|becomes_2"];
-  e -> g;
-  w -> g;
-  g -> o;
-}
-```
-
-### A program through it
-
-Load the want register with `0111` and the program register with `decr, mod2, zero, decr, zero, nada`, the five-line answer to `is_not_tiny`, whose bits are `10 11 01 10 01 00`. The four cores settle like this:
-
-| core | the run | accepted | want | same? |
-|---|---|---|---|---|
-| 0 | `decr` finds `AX` at 0: reject | 0 | 0 | yes |
-| 1 | `decr` to 0, `mod2` keeps 0, `zero`: accept | 1 | 1 | yes |
-| 2 | `decr` to 1, `mod2` keeps 1, `zero` passes, `decr` to 0, `zero`: accept | 1 | 1 | yes |
-| 3 | `decr` to 2, `mod2` folds 2 to 0, `zero`: accept | 1 | 1 | yes |
-
-All four comparators say yes, so the AND lights "decides". Change one program bit and some core's answer flips, its comparator reports a mismatch, and the light goes out.
 
 ## The Cook-Levin machine
 
