@@ -42,8 +42,6 @@ void sat_free(Cnf *c) {
     c->len = c->cap = c->num_clauses = c->num_gates = c->gates_cap = 0;
 }
 
-static int is_const(Lit x) { return x == SAT_TRUE || x == SAT_FALSE; }
-
 static void push_lit(Cnf *c, int lit) {
     if (c->len == c->cap) {
         c->cap = c->cap ? 2 * c->cap : 1024;
