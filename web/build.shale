@@ -5,9 +5,11 @@
 -- 1. web/puzzles.c (gcc -Wall -Wextra -Werror) writes the puzzle table,
 --    out/web/puzzles.json, and every program's run on every input,
 --    out/web/runs.json, for the check.
--- 2. web/nibble.c, which is src/vm.c with no libc, is compiled to
---    out/web/nibble.wasm by `zig cc -target wasm32-freestanding`
---    (zig016:zig).
+-- 2. roc/NibbleWasm.roc, the Roc port's Machine.roc on the platform in
+--    web/platform, is built by the Roc that roc/roc-version pins
+--    (`--target=wasm32 --opt=speed`, an archive), and Zig (zig016:zig)
+--    links it with web/platform/host.zig into out/web/nibble.wasm, whose
+--    exports are the page's `status`, `after` and `accepts`.
 -- 3. The page goes to out/web/site, each file but index.html named by its
 --    bytes (`nibble.<hash>.js`, the first 16 hex digits of its sha256), as
 --    roc-apps' site names them; the JS's names for the wasm and the table
@@ -26,7 +28,8 @@
 const OUT = "out/web"
 const SITE = "out/web/site"
 const RAN = "build: the table program this build just compiled"
-const WANT_ZIG = "zig: the wasm's compiler"
+const WANT_ZIG = "zig: the wasm host's compiler and linker"
+const WANT_ROC = "roc-pin: the Roc port's pinned compiler"
 const WANT_NODE = "node: the page check, in headless Chromium"
 
 -- The first 16 hex digits of the file's sha256.
@@ -40,6 +43,17 @@ function hashed_name(name, ext)
   return name .. "." .. hash_of(OUT .. "/" .. name .. "." .. ext) .. "." .. ext
 end
 
+-- The Roc roc/roc-version pins, ~/tools/roc-<pin>/roc, held to its version
+-- (roc/check.shale's check).
+function pinned_roc()
+  local pin = trim(read("roc/roc-version"))
+  local roc = "tools:roc-" .. pin .. "/roc"
+  if not exists(roc) then fail("web/build.shale: no " .. roc .. ": install the pinned Roc " .. pin .. " at ~/tools/roc-" .. pin .. "/") end
+  local said = run({real(roc), "version"}, {timeout_ms = 30000, whole = 4000, want = WANT_ROC})
+  if trim(said.out) ~= "Roc compiler version " .. pin then fail("web/build.shale: " .. roc .. " is " .. trim(said.out) .. ", not " .. pin) end
+  return real(roc)
+end
+
 mkdir(OUT)
 local cc = must(run({"gcc", "-std=c11", "-O2", "-Wall", "-Wextra", "-Werror", "-o", real(OUT) .. "/puzzles", "web/puzzles.c"},
   {timeout_ms = 120000, tail = 20}))
@@ -50,14 +64,27 @@ replace(OUT .. "/runs.json", runs.out)
 local puzzles = json_read(table.out).puzzles
 print("ok   web/puzzles.c: " .. #puzzles .. " puzzles, " .. (#runs.out - 3) .. " runs, " .. cc.ms .. " ms to compile")
 
-local z = run({real("zig016:zig"), "cc", "-target", "wasm32-freestanding", "-O2", "-std=c11", "-Wall", "-Wextra", "-Werror",
-  "-nostdlib", "-Wl,--no-entry", "-o", real(OUT) .. "/nibble.wasm", "web/nibble.c"},
-  {timeout_ms = 120000, tail = 30, want = WANT_ZIG})
+local roc = pinned_roc()
+local archive = real(OUT) .. "/nibble.a"
+if exists(OUT .. "/nibble.a") then remove(OUT .. "/nibble.a") end
+local b = run({roc, "build", "NibbleWasm.roc", "--target=wasm32", "--opt=speed", "--output=" .. archive},
+  {cwd = "roc", timeout_ms = 600000, tail = 40, nice = 10, want = WANT_ROC})
+if b.code ~= 0 or contains(b.out, "✗") or contains(b.out, "●") or not exists(OUT .. "/nibble.a") then
+  print(trim(b.out))
+  fail("roc build roc/NibbleWasm.roc exited " .. b.code)
+end
+mkdir("build:zig-global")
+local z = run({real("zig016:zig"), "build-exe", "web/platform/host.zig", archive,
+  "-target", "wasm32-freestanding", "-fno-entry", "--export=status", "--export=after", "--export=accepts", "-O", "ReleaseSmall",
+  "--name", "nibble", "-femit-bin=" .. real(OUT) .. "/nibble.wasm",
+  "--cache-dir", real(OUT) .. "/zig-cache", "--global-cache-dir", real("build:zig-global")},
+  {timeout_ms = 600000, tail = 30, nice = 10, want = WANT_ZIG})
 if z.code ~= 0 then
   print(z.out)
-  fail("zig cc web/nibble.c exited " .. z.code)
+  fail("zig build-exe web/platform/host.zig exited " .. z.code)
 end
-print("ok   zig cc web/nibble.c: " .. z.ms .. " ms")
+remove(OUT .. "/nibble.a")
+print("ok   roc build roc/NibbleWasm.roc --opt=speed: " .. b.ms .. " ms; zig build-exe web/platform/host.zig: " .. z.ms .. " ms; nibble.wasm " .. #read(OUT .. "/nibble.wasm") .. " bytes")
 
 if exists(SITE) then remove_tree(SITE) end
 mkdir(SITE)

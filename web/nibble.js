@@ -1,5 +1,6 @@
-// nibble.js: the Nibble puzzle page. The machine is src/vm.c compiled to
-// wasm (web/nibble.c); the puzzles, their counts and shortest lengths, and
+// nibble.js: the Nibble puzzle page. The machine is the Roc port's
+// roc/Machine.roc compiled to wasm (roc/NibbleWasm.roc on web/platform);
+// the puzzles, their counts and shortest lengths, and
 // the opcodes' comments come from web/puzzles.c's table, puzzles.json.
 // A puzzle is a language: accept exactly `set` and reject the rest.
 // Nothing is kept between visits: a reload starts at puzzle 1.

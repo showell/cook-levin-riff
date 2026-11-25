@@ -7,7 +7,9 @@
 --   - `roc fmt --check` over every .roc file in roc/, by the Roc that
 --     roc/roc-version pins (~/tools/roc-<pin>/roc, never one on the PATH);
 --   - `roc check` of each app, with no error and no warning (no ✗ or ●);
---   - `roc test` of each app, its expects' count held exactly to EXPECTS;
+--   - `roc test` of each app, its expects' count held exactly to EXPECTS
+--     (NibbleWasm.roc, the page's machine, is checked and tested here; its
+--     wasm build and its check against the C are web/build.shale's);
 --   - each app built on the dev backend and run: FindSolutions' stdout is
 --     tests/golden/find_solutions.txt byte for byte, StepPolynomials' is
 --     roc/golden/step_polynomials.txt (the C's `bp_str` of the four step
@@ -19,10 +21,11 @@
 
 const WANT = "roc-pin: the Roc port's pinned compiler"
 const RAN = "roc-check: an app this gate just built"
-const APPS = {"Composition.roc", "FindSolutions.roc", "StepPolynomials.roc"}
+const APPS = {"Composition.roc", "FindSolutions.roc", "NibbleWasm.roc", "StepPolynomials.roc"}
 const EXPECTS = {
   {app = "Composition.roc", count = 30},
   {app = "FindSolutions.roc", count = 28},
+  {app = "NibbleWasm.roc", count = 21},
   {app = "StepPolynomials.roc", count = 28},
 }
 const RUNS = {
