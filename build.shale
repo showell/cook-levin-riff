@@ -16,7 +16,7 @@
 -- Run from the repository's root.
 
 const OUT = "out"
-const TESTS = {"tests/test_vm.c", "tests/test_reference.c", "tests/test_golden.c", "tests/test_ring_int.c", "tests/test_poly.c", "tests/test_stepper.c", "tests/test_cross_check.c", "tests/test_boolring.c", "tests/test_compose.c", "tests/test_sat.c", "tests/test_drat.c"}
+const TESTS = {"tests/test_vm.c", "tests/test_reference.c", "tests/test_golden.c", "tests/test_ring_int.c", "tests/test_poly.c", "tests/test_stepper.c", "tests/test_cross_check.c", "tests/test_boolring.c", "tests/test_compose.c", "tests/test_sat.c", "tests/test_drat.c", "tests/test_theorems.c"}
 -- The command lines the oracles and the book run, compiled in each tier.
 const CLIS = {"src/sat_main.c", "src/drat_main.c"}
 const GOLDEN = "tests/golden/find_solutions.txt"
