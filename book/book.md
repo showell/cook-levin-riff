@@ -67,7 +67,7 @@ Steve wrote the first version by hand in Python, in [virtual-machine](https://gi
 
 The first part is the toy for its own sake: a finite machine, completely understood, every question settled by running everything, even in Python. It runs from {{chapter The machine}} and the theory of languages through plain Python, the search of all 4,096 programs, the puzzle page, and the machine as Boolean functions and as hardware, to {{chapter Some history of the approach}}, the order in which Steve built it.
 
-The second part is Cook-Levin: {{chapter How it got here}}, {{chapter P and NP}}, {{chapter P, NP and Cook-Levin}}, {{chapter Six expressions, composed}}, then the step as polynomials, from {{chapter Arithmetization}} to {{chapter The polynomials, in full}}, and the circuit as a tableau and a formula, from {{chapter The Cook-Levin machine}} to {{chapter The solver's work, in full}}.
+The second part is Cook-Levin: {{chapter How it got here}}, {{chapter P and NP}}, {{chapter Nibble, sized}}, {{chapter P, NP and Cook-Levin}}, {{chapter Six expressions, composed}}, then the step as polynomials, from {{chapter Arithmetization}} to {{chapter The polynomials, in full}}, and the circuit as tableau and formula, from {{chapter The Cook-Levin machine}} to {{chapter The solver's work, in full}}.
 
 The third part is the cross-checks: {{chapter The oracles}}, {{chapter The Roc port}}, {{chapter What is Shale?}} and {{chapter The VM in Shale}}, then {{chapter What comes next}}. The theorems are numbered through the book, each proved by an exhaustive run that its proof names.
 
@@ -1259,9 +1259,29 @@ The definition is lopsided. A certificate shows membership, and NP asks for evid
 
 The N stands for *nondeterministic*: NP was first defined by machines that guess, and {{chapter P, NP and Cook-Levin}} takes up that view, the guess being the certificate.
 
+## Nibble, sized
+
+P and NP sort languages by how their cost grows with the input's length. The toy's languages are finite, and every finite language is in P for an empty reason: a machine can keep all its answers in a table and look each one up in a fixed number of steps. To ask the question precisely, the machine has to grow.
+
+### The machine, with a size
+
+Keep the four opcodes and give the machine two sizes. `AX` holds n bits, so the inputs are 0 to 2^n − 1, and a program has k lines, two bits a line. Each opcode does what it does now: `nada` leaves everything as it is, `decr` takes 1 from `AX` and halts at 0, `mod2` keeps `AX`'s low bit and clears the rest, and `zero` accepts when `AX` is 0. The toy is the case n = 2, k = 6.
+
+### Two languages in P
+
+**ACCEPTS** is the set of pairs (P, x) where program P accepts input x. The pair is 2k + n bits long. Running P takes k steps, and each step is a decrement or a test of n bits, about k·n bit operations in all, so a machine decides ACCEPTS in time linear in the input's length. ACCEPTS is in P.
+
+**DECIDES** is the set of pairs (P, W) where P decides the set W, W written as its 2^n want bits, one an input, as {{chapter The Boolean view}} writes them. The machine runs P on every input and compares each verdict with its want bit: 2^n runs of about k·n bit operations each. The input is 2k + 2^n bits long, since W alone has 2^n bits, so that cost is polynomial in the input's length. DECIDES is in P.
+
+### A language in NP
+
+**SOLVABLE** is the set of pairs (W, k) for which some program of k lines decides W, with k written in unary, as k ones, so that a program of k lines is short beside the input. It is in NP. The certificate is the program, 2k bits, and the verifier is the machine that decides DECIDES: it accepts (W, k, P) when P has k lines and decides W. Every member has such a P, and for a non-member every P of k lines fails the check.
+
+Finding the program is the costly part. Trying every program tries 4^k of them, exponential in k. Whether SOLVABLE is in P is a question this book leaves open. {{chapter Cook-Levin as SAT}} answers SOLVABLE's questions for the toy, n = 2 and k = 6, by Cook and Levin's route: the verifier becomes a formula, and a SAT solver finds the certificate.
+
 ## P, NP and Cook-Levin
 
-{{chapter P and NP}} defines the two classes. This chapter states the theorem that ties NP to one language, SAT, and says what it means for the toy.
+{{chapter P and NP}} defines the two classes, and {{chapter Nibble, sized}} places the toy among them. This chapter states the theorem that ties NP to one language, SAT, and says what it means for the toy.
 
 ### SAT, as hard as all of NP
 
