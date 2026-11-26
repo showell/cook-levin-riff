@@ -86,7 +86,7 @@ int main(void) {
     }
     printf("\n");
 
-    printf("| Shortest length | Languages |\n|---:|---:|\n");
+    printf("| Shortest length | Formal languages |\n|---:|---:|\n");
     for (int d = 0; d <= longest[ALL_FOUR]; d++) printf("| %d | %ld |\n", d, histogram[ALL_FOUR][d]);
     printf("\n");
 

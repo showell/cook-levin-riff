@@ -10,7 +10,7 @@ Steve Howell devised a virtual machine with a single two-bit register, `AX`, and
 - **`decr` rejects** it, the moment it finds `AX` at 00 (otherwise it takes 1 from `AX`);
 - the run **rejects implicitly** when it gets past the sixth instruction with neither of them having seen 00.
 
-`nada` leaves `AX` as it is, and `mod2` takes 2 from `AX` when it is 2 or 3. So each program sorts the four inputs into accepted and rejected, and the accepted ones are the set the program decides. Complexity theory calls such a set a *language* or a *decision problem*; this book calls each of the 16 subsets of {0, 1, 2, 3} a *problem*. The machine is small enough that every program, every input and every step can be listed, 4,096 programs in all, so every claim about it can be checked by running all of them.
+`nada` leaves `AX` as it is, and `mod2` takes 2 from `AX` when it is 2 or 3. So each program sorts the four inputs into accepted and rejected, and the accepted ones are the set the program decides. Complexity theory calls such a set a *formal language* or a *decision problem*; this book calls each of the 16 subsets of {0, 1, 2, 3} a *problem*. The machine is small enough that every program, every input and every step can be listed, 4,096 programs, so every claim about it can be checked by running all of them.
 
 Once the plain machine worked, Steve used techniques inspired by the Cook-Levin proof to answer the same questions with polynomials. Each step of the machine becomes four polynomials in the state's bits and the instruction's bits, so that evaluating them at 0s and 1s gives the next state. Chained through all six steps, they become polynomials that answer "does this program accept this input?" for every program and every input at once.
 
@@ -59,13 +59,13 @@ Third, the assertions, in `find_solutions` ([virtual_machine.py, lines 159 to 16
             assert accepted == (i in lang)
 ```
 
-**That agreement is the thesis of this book: the machine and its Cook-Levin translation answer every question the same way.** Everything after it widens the check. The C runs both on all 4,096 programs and all four inputs; the six steps are chained into four polynomials that agree with the machine on all 2^14 points; a SAT solver, given the same machine as a formula, finds exactly the machine's programs; and seven implementations in five languages compute the same answers. His Python stopped short of chaining all six steps, and this repository finishes the chain ({{chapter How it got here}}).
+**That agreement is the thesis of this book: the machine and its Cook-Levin translation answer every question the same way.** Everything after it widens the check. The C runs both on all 4,096 programs and all four inputs; the six steps are chained into four polynomials that agree with the machine on all 2^14 points; a SAT solver, given the same machine as a formula, finds exactly the machine's programs; and seven implementations in five programming languages compute the same answers. His Python stopped short of chaining all six steps, and this repository finishes the chain ({{chapter How it got here}}).
 
 Steve wrote the first version by hand in Python, in [virtual-machine](https://github.com/showell/virtual-machine): the machine (`virtual_machine.py`), a general polynomial library (`poly.py`) and a stepper that writes one step of the machine as polynomials (`stepper.py`). The machine is Steve's invention; the code in this repository, written by AI coding agents (Claude) with human supervision, departs from the 2023 Python wherever a cleaner choice turned up, and its choices, such as how programs are numbered, are this book's own.
 
 ### What the book covers
 
-The first part is the toy for its own sake: a finite machine, completely understood, every question settled by running everything, even in Python. It runs from {{chapter The machine}} and the theory of languages through plain Python, the search of all 4,096 programs, the puzzle page, and the machine as Boolean functions and as hardware, to {{chapter Some history of the approach}}, the order in which Steve built it.
+The first part is the toy for its own sake: a finite machine, completely understood, every question settled by running everything, even in Python. It runs from {{chapter The machine}} and the theory of formal languages through plain Python, the search of all 4,096 programs, the puzzle page, and the machine as Boolean functions and as hardware, to {{chapter Some history of the approach}}, the order in which Steve built it.
 
 The second part is Cook-Levin: {{chapter How it got here}}, {{chapter P and NP}}, {{chapter Nibble, sized}}, {{chapter Nibble++}}, {{chapter Two theorems about Nibble++}}, {{chapter P, NP and Cook-Levin}}, {{chapter Six expressions, composed}}, then the step as polynomials, from {{chapter Arithmetization}} to {{chapter The polynomials, in full}}, and the circuit as tableau and formula, from {{chapter The Cook-Levin machine}} to {{chapter The solver's work, in full}}.
 
@@ -77,11 +77,11 @@ The Cook-Levin theorem says that satisfiability of Boolean formulas is NP-comple
 
 ### Where the numbers come from
 
-Each number here comes from the repository, a commit, a golden file or a program run, named where it is used. Code is quoted from the repository as it stands when the book is built.
+Each number here comes from the repository, a commit, a golden file or a program run, named where it is used. Code is quoted as it stands when the book is built.
 
 ## The machine
 
-The machine holds one register, `AX`, of 2 bits, so `AX` is 0, 1, 2 or 3. A run starts with `AX` set to the input. Its program is six instructions, each one of four opcodes, and the machine's assembly language is called Nibble.
+The machine holds one register, `AX`, of 2 bits, so `AX` is 0, 1, 2 or 3. A run starts with `AX` set to the input. Its program is six instructions, each one of four opcodes, and the machine's programming language, an assembly language, is called Nibble.
 
 ### Steve's spec
 
@@ -163,21 +163,21 @@ Each instruction is one of 4 opcodes, so there are 4^6 = 4,096 programs. Each pr
 
 This book names a program by its number. Read the six lines as the digits of a base-4 number, line 1 first, with `nada` 0, `zero` 1, `decr` 2 and `mod2` 3: the number is op₁·4⁵ + op₂·4⁴ + op₃·4³ + op₄·4² + op₅·4 + op₆. So program 0 (`nada, nada, nada, nada, nada, nada`) is the first, program 4095 (`mod2, mod2, mod2, mod2, mod2, mod2`) is the last, and the number's twelve bits, line 1's two first, are the program's machine code as the puzzle page shows it. A program of fewer than six lines ends in `nada`, so its number ends in base-4 zeros. Steve's Python, and the C that matches it byte for byte, count through the programs in the other order, line 1 as the lowest digit. That order only decides which program the search finds first; the numbers in this book are all of the kind defined here, and the build checks each against the program it names.
 
-## Languages and machines
+## Formal languages and machines
 
-In computer science a *language* is a set of strings. Pick an alphabet, say the digits 0 to 9, and any set of strings over it is a language: the decimal numerals of the primes, the palindromes, the strings that are valid Roc programs. A language is the cleanest way to state a decision question. "Is 91 prime?" becomes "is the string `91` in the language of primes?"
+In computer science a *formal language* is a set of strings. The book spends two words on it because it also has a *programming language*, Nibble, the notation its programs are written in, and the two are different things: a Nibble program decides a formal language. Pick an alphabet, say the digits 0 to 9, and any set of strings over it is a formal language: the decimal numerals of the primes, the palindromes, the strings that are valid Roc programs. A formal language is the cleanest way to state a decision question. "Is 91 prime?" becomes "is the string `91` in the formal language of primes?"
 
 ### Machines that decide
 
-A machine *decides* a language when, given any string, it halts, accepting the strings in the language and rejecting the rest. A program that decides the primes is a primality test; a compiler's parser decides the language of well-formed programs, and rejects the rest with an error.
+A machine *decides* a formal language when, given any string, it halts, accepting the strings in the language and rejecting the rest. A program that decides the primes is a primality test; a compiler's parser decides the formal language of well-formed programs, and rejects the rest with an error.
 
 ### Turing's machine
 
-In 1936 Alan Turing described a machine with a finite set of states and an unbounded tape, in "On Computable Numbers, with an Application to the Entscheidungsproblem" (*Proceedings of the London Mathematical Society*, series 2, volume 42; a [free scan](https://www.cs.virginia.edu/~robins/Turing_Paper_1936.pdf)). It reads and writes the tape one cell at a time, and every algorithm anyone has written since can be carried out by such a machine; that claim is the Church-Turing thesis. Turing also showed that some languages are undecidable: whatever machine one builds for them, some string defeats it. The best known is the halting problem, the language of programs that halt on their input. A machine can *recognize* it, accepting every member by running it, but for some strings outside the language it runs forever, still waiting to answer.
+In 1936 Alan Turing described a machine with a finite set of states and an unbounded tape, in "On Computable Numbers, with an Application to the Entscheidungsproblem" (*Proceedings of the London Mathematical Society*, series 2, volume 42; a [free scan](https://www.cs.virginia.edu/~robins/Turing_Paper_1936.pdf)). It reads and writes the tape one cell at a time, and every algorithm anyone has written since can be carried out by such a machine; that claim is the Church-Turing thesis. Turing also showed that some formal languages are undecidable: whatever machine one builds for them, some string defeats it. The best known is the halting problem, the formal language of programs that halt on their input. A machine can *recognize* it, accepting every member by running it, but for some strings outside the language it runs forever, still waiting to answer.
 
 ### A simple example
 
-Take the alphabet {a, b} and the language of strings with an even count of a's: `aba` and `bb` are in it, `ab` and `aaab` are out. A Turing machine decides it with two working states, `even` and `odd`, and a head that reads the tape left to right. The input is written on the tape, with blank cells after it, and the machine starts in `even` on the first symbol.
+Take the alphabet {a, b} and the formal language of strings with an even count of a's: `aba` and `bb` are in it, `ab` and `aaab` are out. A Turing machine decides it with two working states, `even` and `odd`, and a head that reads the tape left to right. The input is written on the tape, with blank cells after it, and the machine starts in `even` on the first symbol.
 
 | state | reads | writes | moves | next state |
 |---|---|---|---|---|
@@ -200,13 +200,13 @@ A run on `aba`:
 | 4 | `even` | blank | a b a [_] |
 |   | accept | | |
 
-And on `ab`: `even` reads a and moves to `odd`, `odd` reads b and stays `odd`, `odd` reads the blank and rejects. Every run takes one step per symbol and then halts, so the machine decides the language: it accepts exactly the strings with an even count of a's.
+And on `ab`: `even` reads a and moves to `odd`, `odd` reads b and stays `odd`, `odd` reads the blank and rejects. Every run takes one step per symbol and then halts, so the machine decides the formal language: it accepts exactly the strings with an even count of a's.
 
-This machine only reads and moves right, so it is also a finite automaton; Turing's machines earn their tape on harder languages, such as the strings of a's followed by the same number of b's, where the machine writes marks on the tape to pair each a with a b. The idea carries over unchanged: states, a rule table, a run that ends in accept or reject, and a language made of the strings accepted.
+This machine only reads and moves right, so it is also a finite automaton; Turing's machines earn their tape on harder formal languages, such as the strings of a's followed by the same number of b's, where the machine writes marks on the tape to pair each a with a b. The idea carries over unchanged: states, a rule table, a run that ends in accept or reject, and a formal language made of the strings accepted.
 
 ### This book's machine
 
-The machine here is Turing's idea at its smallest. Its tape is one 2-bit register, its inputs are the four strings 0, 1, 2 and 3, and every run halts within six steps, so every question about it is decidable by trying everything. Its languages are the 16 subsets of {0, 1, 2, 3}, the problems of the Introduction, which a program, a circuit and a SAT formula each decide alike. A program decides exactly one of them, the set of inputs it accepts. {{chapter Programs as languages}} asks which programs decide which problems, by running all of them. The second part of the book asks what deciding costs when trying everything is out of reach, the question Cook and Levin answered.
+The machine here is Turing's idea at its smallest. Its tape is one 2-bit register, its inputs are the four strings 0, 1, 2 and 3, and every run halts within six steps, so every question about it is decidable by trying everything. Its formal languages are the 16 subsets of {0, 1, 2, 3}, the problems of the Introduction, which a program, a circuit and a SAT formula each decide alike. A program decides exactly one of them, the set of inputs it accepts. {{chapter Programs as formal languages}} asks which programs decide which problems, by running all of them. The second part of the book asks what deciding costs when trying everything is out of reach, the question Cook and Levin answered.
 
 ## Deciding in plain Python
 
@@ -214,7 +214,7 @@ A problem is four answers, one per input, so deciding one takes a line of ordina
 
 ### Two versions of `decides`
 
-A problem's *want* code has bit n set when input n is in it, as in the table of {{chapter Programs as languages}}: {0, 2, 3} is 1 + 4 + 8 = 13. The plain version lists the members and looks n up among them:
+A problem's *want* code has bit n set when input n is in it, as in the table of {{chapter Programs as formal languages}}: {0, 2, 3} is 1 + 4 + 8 = 13. The plain version lists the members and looks n up among them:
 
 {{lines python/decides.py from "def decides(want, n):" to "    return n in members"}}
 
@@ -234,7 +234,7 @@ Many of the 16 problems have a natural test of n, or of its two bits, `hb` and `
 
 The want code already says everything about a problem. The Nibble machine takes up to six lines to say the same thing, and for {0, 2, 3} it takes all six, in its one program. The composed polynomial of {{chapter Six steps composed}}, which runs every program on every input at once, takes 10,324 terms. The machine is there to be the thing analysed, a small checker that Cook and Levin's construction can turn into a formula; the question it answers is a lookup.
 
-## Programs as languages
+## Programs as formal languages
 
 Steve settled which programs decide which problems twice in Python: first by construction, then by running everything.
 
@@ -326,7 +326,7 @@ The empty problem, { }, has 844 programs, since any program that rejects every i
 
 ## Which instructions are needed
 
-{{chapter Programs as languages}} counted what the four opcodes decide together. This chapter takes them apart: which of the four are needed, and what instructions of other designs could do.
+{{chapter Programs as formal languages}} counted what the four opcodes decide together. This chapter takes them apart: which of the four are needed, and what instructions of other designs could do.
 
 ### The four opcodes
 
@@ -348,7 +348,7 @@ The four opcodes are one choice among many. An instruction of any kind says, for
 
 ## Nibble, the puzzle page
 
-[Nibble](https://roc.lynrummy.com/nibble/) is a puzzle page with one puzzle for each of the 16 problems: pick instructions until the program accepts exactly the puzzle's inputs and rejects the rest. The search of {{chapter Programs as languages}} says every puzzle has an answer, and how many programs are answers.
+[Nibble](https://roc.lynrummy.com/nibble/) is a puzzle page with one puzzle for each of the 16 problems: pick instructions until the program accepts exactly the puzzle's inputs and rejects the rest. The search of {{chapter Programs as formal languages}} says every puzzle has an answer, and how many programs are answers.
 
 ### What runs in the page
 
@@ -398,7 +398,7 @@ The last puzzle, `is_not_tiny`, also gives its `mod2` on line 2, the line where 
 
 ### Help for a newcomer
 
-The page's intro, behind a Help link after puzzle 1, says what a language is here (the page's word for a problem), how the machine runs a program four times to find the language it recognizes, and works `decr, zero` through to {1}; the page's check holds that example to the machine.
+The page's intro, behind a Help link after puzzle 1, says what a formal language is here (the page's word for a problem), how the machine runs a program four times to find the language it recognizes, and works `decr, zero` through to {1}; the page's check holds that example to the machine.
 
 ### The sandbox
 
@@ -1181,7 +1181,7 @@ This chapter is mostly story, and a reader in a hurry may skip it: the rest of t
 The virtual-machine log records the order. All of it came in four days of March 2023:
 
 1. **2023-03-11, 01:49:** the machine, `run_progam`, and the search `find_solutions`, in the first commit ([f01c1c3](https://github.com/showell/virtual-machine/commit/f01c1c3)).
-2. **13:02 the same day:** the analytical solution ([d6bb78f](https://github.com/showell/virtual-machine/commit/d6bb78f)), as {{chapter Programs as languages}} tells.
+2. **13:02 the same day:** the analytical solution ([d6bb78f](https://github.com/showell/virtual-machine/commit/d6bb78f)), as {{chapter Programs as formal languages}} tells.
 3. **15:47 the same day:** the stepper ([ba9388a](https://github.com/showell/virtual-machine/commit/ba9388a)), with its `NOT`, `AND` and `OR` already arithmetic on integers (`NOT x` was (x − 1)·(x − 1) then), and the assertion that the stepper accepts exactly the problem's inputs.
 4. **2023-03-12:** `mod2` and `pass`, today's `nada` ([cad8e18](https://github.com/showell/virtual-machine/commit/cad8e18)), then the polynomial library from 14:35 ([6bb7429](https://github.com/showell/virtual-machine/commit/6bb7429)).
 5. **2023-03-14:** the step polynomials at 12:22 ([a4e4765](https://github.com/showell/virtual-machine/commit/a4e4765)), and at 12:32 programs of six lines, with the assertion that every problem has a program ([8646cbe](https://github.com/showell/virtual-machine/commit/8646cbe)).
@@ -1214,7 +1214,7 @@ The cook-levin-riff log covers one day. The C port of the machine and the search
 
 ## P and NP
 
-The toy's every question was settled by trying everything: 4,096 programs on four inputs. That works because the toy is finite. Complexity theory is about languages with inputs of every length, where trying everything grows with the input, and it sorts languages by how fast the work grows. This chapter gives the two classes the rest of the book leans on, P and NP, at the level of their definitions.
+The toy's every question was settled by trying everything: 4,096 programs on four inputs. That works because the toy is finite. Complexity theory is about formal languages with inputs of every length, where trying everything grows with the input, and it sorts them by how fast the work grows. This chapter gives the two classes the rest of the book leans on, P and NP, at the level of their definitions.
 
 ### Time as a function of length
 
@@ -1230,11 +1230,11 @@ Polynomial is the dividing line for two reasons. A polynomial of a polynomial is
 
 ### P, deciding fast
 
-**P** is the class of languages that some machine decides in polynomial time: on every input, it halts within c·n^k steps with its verdict, accept or reject. Whether a list of numbers is sorted is in P: one pass compares each pair of neighbours. So is whether a number written in binary is even, and, by a cleverer algorithm, whether it is prime.
+**P** is the class of formal languages that some machine decides in polynomial time: on every input, it halts within c·n^k steps with its verdict, accept or reject. Whether a list of numbers is sorted is in P: one pass compares each pair of neighbours. So is whether a number written in binary is even, and, by a cleverer algorithm, whether it is prime.
 
 ### NP, checking fast
 
-**NP** is the class of languages whose yes answers can be checked fast. A language L is in NP when there is a machine V, the *verifier*, that runs in polynomial time on a pair (x, c), with two properties:
+**NP** is the class of formal languages whose yes answers can be checked fast. A formal language L is in NP when there is a machine V, the *verifier*, that runs in polynomial time on a pair (x, c), with two properties:
 
 - **Every yes has evidence.** If x is in L, some string c, a *certificate*, makes V(x, c) accept, and c is short: its length is at most polynomial in the length of x.
 - **Every non-member resists all evidence.** If x is outside L, V(x, c) rejects for every c whatsoever.
@@ -1249,11 +1249,11 @@ Three examples:
 
 In each, checking is quick and finding looks hard: the obvious way to find a certificate tries them all, and there are exponentially many.
 
-The second property matters as much as the first. A verifier that accepted every certificate would make every language look like a member. {{chapter The SAT solver}}'s unhappy paths hold rocsat's checker to it on small cases: a false assignment is refused, and the clause it breaks is named.
+The second property matters as much as the first. A verifier that accepted every certificate would make every formal language look like a member. {{chapter The SAT solver}}'s unhappy paths hold rocsat's checker to it on small cases: a false assignment is refused, and the clause it breaks is named.
 
 ### What is known
 
-Every language in P is in NP: its verifier ignores the certificate and decides x directly. Whether every language in NP is in P, whether finding is always about as easy as checking, is the P versus NP question, open since the early 1970s and one of the Clay Mathematics Institute's Millennium Prize Problems.
+Every formal language in P is in NP: its verifier ignores the certificate and decides x directly. Whether every formal language in NP is in P, whether finding is always about as easy as checking, is the P versus NP question, open since the early 1970s and one of the Clay Mathematics Institute's Millennium Prize Problems.
 
 The definition is lopsided. A certificate shows membership, and NP asks for evidence of membership alone. For an unsatisfiable formula, short evidence of its unsatisfiability is, as far as anyone knows, out of reach in general. The DRAT proofs of {{chapter The solver's work, in full}} are evidence of exactly that kind, and they are short here because the toy is small; for some formulas, every proof of the kind a solver like rocsat writes is exponentially long.
 
@@ -1261,19 +1261,19 @@ The N stands for *nondeterministic*: NP was first defined by machines that guess
 
 ## Nibble, sized
 
-P and NP sort languages by how their cost grows with the input's length. The toy's languages are finite, and every finite language is in P for an empty reason: a machine can keep all its answers in a table and look each one up in a fixed number of steps. To ask the question precisely, the machine has to grow.
+P and NP sort formal languages by how their cost grows with the input's length. The toy's formal languages are finite, and every finite one is in P for an empty reason: a machine can keep all its answers in a table and look each one up in a fixed number of steps. To ask the question precisely, the machine has to grow.
 
 ### The machine, with a size
 
 Keep the four opcodes and give the machine two sizes. `AX` holds n bits, so the inputs are 0 to 2^n − 1, and a program has k lines, two bits a line. Each opcode does what it does now: `nada` leaves everything as it is, `decr` takes 1 from `AX` and halts at 0, `mod2` keeps `AX`'s low bit and clears the rest, and `zero` accepts when `AX` is 0. The toy is the case n = 2, k = 6.
 
-### Two languages in P
+### Two formal languages in P
 
 **ACCEPTS** is the set of pairs (P, x) where program P accepts input x. The pair is 2k + n bits long. Running P takes k steps, and each step is a decrement or a test of n bits, about k·n bit operations in all, so a machine decides ACCEPTS in time linear in the input's length. ACCEPTS is in P.
 
 **DECIDES** is the set of pairs (P, W) where P decides the set W, W written as its 2^n want bits, one an input, as {{chapter The Boolean view}} writes them. The machine runs P on every input and compares each verdict with its want bit: 2^n runs of about k·n bit operations each. The input is 2k + 2^n bits long, since W alone has 2^n bits, so that cost is polynomial in the input's length. DECIDES is in P.
 
-### A language in NP
+### A formal language in NP
 
 **SOLVABLE** is the set of pairs (W, k) for which some program of k lines decides W, with k written in unary, as k ones, so that a program of k lines is short beside the input. It is in NP. The certificate is the program, 2k bits, and the verifier is the machine that decides DECIDES: it accepts (W, k, P) when P has k lines and decides W. Every member has such a P, and for a non-member every P of k lines fails the check.
 
@@ -1304,7 +1304,7 @@ The longest shortest program has 28 lines, and there are 4^28 = 2^56 programs of
 
 Each set decides every formal language. With all four, every formal language has a program of 28 lines or fewer, so each has a 32-line program of 64 bits, padded with `decr`. The formal languages by shortest length, with all four:
 
-| Shortest length | Languages |
+| Shortest length | Formal languages |
 |---:|---:|
 | 0 | 1 |
 | 1 | 1 |
@@ -1397,11 +1397,11 @@ With `mod2` the counts follow the Fibonacci numbers one place on, F(L + 1), from
 
 ## P, NP and Cook-Levin
 
-{{chapter P and NP}} defines the two classes, and {{chapter Nibble, sized}} places the toy among them. This chapter states the theorem that ties NP to one language, SAT, and says what it means for the toy.
+{{chapter P and NP}} defines the two classes, and {{chapter Nibble, sized}} places the toy among them. This chapter states the theorem that ties NP to one formal language, SAT, and says what it means for the toy.
 
 ### SAT, as hard as all of NP
 
-A *reduction* from a language A to a language B is a polynomial-time translation of A's inputs into B's that keeps every answer: x is in A exactly when its translation is in B. A machine for B then answers A too. A language is *NP-complete* when it is in NP and every language in NP reduces to it. In 1971 Stephen Cook, in "The Complexity of Theorem-Proving Procedures", and independently Leonid Levin, published in 1973, showed that SAT is as hard as anything in NP. Their proof takes the checking machine, which runs for a polynomial number of steps, and writes each step of its run as clauses: the whole run becomes one formula, satisfiable exactly when a certificate exists.
+A *reduction* from a formal language A to a formal language B is a polynomial-time translation of A's inputs into B's that keeps every answer: x is in A exactly when its translation is in B. A machine for B then answers A too. A formal language is *NP-complete* when it is in NP and every language in NP reduces to it. In 1971 Stephen Cook, in "The Complexity of Theorem-Proving Procedures", and independently Leonid Levin, published in 1973, showed that SAT is as hard as anything in NP. Their proof takes the checking machine, which runs for a polynomial number of steps, and writes each step of its run as clauses: the whole run becomes one formula, satisfiable exactly when a certificate exists.
 
 ### Guessing, and the computation history
 
@@ -2095,7 +2095,7 @@ The proof wants each final polynomial's value at all 16,384 points. `values` get
 
 ### The speed, honestly
 
-On this box, the release build of `composition 6` composes all six steps and runs the proof in about 30 ms, and the C's `compose_main` at -O2, which only composes, takes about 260 ms (`README.md`, "The Roc port"). The gap is the data structure, and the language has little to do with it: the C sums like terms in a hash table it grows and then sorts, while the Roc sums them in a dense table indexed by mask, a straight array write that reads back already in order. The C could use the same table, and it has yet to be tried (`9e0c86c`).
+On this box, the release build of `composition 6` composes all six steps and runs the proof in about 30 ms, and the C's `compose_main` at -O2, which only composes, takes about 260 ms (`README.md`, "The Roc port"). The gap is the data structure, and the programming language has little to do with it: the C sums like terms in a hash table it grows and then sorts, while the Roc sums them in a dense table indexed by mask, a straight array write that reads back already in order. The C could use the same table, and it has yet to be tried (`9e0c86c`).
 
 ## What is Shale?
 
@@ -2124,9 +2124,9 @@ The README's guard rails come down to four rules.
 - **Risky shortcuts are refused by name.** `run` refuses a shell or an interpreter (`bash`, `python3`, `node`), a text tool Shale already has (`grep`, `sed`), and a program at a path git leaves untracked. A `{want = "tag: why"}` option runs one anyway, and the run records it.
 - **Git is the undo.** A run makes its changes as it goes, and each `edit` prints its diff. Working in a checkout, `git diff` shows what a run did, and `--undo-on-stop` puts back every file a stopped run changed.
 
-The style is an allow-list: the language and its runner name what they permit, and a refusal names what was asked for and what to write instead.
+The style is an allow-list: Shale and its runner name what they permit, and a refusal names what was asked for and what to write instead.
 
-### The language
+### The scripting language
 
 `docs/SHALE.md` says that Shale "looks like Lua, with smaller semantics of its own". Its integers are 64-bit and checked, so an overflow stops the script. Lists count from 1. A function is declared at the top level, above the code that calls it, and `const` names a top-level value made once. Reading a map's missing key stops the run, and `get(m, k, default)` asks for a default instead; a list that would hold `nil` is a `type` error.
 
@@ -2209,6 +2209,6 @@ By `README.md`'s breakdown, of the composition's 397 million steps, the tables a
 
 A few steps stand open, each small:
 
-- **The C's dense table.** The C composition could sum like terms in the Roc port's dense table, and its time would then measure the language.
+- **The C's dense table.** The C composition could sum like terms in the Roc port's dense table, and its time would then measure the programming language.
 - **The compiled JavaScript.** Its slowness is unprofiled. `README.md` guesses that an array's items are values of unknown kind to the compiler, so each read and write passes the runtime's tag checks.
 - **Nondeterminism.** The machine is deterministic. The SAT encoding already treats the program as the unknown, which is the theorem's "a certificate exists"; a machine with choice instructions would make the riff closer to the theorem.
