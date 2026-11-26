@@ -526,9 +526,21 @@ The last row is f: 174 gates, or more than half a million characters. {{chapter 
 
 A claim such as "program 1689 accepts input 2" can be checked by a tool that knows only formulas and clauses. This chapter turns f's graph into the format SAT tools read and hands the claim to the checker inside Matthieu Pizenberg's [rocsat](https://github.com/mpizenberg/rocsat).
 
+### CNF, the solvers' format
+
+A *literal* is a variable or its complement: v3, or ¬v3. A *clause* is an OR of literals, and it holds when at least one of its literals is true. A formula in *conjunctive normal form*, CNF, is a list of clauses that must all hold: an AND of ORs. For example,
+
+```text
+(v1 ∨ ¬v2) ∧ (v2 ∨ v3) ∧ (¬v1 ∨ ¬v3)
+```
+
+holds at v1 = 1, v2 = 1, v3 = 0, among other settings. In DIMACS, the text format SAT tools read, it is three lines, each clause's literals as signed numbers ending in 0: `1 -2 0`, `2 3 0`, `-1 -3 0`.
+
+Solvers want CNF because its pieces can be reasoned about one at a time. A clause whose literals are all false but one forces that one to be true, and a contradiction a solver runs into can be kept as one more clause. Any formula can be written in CNF, but writing it out directly can multiply its size, the way writing out f's text did.
+
 ### Naming each gate
 
-SAT tools read CNF: a list of clauses, each an OR of literals, all of which must hold. Expanding f into CNF would start from its half-million characters. Tseitin's encoding names instead: each AND and OR node gets a variable of its own, and three clauses say that variable equals its gate. A complement is a literal's minus sign.
+Expanding f into CNF would start from its half-million characters. Tseitin's encoding names instead: each AND and OR node gets a variable of its own, and three clauses say that variable equals its gate. A complement is a literal's minus sign.
 
 | gate | its three clauses | what they say |
 |---|---|---|
