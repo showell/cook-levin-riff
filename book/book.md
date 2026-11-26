@@ -65,7 +65,7 @@ Steve wrote the first version by hand in Python, in [virtual-machine](https://gi
 
 ### What the book covers
 
-The first part is the toy for its own sake: a finite language, completely understood, every question settled by running everything, even in Python. {{chapter The machine}} sets it out, {{chapter Languages and machines}} gives the computer science behind the word "language", {{chapter Programs as languages}} searches all 4,096 programs and proves the first theorems, {{chapter Nibble, the puzzle page}} turns the 16 languages into puzzles, and {{chapter The machine as a circuit}} builds the machine as hardware.
+The first part is the toy for its own sake: a finite language, completely understood, every question settled by running everything, even in Python. {{chapter The machine}} sets it out, {{chapter Languages and machines}} gives the computer science behind the word "language", {{chapter Deciding in plain Python}} decides each one with no machine at all, {{chapter Programs as languages}} searches all 4,096 programs and proves the first theorems, {{chapter Nibble, the puzzle page}} turns the 16 languages into puzzles, {{chapter The machine as a circuit}} builds the machine as hardware, and {{chapter Some history of the approach}} says in what order Steve built it all.
 
 The second part is Cook-Levin: {{chapter How it got here}}, {{chapter P, NP and Cook-Levin}}, then the step as polynomials, from {{chapter Arithmetization}} to {{chapter The polynomials, in full}}, and the circuit as a tableau and a formula, from {{chapter The Cook-Levin machine}} to {{chapter The solver's work, in full}}.
 
@@ -181,6 +181,32 @@ This machine only reads and moves right, so it is also a finite automaton; Turin
 ### This book's machine
 
 The machine here is Turing's idea at its smallest. Its tape is one 2-bit register, its inputs are the four strings 0, 1, 2 and 3, and every run halts within six steps, so every question about it is decidable by trying everything. A language is a subset of {0, 1, 2, 3}, and there are 16. A program decides exactly one of them, the set of inputs it accepts. {{chapter Programs as languages}} asks which programs decide which languages, by running all of them. The second part of the book asks what deciding costs when trying everything is out of reach, the question Cook and Levin answered.
+
+## Deciding in plain Python
+
+A language over {0, 1, 2, 3} is four yes-or-no answers, so deciding one takes a line of ordinary code. The code here is `python/decides.py`, which `build.shale` runs on every build: it holds its two versions to each other on all 16 languages and all four inputs, and each one-line test below to its language.
+
+### Two versions of `decides`
+
+A language's *want* code has bit n set when input n is in it, as in the table of {{chapter Programs as languages}}: {0, 2, 3} is 1 + 4 + 8 = 13. The plain version lists the members and looks n up among them:
+
+{{lines python/decides.py from "def decides(want, n):" to "    return n in members"}}
+
+The golfed version reads bit n of `want` directly:
+
+{{lines python/decides.py from "decides_golfed =" to "decides_golfed ="}}
+
+### Some languages as one test
+
+Many of the 16 languages have a natural test of n, or of its two bits, `hb` and `lb` (n is 2·`hb` + `lb`):
+
+{{lines python/decides.py from "ONE_LINERS = {" to "hb XOR lb"}}
+
+{{chapter Some history of the approach}} lists all 16 this way, as Boolean expressions of the two bits.
+
+### What the machine adds
+
+The want code already says everything about a language. The Nibble machine takes up to six lines to say the same thing, and for {0, 2, 3} it takes all six, in its one program. The composed polynomial of {{chapter Six steps composed}}, which runs every program on every input at once, takes 10,324 terms. The machine is there to be the thing analysed, a small checker that Cook and Levin's construction can turn into a formula; the question it answers is a lookup.
 
 ## Programs as languages
 

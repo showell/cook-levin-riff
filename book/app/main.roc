@@ -67,14 +67,15 @@ prepared_folder = "book/build/prepared"
 
 ## Everything this book chooses, but its fence hook, which needs the drawings.
 ## Every path is the cook-levin checkout's, since the book quotes its code.
-## A `.c` file is quoted as C, which the builder's own list leaves out.
+## A `.c` file is quoted as C and a `.py` file as Python, which the
+## builder's own list leaves out.
 settings : Builder.Settings
 settings = {
 	..Builder.default_settings,
 	manuscript: manuscript_path,
 	negatives: Lint({ words: "book/negative_words.txt", table: "book/negatives.txt" }),
 	colorer: colored_code,
-	include_languages: Includes.default_languages.append({ extension: "c", language: "c" }),
+	include_languages: Includes.default_languages.append({ extension: "c", language: "c" }).append({ extension: "py", language: "python" }),
 	look: { ..default_look, head_end: Polynomials.style, dividers: parts },
 }
 
