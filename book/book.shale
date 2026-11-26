@@ -92,8 +92,9 @@ end
 -- A program of src/ that prints the book's tables, `count` of them, each
 -- a block apart: the book's source must hold each byte for byte. The
 -- tableaux in "The tableau, filled in" are src/tableau_main.c's, and the
--- 16 languages as Boolean expressions in "Some history of the approach"
--- are src/boolean_main.c's.
+-- 16 languages as Boolean expressions in "Some history of the approach",
+-- and the step's expressions, the counts and two sums of products in "Six
+-- expressions, composed", are src/boolean_main.c's.
 function check_tables(name, count)
   must(run({"gcc", "-O2", "-std=c11", "-Wall", "-Wextra", "-Werror", "-o", real(COMPOSED) .. "/" .. name, "src/" .. name .. ".c"}, {timeout_ms = 120000, tail = 20}))
   local r = must(run({real(COMPOSED .. "/" .. name)}, {timeout_ms = 60000, whole = 40000, want = "book: " .. name .. ", just built from src/ for the book"}))
@@ -280,7 +281,7 @@ function main()
   end
   compose_polynomials()
   check_tables("tableau_main", 2)
-  check_tables("boolean_main", 1)
+  check_tables("boolean_main", 5)
   check_solver_files()
 
   local app = relative_path(real(ROC_APPS .. "/book_builder"), real(APP_DIR .. "/app/main.roc"))

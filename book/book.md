@@ -65,9 +65,9 @@ Steve wrote the first version by hand in Python, in [virtual-machine](https://gi
 
 ### What the book covers
 
-The first part is the toy for its own sake: a finite language, completely understood, every question settled by running everything, even in Python. {{chapter The machine}} sets it out, {{chapter Languages and machines}} gives the computer science behind the word "language", {{chapter Deciding in plain Python}} decides each one in a line of Python, {{chapter Programs as languages}} searches all 4,096 programs and proves the first theorems, {{chapter Nibble, the puzzle page}} turns the 16 languages into puzzles, {{chapter The machine as a circuit}} builds the machine as hardware, and {{chapter Some history of the approach}} says in what order Steve built the Python.
+The first part is the toy for its own sake: a finite language, completely understood, every question settled by running everything, even in Python. {{chapter The machine}} sets it out, {{chapter Languages and machines}} gives the computer science behind the word "language", {{chapter Deciding in plain Python}} decides each one in a line of Python, {{chapter Programs as languages}} searches all 4,096 programs and proves the first theorems, {{chapter Which instructions are needed}} takes the opcodes apart, {{chapter Nibble, the puzzle page}} turns the 16 languages into puzzles, {{chapter The machine as a circuit}} builds the machine as hardware, and {{chapter Some history of the approach}} says in what order Steve built the Python.
 
-The second part is Cook-Levin: {{chapter How it got here}}, {{chapter P, NP and Cook-Levin}}, then the step as polynomials, from {{chapter Arithmetization}} to {{chapter The polynomials, in full}}, and the circuit as a tableau and a formula, from {{chapter The Cook-Levin machine}} to {{chapter The solver's work, in full}}.
+The second part is Cook-Levin: {{chapter How it got here}}, {{chapter P, NP and Cook-Levin}}, {{chapter Six expressions, composed}}, then the step as polynomials, from {{chapter Arithmetization}} to {{chapter The polynomials, in full}}, and the circuit as a tableau and a formula, from {{chapter The Cook-Levin machine}} to {{chapter The solver's work, in full}}.
 
 The third part is the cross-checks: {{chapter The oracles}}, {{chapter The Roc port}}, {{chapter What is Shale?}} and {{chapter The VM in Shale}}, then {{chapter What comes next}}. The theorems are numbered through the book, each proved by an exhaustive run that its proof names.
 
@@ -131,7 +131,7 @@ Every behaviour of the machine is in those 26 lines. The rest of this part only 
 
 A run that reaches the end of its six instructions rejects. So a program accepts some of the four inputs and rejects the rest, and the set it accepts is its language.
 
-Steve's own view of `nada` and of the design, in his words: "nada is kinda not a real instruction under my machine. It just makes it so that every program is exactly 12 bits. It's also worth saying that the language was designed to have some complexity. It's using an imperfect machine to solve the problem somewhat by design." {{chapter Programs as languages}} makes both points exact: `nada` is redundant (Theorem 6), and two instructions of another design would decide every language in four lines (Theorem 7).
+Steve's own view of `nada` and of the design, in his words: "nada is kinda not a real instruction under my machine. It just makes it so that every program is exactly 12 bits. It's also worth saying that the language was designed to have some complexity. It's using an imperfect machine to solve the problem somewhat by design." {{chapter Which instructions are needed}} makes both points exact: `nada` is redundant (Theorem 6), and two instructions of another design would decide every language in four lines (Theorem 7).
 
 ### Counting
 
@@ -298,11 +298,17 @@ Input 0 is accepted on line 1. Input 1 drops to 0 on line 2 and is rejected by t
 
 The empty language has 844 programs, since any program that rejects every input will do, and {0, 2} has 883: `mod2` then `zero` is two lines, and many longer programs reach the same verdicts.
 
-### Which instructions are needed
+## Which instructions are needed
+
+{{chapter Programs as languages}} counted what the four opcodes decide together. This chapter takes them apart: which of the four are needed, and what instructions of other designs could do.
+
+### The four opcodes
 
 **Theorem 6.** The six-line programs over `zero`, `decr` and `mod2` decide all 16 languages, and each of the three is needed: dropping `zero` leaves only { } decided, dropping `decr` leaves 3 languages, and dropping `mod2` leaves 15 (Theorem 2). `nada` is redundant: the programs over the other three decide all 16.
 
 *Proof.* `tests/test_theorems.c` runs the 4,096 programs, keeps those whose every instruction is in a given set, and counts the languages they decide, for all four opcodes and for each set of three. Only `zero` accepts, so dropping it leaves every input rejected. Dropping `decr` leaves { }, {0} and {0, 2}: `mod2` brings 2 to 0, and 1 and 3 to 1, where they stay.
+
+### Instructions of any kind
 
 The four opcodes are one choice among many. An instruction of any kind says, for each value of `AX`, what happens there: a new value, or accept, or reject. That makes 6^4 = 1,296 instructions, and the toy's four are among them.
 
@@ -555,11 +561,103 @@ Decidable languages differ in cost. P is the class decided in time polynomial in
 
 ### The toy as a checker
 
-The toy is such a checker. Given a language and a program, it runs the program on four inputs and says whether the program decides the language; the program is the certificate. The chapters that follow take that checker apart two ways. {{chapter Arithmetization}} through {{chapter The polynomials, in full}} write its step as polynomials and compose all six, the riff's own route. {{chapter The Cook-Levin machine}} through {{chapter The solver's work, in full}} take Cook and Levin's route: the run as a tableau, the tableau as clauses, and a SAT solver to find the certificates.
+The toy is such a checker. Given a language and a program, it runs the program on four inputs and says whether the program decides the language; the program is the certificate. The chapters that follow take that checker apart two ways, after {{chapter Six expressions, composed}} sets the two side by side. {{chapter Arithmetization}} through {{chapter The polynomials, in full}} write its step as polynomials and compose all six, the riff's own route. {{chapter The Cook-Levin machine}} through {{chapter The solver's work, in full}} take Cook and Levin's route: the run as a tableau, the tableau as clauses, and a SAT solver to find the certificates.
+
+## Six expressions, composed
+
+{{chapter Some history of the approach}} showed each language as a Boolean function of two bits. The machine's step is one too, of six bits, and six steps composed are one of fourteen. This chapter writes the step as plain Boolean expressions, composes them into the question a puzzle asks, and then names the two ways of composing that the rest of this part follows.
+
+### The step as expressions
+
+A step reads `hb`, `lb`, `halted`, `accepted`, `op_hb` and `op_lb`, as in {{chapter Arithmetization}}, and writes the next four. Eight small facts about the machine come first, then the four next-state bits, each read with the facts above it (`src/decides.c`):
+
+```text
+ax_is_0 = NOT hb AND NOT lb
+ax_is_2 = hb AND NOT lb
+ax_is_3 = hb AND lb
+is_zero = NOT op_hb AND op_lb
+is_decr = op_hb AND NOT op_lb
+is_mod2 = op_hb AND op_lb
+runs = NOT halted
+keeps = halted OR NOT op_hb
+hb' = (hb AND keeps) OR (ax_is_3 AND is_decr AND runs)
+lb' = (lb AND (keeps OR (is_mod2 AND runs))) OR (ax_is_2 AND is_decr AND runs)
+halted' = halted OR (ax_is_0 AND is_decr)
+accepted' = accepted OR (ax_is_0 AND is_zero AND runs)
+```
+
+`keeps` says that `AX` stays as it is: the machine has halted, or the line is `nada` or `zero`. So `hb'` is the old `hb` kept, or a `decr` from 3 to 2. `lb'` is the old `lb` kept, or kept by `mod2`, which keeps `lb` and clears `hb`, or a `decr` from 2 to 1. `halted'` adds a `decr` at 0, and `accepted'` a `zero` at 0 on a running machine. `tests/test_boolean.c` holds the four to `src/stepper.c`'s step on all 64 settings of the six bits, and `src/boolean_main.c` checks them again before it prints them for this book. They are the gates of `sat_step` in {{chapter The Cook-Levin machine}}, merged by hand.
+
+### Composition
+
+Chain six copies. The first reads the input's two bits, both flags at 0 and line 1's two bits; each later copy reads the state the one before it wrote, and its own line's bits. After the sixth, `accepted` is an expression accepted(n, v) of 2 + 12 bits: the input's two and the program's twelve, v1 to v12, numbered as in {{chapter Cook-Levin as SAT}}, where instruction i is 2·v(2i − 1) + v(2i).
+
+### The question as one expression
+
+A puzzle asks whether a program decides L. That is one more expression, of the twelve program bits alone:
+
+```text
+decides_L(v1, ..., v12) = AND over n in 0..3 of (accepted(n, v) == L(n))
+```
+
+L(n) is the constant 1 or 0, so each of the four comparisons is `accepted(n, v)` or its complement. The true points of `decides_L` are exactly the programs that decide L.
+
+### The payoff
+
+Expanded and simplified, `decides_L` is a sum of products over v1 to v12. `src/boolean_main.c` computes one for every language: it finds the programs that decide L by running all 4,096, takes the prime implicants of that set, and covers it greedily, the product holding the most programs left taken first. Each product is written as its twelve bits, two a line of the program: 1 for v, 0 for its complement, and - for a bit the product leaves free. For {0, 2, 3} the expression is one product, the conjunction of 12 literals that spells its one program, `zero, decr, decr, zero, decr, zero`:
+
+```text
+01 10 10 01 10 01
+```
+
+For {0, 3}, 12 programs take 8 products. The first is `zero, decr, decr, decr, zero` with line 6 free:
+
+```text
+01 10 10 10 01 --
+0- 01 10 10 10 01
+01 10 10 00 10 01
+01 10 00 10 10 01
+01 0- 10 10 10 01
+01 10 10 11 10 01
+01 10 10 10 -1 01
+01 10 10 10 0- 01
+```
+
+The counts for all 16, programs and products, from the same run:
+
+| code | language | programs | products |
+|---|---|---|---|
+| 0 | { } | 844 | 87 |
+| 1 | {0} | 681 | 41 |
+| 2 | {1} | 303 | 32 |
+| 3 | {0, 1} | 172 | 26 |
+| 4 | {2} | 248 | 80 |
+| 5 | {0, 2} | 883 | 121 |
+| 6 | {1, 2} | 74 | 31 |
+| 7 | {0, 1, 2} | 13 | 8 |
+| 8 | {3} | 63 | 30 |
+| 9 | {0, 3} | 12 | 8 |
+| 10 | {1, 3} | 520 | 130 |
+| 11 | {0, 1, 3} | 150 | 54 |
+| 12 | {2, 3} | 13 | 9 |
+| 13 | {0, 2, 3} | 1 | 1 |
+| 14 | {1, 2, 3} | 15 | 10 |
+| 15 | {0, 1, 2, 3} | 104 | 40 |
+
+`tests/test_boolean.c` holds every language's sum of products to `run_progam`, program by program, and the book's build holds the blocks here to `boolean_main`'s output.
+
+### Two ways to compose
+
+The composing above ran all 4,096 programs, which a toy allows. For a real checker there are two ways to compose the step's expressions, and the rest of this part takes each in turn.
+
+- **Expand it.** Substitute each step's expressions into the next and multiply out. That is arithmetization: {{chapter Arithmetization}} writes the step as polynomials over the integers, and {{chapter Six steps composed}} expands all six, to 10,324 terms for `accepted`. The size grows with every step substituted.
+- **Name it.** Give each intermediate wire a fresh variable, and state only how it relates to its inputs. That is Tseitin's encoding and SAT: {{chapter Cook-Levin as SAT}} has 416 variables and 1,216 clauses for each puzzle, and the count grows linearly with the steps, one step unit's gates per step.
+
+Naming is why Cook-Levin's formula stays polynomial in size: each step adds the same few clauses, whatever came before it.
 
 ## Arithmetization
 
-The stepper writes one step of the machine as polynomials. Each bit of the state is a variable that is only ever 0 or 1, and logic becomes arithmetic:
+The stepper writes one step of the machine as polynomials, the first of the two ways to compose in {{chapter Six expressions, composed}}: expand. Each bit of the state is a variable that is only ever 0 or 1, and logic becomes arithmetic:
 
 - NOT x is 1 - x;
 - x AND y is x·y;
