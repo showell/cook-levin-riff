@@ -49,8 +49,8 @@ number_at = |arguments, index, limit|
 ## The claim's DIMACS text, or what stopped it.
 claim : U64, U64, Str -> Try(Str, Str)
 claim = |program, problem, text| {
-	equations = Cnf.parse(text) ? |BadEquation(line)| "no equation in `${line}`"
-	formula = Cnf.encode(equations) ? |e| refusal(e)
+	equations = Cnf.equations_of(text) ? |BadEquation(line)| "no equation in `${line}`"
+	formula = Cnf.formula_of(equations) ? |e| refusal(e)
 	fixed = Cnf.fixed(formula, units(program, problem)) ? |e| refusal(e)
 	gates = formula.variables - equations.inputs.len().to_i64_wrap()
 	comments = [

@@ -1047,11 +1047,11 @@ circuit_main equations: every gate of the decider, in evaluation order
 
 ### The library
 
-`roc/Cnf.roc` has four parts. An expression, `Cnf.Expr`, is a variable, a constant, the AND or OR of two expressions, or the complement of one. `Cnf.parse` reads the equations text into the inputs and one expression a wire. `Cnf.encode` is Tseitin's encoding, and `Cnf.dimacs` writes the result as DIMACS, with a `c` comment line naming each input's and each wire's literal.
+`roc/Cnf.roc` converts any Boolean expression of variables, constants, AND, OR and complement; the circuit's equations are one such input. It has four parts. An expression, `Cnf.Expr`, is a variable, a constant, the AND or OR of two expressions, or the complement of one. `Cnf.equations_of` reads the equations text into the inputs and one expression a wire. `Cnf.formula_of` is Tseitin's encoding, and `Cnf.dimacs` writes the result as DIMACS, with a `c` comment line naming each input's and each wire's literal.
 
 The encoding numbers the 16 inputs v1 to v16, in the order of the `inputs:` line, and then reads the wires in order. A complement is a literal's sign, which is free. An AND or OR with a constant operand folds: x AND 0 is 0 and x AND 1 is x, and OR the same way with the constants swapped. Every other AND or OR gets the next fresh variable and three clauses:
 
-{{function roc/Cnf.roc gate}}
+{{function roc/Cnf.roc connective}}
 
 The app `roc/ClaimCnf.roc` writes one claim as a CNF: "program P decides problem W". It takes the program's number, the problem's code (input n is in the problem when bit n is 1, so 13 is {0, 2, 3}) and the equations, one line an argument, since its platform reads its arguments alone. To the encoding it adds 17 unit clauses: one for each of the 16 inputs, fixed to the program's and the want register's bits, and one asking `decides` = 1. `roc/check.shale` holds the library's 9 expects and the app's 13, which include the whole decider's sizes below.
 

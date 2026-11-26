@@ -29,8 +29,8 @@ Cnf :: [].{
 	## The equations text: a line `inputs: a b ...`, then one line a wire,
 	## `name = a AND b`, `name = a OR b`, `name = NOT a` or `name = a`, an
 	## operand being a name or 0 or 1.
-	parse : Str -> Try(Cnf.Equations, [BadEquation(Str)])
-	parse = |text| {
+	equations_of : Str -> Try(Cnf.Equations, [BadEquation(Str)])
+	equations_of = |text| {
 		rows = text.split_on("\n").drop_if(|row| row.is_empty())
 		head = rows.first() ?? ""
 		if head.starts_with("inputs: ") {
@@ -43,8 +43,8 @@ Cnf :: [].{
 	}
 
 	## Tseitin's encoding of the equations.
-	encode : Cnf.Equations -> Try(Cnf.Formula, [Undefined(Str), Twice(Str)])
-	encode = |{ inputs, wires }| {
+	formula_of : Cnf.Equations -> Try(Cnf.Formula, [Undefined(Str), Twice(Str)])
+	formula_of = |{ inputs, wires }| {
 		var $state = inputs.fold(
 			{ next: 1, clauses: [], values: Dict.empty(), named: [] },
 			|state, name| { ..named_as(state, name, Literal(state.next)), next: state.next + 1 },
@@ -123,20 +123,20 @@ value_of = |expr, state|
 			found = value_of(inner, state)?
 			Ok({ ..found, value: negated(found.value) })
 		}
-		And(a, b) => gate(Both, a, b, state)
-		Or(a, b) => gate(Either, a, b, state)
+		And(a, b) => connective(And, a, b, state)
+		Or(a, b) => connective(Or, a, b, state)
 	}
 
-## An AND (`Both`) or an OR (`Either`) of two expressions. A constant operand
+## The value of an AND (`And`) or an OR (`Or`) of two expressions. A constant operand
 ## settles the gate or leaves the other operand; otherwise the gate is a new
 ## variable g, and for AND its clauses are (-g a), (-g b), (g -a -b), for OR
 ## (g -a), (g -b), (-g a b).
-gate : [Both, Either], Cnf.Expr, Cnf.Expr, State -> Try({ value : Cnf.Value, state : State }, [Undefined(Str)])
-gate = |kind, a, b, state| {
+connective : [And, Or], Cnf.Expr, Cnf.Expr, State -> Try({ value : Cnf.Value, state : State }, [Undefined(Str)])
+connective = |kind, a, b, state| {
 	left = value_of(a, state)?
 	right = value_of(b, left.state)?
 	after = right.state
-	is_and = kind == Both
+	is_and = kind == And
 	match (left.value, right.value) {
 		(Fixed(bit), other) | (other, Fixed(bit)) =>
 			if (bit == is_and) Ok({ value: other, state: after }) else Ok({ value: Fixed(bit), state: after })
@@ -191,11 +191,11 @@ operand = |word|
 	}
 
 ## A test's equations text encoded.
-formula_of : Str -> Cnf.Formula
-formula_of = |text|
-	match Cnf.parse(text) {
+test_formula : Str -> Cnf.Formula
+test_formula = |text|
+	match Cnf.equations_of(text) {
 		Ok(equations) =>
-			match Cnf.encode(equations) {
+			match Cnf.formula_of(equations) {
 				Ok(formula) => formula
 				Err(_) => crash "Cnf: the test's equations encode"
 			}
@@ -203,7 +203,7 @@ formula_of = |text|
 	}
 
 clauses_of : Str -> List(List(I64))
-clauses_of = |text| formula_of(text).clauses
+clauses_of = |text| test_formula(text).clauses
 
 # An AND: v3 = v1 AND v2, three clauses.
 expect clauses_of("inputs: a b\ng = a AND b\n") == [[-3, 1], [-3, 2], [3, -1, -2]]
@@ -220,18 +220,18 @@ expect clauses_of("inputs: a b\ng = a AND 1\nf = g OR b\n") == [[3, -1], [3, -2]
 # A nested expression, (a AND NOT b) OR c: two gates, inner first.
 expect {
 	expr = Or(And(Var("a"), Not(Var("b"))), Var("c"))
-	Cnf.encode({ inputs: ["a", "b", "c"], wires: [{ name: "f", expr }] }).map_ok(|f| f.clauses) == Ok([[-4, 1], [-4, -2], [4, -1, 2], [5, -4], [5, -3], [-5, 4, 3]])
+	Cnf.formula_of({ inputs: ["a", "b", "c"], wires: [{ name: "f", expr }] }).map_ok(|f| f.clauses) == Ok([[-4, 1], [-4, -2], [4, -1, 2], [5, -4], [5, -3], [-5, 4, 3]])
 }
 
 # The claim's units, and the DIMACS text whole.
 expect {
-	formula = formula_of("inputs: a b\ng = a AND b\nn = NOT g\n")
+	formula = test_formula("inputs: a b\ng = a AND b\nn = NOT g\n")
 	text = Cnf.fixed(formula, [{ name: "a", bit: True }, { name: "n", bit: True }]).map_ok(|f| Cnf.dimacs(["a test"], f))
 	text == Ok("c a test\nc a = 1\nc b = 2\nc g = 3\nc n = -3\np cnf 3 5\n-3 1 0\n-3 2 0\n3 -1 -2 0\n1 0\n-3 0\n")
 }
 
 # A name read before it is defined, a name defined twice and a line that is
 # no equation are refused.
-expect Cnf.parse("inputs: a\ng = a AND b\n").map_ok(Cnf.encode) == Ok(Err(Undefined("b")))
-expect Cnf.parse("inputs: a\na = NOT a\n").map_ok(Cnf.encode) == Ok(Err(Twice("a")))
-expect Cnf.parse("inputs: a\ng = a XOR a\n").map_ok(|_| {}) == Err(BadEquation("g = a XOR a"))
+expect Cnf.equations_of("inputs: a\ng = a AND b\n").map_ok(Cnf.formula_of) == Ok(Err(Undefined("b")))
+expect Cnf.equations_of("inputs: a\na = NOT a\n").map_ok(Cnf.formula_of) == Ok(Err(Twice("a")))
+expect Cnf.equations_of("inputs: a\ng = a XOR a\n").map_ok(|_| {}) == Err(BadEquation("g = a XOR a"))
