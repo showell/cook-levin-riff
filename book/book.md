@@ -1272,21 +1272,48 @@ The N stands for *nondeterministic*: NP was first defined by machines that guess
 
 ## Nibble, sized
 
-P and NP sort formal languages by how their cost grows with the input's length. The toy's formal languages are finite, and every finite one is in P for an empty reason: a machine can keep all its answers in a table and look each one up in a fixed number of steps. To ask the question precisely, the machine has to grow.
+P and NP sort formal languages by how their cost grows with the input's length. The toy's formal languages are finite, and every finite one is in P for an empty reason: a machine can keep all its answers in a table and look each one up in a fixed number of steps. To ask the question precisely, the machine has to grow. Below, three questions about it become formal languages, each with members and non-members at the toy's size.
 
 ### The machine, with a size
 
 Keep the four opcodes and give the machine two sizes. `AX` holds n bits, so the inputs are 0 to 2^n − 1, and a program has k lines, two bits a line. Each opcode does what it does now: `nada` leaves everything as it is, `decr` takes 1 from `AX` and halts at 0, `mod2` keeps `AX`'s low bit and clears the rest, and `zero` accepts when `AX` is 0. The toy is the case n = 2, k = 6.
 
+### Questions as sets of pairs
+
+A formal language is one set of strings, and its decision problem asks one question of one string: is it in the set? The questions worth asking about the machine take two things, such as a program and an input. So each pair is written as one string, with the encoding of {{chapter P and NP}}: the first part's bits, then the second's. "Does P accept x?" becomes "is the string for (P, x) in the set?" At the toy's size the program `mod2, zero` is the twelve bits `11 01 00 00 00 00`, its four lines of `nada` included.
+
 ### Two formal languages in P
 
-**ACCEPTS** is the set of pairs (P, x) where program P accepts input x. The pair is 2k + n bits long. Running P takes k steps, and each step is a decrement or a test of n bits, about k·n bit operations in all, so a machine decides ACCEPTS in time linear in the input's length. ACCEPTS is in P.
+**ACCEPTS** is the set of pairs (P, x) where program P accepts input x. The pair is 2k + n bits long. Running P takes k steps, and each step is a decrement or a test of n bits, about k·n bit operations in all, so a machine decides ACCEPTS in time linear in the input's length. ACCEPTS is in P. At the toy's size, one pair is in and one is out:
 
-**DECIDES** is the set of pairs (P, W) where P decides the set W, W written as its 2^n want bits, one an input, as {{chapter The Boolean view}} writes them. The machine runs P on every input and compares each verdict with its want bit: 2^n runs of about k·n bit operations each. The input is 2k + 2^n bits long, since W alone has 2^n bits, so that cost is polynomial in the input's length. DECIDES is in P.
+| P | x | (P, x) as one string | The run | In ACCEPTS |
+|---|---:|---|---|---|
+| `mod2, zero` | 2 | `11 01 00 00 00 00 10` | `zero` accepts it at line 2 | in |
+| `mod2, zero` | 1 | `11 01 00 00 00 00 01` | runs past line 6, rejected | out |
+
+**DECIDES** is the set of pairs (P, W) where P decides the set W, W written as its 2^n want bits, input 0's first, as {{chapter The Boolean view}} writes them. The machine runs P on every input and compares each verdict with its want bit: 2^n runs of about k·n bit operations each. The input is 2k + 2^n bits long, since W alone has 2^n bits, so that cost is polynomial in the input's length. DECIDES is in P.
+
+| P | W | (P, W) as one string | What P decides | In DECIDES |
+|---|---|---|---|---|
+| `mod2, zero` | {0, 2} | `11 01 00 00 00 00 1010` | {0, 2} | in |
+| `mod2, zero` | {0} | `11 01 00 00 00 00 1000` | {0, 2} | out |
+
+The same program is in one pair and out of the other. It decides {0, 2}, so the pair with {0} fails at input 2, whose want bit is 0.
 
 ### A formal language in NP
 
-**SOLVABLE** is the set of pairs (W, k) for which some program of k lines decides W, with k written in unary, as k ones, so that a program of k lines is short beside the input. It is in NP. The certificate is the program, 2k bits, and the verifier is the machine that decides DECIDES: it accepts (W, k, P) when P has k lines and decides W. Every member has such a P, and for a non-member every P of k lines fails the check.
+**SOLVABLE** is the set of pairs (W, k) for which some program of k lines decides W. It is in NP. The certificate is the program, 2k bits, and the verifier is the machine that decides DECIDES: it accepts (W, k, P) when P has k lines and decides W. Every member has such a P, and for a non-member every P of k lines fails the check.
+
+The pair writes k in unary, as k ones, because polynomial time is measured against the input's length. Written in binary, k takes about log₂ k bits, and a certificate of 2k bits would be exponentially long beside them, as trial division's steps are beside a number's digits in {{chapter P and NP}}. Written as k ones, the input is at least k long, and the certificate is short beside it. With n fixed, the first 2^n bits are W, and the ones after them are k.
+
+| W | k | (W, k) as one string | Evidence | In SOLVABLE |
+|---|---:|---|---|---|
+| {0, 2} | 2 | `1010 11` | `mod2, zero`, and `sat/proofs/5-len2.model` | in |
+| {0, 2} | 1 | `1010 1` | the shortest has 2 lines, and `sat/proofs/5-len1.drat` | out |
+| {0, 2, 3} | 6 | `1011 111111` | `zero, decr, decr, zero, decr, zero`, and `sat/proofs/13-len6.model` | in |
+| {0, 2, 3} | 5 | `1011 11111` | the shortest has 6 lines, and `sat/proofs/13-len5.drat` | out |
+
+A member's evidence is a program, and the SAT answer beside it is rocsat's own program for the same question. A non-member's evidence is of another kind. The search of all 4,096 programs gives each set's shortest length, and the DRAT file is rocsat's proof that every program of k lines fails, the kind of evidence {{chapter P and NP}} calls out of reach in general.
 
 Finding the program is the costly part. Trying every program tries 4^k of them, exponential in k. Whether SOLVABLE is in P is a question this book leaves open. {{chapter Cook-Levin as SAT}} answers SOLVABLE's questions for the toy, n = 2 and k = 6, by Cook and Levin's route: the verifier becomes a formula, and a SAT solver finds the certificate.
 
