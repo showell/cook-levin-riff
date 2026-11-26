@@ -67,7 +67,7 @@ Steve wrote the first version by hand in Python, in [virtual-machine](https://gi
 
 The first part is the toy for its own sake: a finite machine, completely understood, every question settled by running everything, even in Python. It runs from {{chapter The machine}} and the theory of languages through plain Python, the search of all 4,096 programs, the puzzle page, and the machine as Boolean functions and as hardware, to {{chapter Some history of the approach}}, the order in which Steve built it.
 
-The second part is Cook-Levin: {{chapter How it got here}}, {{chapter P, NP and Cook-Levin}}, {{chapter Six expressions, composed}}, then the step as polynomials, from {{chapter Arithmetization}} to {{chapter The polynomials, in full}}, and the circuit as a tableau and a formula, from {{chapter The Cook-Levin machine}} to {{chapter The solver's work, in full}}.
+The second part is Cook-Levin: {{chapter How it got here}}, {{chapter P and NP}}, {{chapter P, NP and Cook-Levin}}, {{chapter Six expressions, composed}}, then the step as polynomials, from {{chapter Arithmetization}} to {{chapter The polynomials, in full}}, and the circuit as a tableau and a formula, from {{chapter The Cook-Levin machine}} to {{chapter The solver's work, in full}}.
 
 The third part is the cross-checks: {{chapter The oracles}}, {{chapter The Roc port}}, {{chapter What is Shale?}} and {{chapter The VM in Shale}}, then {{chapter What comes next}}. The theorems are numbered through the book, each proved by an exhaustive run that its proof names.
 
@@ -1212,13 +1212,60 @@ The Go port lives in a repository of its own, outside this record. By Steve's ac
 
 The cook-levin-riff log covers one day. The C port of the machine and the search came first (`8051ce2`), then the general polynomial (`ccde4f8`) and the stepper (`5b14d74`). The Boolean ring came at 15:59 (`0c233e3`), and all six steps composed, proved on all 2^14 points, at 16:23 (`1146d43`). The Nibble page (`b1fe11f`), the Roc port (`6206236`), the SAT encoding (`8de51b7`), rocsat as an oracle (`f977bcc`) and the JavaScript port (`e996749`, `c251895`) followed. The first commit is stamped 15:32 and the last 19:21.
 
+## P and NP
+
+The toy's every question was settled by trying everything: 4,096 programs on four inputs. That works because the toy is finite. Complexity theory is about languages with inputs of every length, where trying everything grows with the input, and it sorts languages by how fast the work grows. This chapter gives the two classes the rest of the book leans on, P and NP, at the level of their definitions.
+
+### Time as a function of length
+
+An input is a string, and its length n is the measure of its size. A machine's running time is the most steps it takes on any input of length n, a function of n. A running time is *polynomial* when it is at most c·n^k for some fixed c and k: n, n², n³ and so on. The contrast is exponential time, such as 2^n, the cost of trying every assignment of n bits:
+
+| n | n² | 2^n |
+|---|---|---|
+| 10 | 100 | 1,024 |
+| 20 | 400 | 1,048,576 |
+| 50 | 2,500 | 1,125,899,906,842,624 |
+
+Polynomial is the dividing line for two reasons. A polynomial of a polynomial is a polynomial, so a polynomial-time machine that calls another polynomial-time machine as a step is still polynomial. And every reasonable model of a machine, a Turing machine, a random-access machine, a real computer, simulates the others with a polynomial slowdown, so the class is the same whichever model is chosen.
+
+### P, deciding fast
+
+**P** is the class of languages that some machine decides in polynomial time: on every input, it halts within c·n^k steps with its verdict, accept or reject. Whether a list of numbers is sorted is in P: one pass compares each pair of neighbours. So is whether a number written in binary is even, and, by a cleverer algorithm, whether it is prime.
+
+### NP, checking fast
+
+**NP** is the class of languages whose yes answers can be checked fast. A language L is in NP when there is a machine V, the *verifier*, that runs in polynomial time on a pair (x, c), with two properties:
+
+- **Every yes has evidence.** If x is in L, some string c, a *certificate*, makes V(x, c) accept, and c is short: its length is at most polynomial in the length of x.
+- **Every non-member resists all evidence.** If x is outside L, V(x, c) rejects for every c whatsoever.
+
+The certificate is the answer's evidence, and the verifier is a skeptic that only checks. Finding the certificate is someone else's job.
+
+Three examples:
+
+- **SAT**, the satisfiable Boolean formulas. The certificate is an assignment, and the verifier evaluates the formula at it: `rocsat check`, in {{chapter The SAT solver}}, is such a verifier.
+- **Composite numbers.** The certificate is a factor d with 1 < d < x, and the verifier divides.
+- **Three-colouring a map.** The certificate is a colour for each country, and the verifier looks at each border once.
+
+In each, checking is quick and finding looks hard: the obvious way to find a certificate tries them all, and there are exponentially many.
+
+The second property matters as much as the first. A verifier that accepted every certificate would make every language look like a member. {{chapter The SAT solver}}'s unhappy paths hold rocsat's checker to it on small cases: a false assignment is refused, and the clause it breaks is named.
+
+### What is known
+
+Every language in P is in NP: its verifier ignores the certificate and decides x directly. Whether every language in NP is in P, whether finding is always about as easy as checking, is the P versus NP question, open since the early 1970s and one of the Clay Mathematics Institute's Millennium Prize Problems.
+
+The definition is lopsided. A certificate shows membership, and NP asks for evidence of membership alone. For an unsatisfiable formula, short evidence of its unsatisfiability is, as far as anyone knows, out of reach in general. The DRAT proofs of {{chapter The solver's work, in full}} are evidence of exactly that kind, and they are short here because the toy is small; for some formulas, every proof of the kind a solver like rocsat writes is exponentially long.
+
+The N stands for *nondeterministic*: NP was first defined by machines that guess, and {{chapter P, NP and Cook-Levin}} takes up that view, the guess being the certificate.
+
 ## P, NP and Cook-Levin
 
-The toy's every question was settled by trying everything: 4,096 programs on four inputs. For a machine with unbounded inputs, trying every certificate takes time that grows exponentially with the input's length, and complexity theory asks which questions can be answered faster.
+{{chapter P and NP}} defines the two classes. This chapter states the theorem that ties NP to one language, SAT, and says what it means for the toy.
 
-### When deciding is cheap, and when checking is
+### SAT, as hard as all of NP
 
-Decidable languages differ in cost. P is the class decided in time polynomial in the input's length. NP is the class whose members have short certificates that a machine can check in polynomial time: a formula is in SAT, the language of satisfiable Boolean formulas, when an assignment makes it true, and checking an assignment is quick. In 1971 Stephen Cook, in "The Complexity of Theorem-Proving Procedures", and independently Leonid Levin, published in 1973, showed that SAT is as hard as anything in NP. Their proof takes the checking machine, which runs for a polynomial number of steps, and writes each step of its run as clauses: the whole run becomes one formula, satisfiable exactly when a certificate exists.
+A *reduction* from a language A to a language B is a polynomial-time translation of A's inputs into B's that keeps every answer: x is in A exactly when its translation is in B. A machine for B then answers A too. A language is *NP-complete* when it is in NP and every language in NP reduces to it. In 1971 Stephen Cook, in "The Complexity of Theorem-Proving Procedures", and independently Leonid Levin, published in 1973, showed that SAT is as hard as anything in NP. Their proof takes the checking machine, which runs for a polynomial number of steps, and writes each step of its run as clauses: the whole run becomes one formula, satisfiable exactly when a certificate exists.
 
 ### Guessing, and the computation history
 
