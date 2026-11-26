@@ -1,6 +1,6 @@
 # The Nibble page's machine: Machine.roc as the page's wasm, on the platform
 # in ../web/platform, which web/build.shale builds and links. Each function
-# answers what src/vm.c answers, packed as the page reads it (web/nibble.js),
+# answers what src/vm.c answers, packed as the pages read it (web/machine.js),
 # and web/page_check.mjs holds all three to the C on every program and input:
 #
 # - `status(n, code)`: run_progam's Status for program `code` on input `n`,

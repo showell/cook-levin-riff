@@ -128,10 +128,20 @@ the locked and fixed lines are locked, sees a reload start fresh with
 nothing in localStorage, solves `is_one` and `is_even` by one click on
 line 2's `zero` and `grumpy` by one click, then opens puzzles 5 to 16 in
 turn, checks each one's locks (its fixed `zero` among them) and hint, and
-solves it by clicks; it saves screenshots to `out/web/page.png`,
-`out/web/page-given.png` and `out/web/page-fixed.png`. The page's files are
+solves it by clicks; then it follows the link to the sandbox and plays it by
+clicks and typed numbers. It saves screenshots to `out/web/page.png`,
+`out/web/page-given.png`, `out/web/page-fixed.png` and
+`out/web/page-sandbox.png`. The page's files are
 named by their bytes, and its URLs are relative, so `out/web/site` can be
 served from any folder.
+
+Beside the puzzles, `web/sandbox.html` is the same machine with no puzzle:
+six free lines, all `nada` to start, the trace, the op tips and the machine
+code, and in place of a verdict the problem the program decides, its
+accepted set and its name in the puzzle table (program #1689 decides
+`is_not_one`, {0, 2, 3}). A program number from 0 to 4095, typed in, loads
+that program. The two pages link to each other and share `web/machine.js`
+(the wasm, the table and the parts both draw) and `web/nibble.css`.
 
 ## SAT
 

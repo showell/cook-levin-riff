@@ -1,6 +1,6 @@
 # The Nibble page's platform: the machine as three pure functions, which
 # web/platform/host.zig exports to the page as `status`, `after` and
-# `accepts` (web/nibble.js; roc/NibbleWasm.roc is the app). Numbers in,
+# `accepts` (web/machine.js; roc/NibbleWasm.roc is the app). Numbers in,
 # numbers out: the host builds no Roc value and keeps none between calls.
 #
 # Its pattern is roc-js-interpreter's js/wasm/platform (a wasm32 Archive that
