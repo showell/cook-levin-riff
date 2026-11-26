@@ -91,33 +91,6 @@ def step(op_hb, op_lb, state):
     return (next_hb(*args), next_lb(*args), next_halted(*args), next_accepted(*args))
 
 
-# The same four, golfed: the opcodes merged where they act alike. `~op_hb` is
-# "nada or zero", the two opcodes that leave AX alone, and a halted machine
-# acts the same way. check() holds each to its plain twin on all 64 settings.
-def golfed_hb(op_hb, op_lb, hb, lb, halted, accepted):
-    return (hb & (halted | ~op_hb)) | (hb & lb & op_hb & ~op_lb & ~halted)
-
-
-def golfed_lb(op_hb, op_lb, hb, lb, halted, accepted):
-    return (lb & (halted | ~op_hb | (op_hb & op_lb))) | (hb & ~lb & op_hb & ~op_lb & ~halted)
-
-
-def golfed_halted(op_hb, op_lb, hb, lb, halted, accepted):
-    return halted | (~hb & ~lb & op_hb & ~op_lb)
-
-
-def golfed_accepted(op_hb, op_lb, hb, lb, halted, accepted):
-    return accepted | (~hb & ~lb & ~op_hb & op_lb & ~halted)
-
-
-PLAIN_AND_GOLFED = [
-    (next_hb, golfed_hb),
-    (next_lb, golfed_lb),
-    (next_halted, golfed_halted),
-    (next_accepted, golfed_accepted),
-]
-
-
 # Bits as a tiny class, so that ~ & | read as NOT AND OR on 0/1.
 class Bit:
     def __init__(self, v):
@@ -282,11 +255,6 @@ def check():
             assert run_with_bits(ax, program) == expected
             assert (formulas[ax].value(env, {}) == 1) == expected
             checks += 2
-    for setting in range(64):
-        bits = [Bit((setting >> i) & 1) for i in range(6)]
-        for plain, golfed in PLAIN_AND_GOLFED:
-            assert plain(*bits).v == golfed(*bits).v
-            checks += 1
     return checks, formulas
 
 

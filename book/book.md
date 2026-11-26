@@ -386,14 +386,6 @@ Each `is_` wire is 1 for exactly one opcode, and each `ax_is_` wire for exactly 
 
 These are the machine's rules, one bit at a time. `nada` and `zero` leave `AX` alone. `decr` takes 3 to 2, 2 to 1 and 1 to 0, so the new high bit is 1 only when it starts at 3, and the new low bit only when it starts at 2; at 0 it halts. `mod2` keeps the low bit and clears the high one. `zero` at 0 accepts. A halted machine keeps every bit as it is, and once a flag is on it stays on.
 
-### The same step, golfed
-
-The gates can be merged where opcodes act alike. `nada` (00) and `zero` (01) both leave `AX` alone, and they are exactly the opcodes whose first bit is 0, so "`nada` or `zero`" is the single wire `~op_hb`. The golfed high bit is then:
-
-{{lines python/steps.py from "def golfed_hb(" to "    return (hb & (halted | ~op_hb)) | (hb & lb & op_hb & ~op_lb & ~halted)"}}
-
-`python/steps.py` holds each golfed function to its plain twin on all 64 settings of the six bits. The golfed form is smaller; the plain form is the one that reads as the machine.
-
 ### Six steps, everything fixed
 
 Now fix the input and the program. With `AX` = 2 and the program `decr, mod2, zero, decr, zero, nada`, each of the six bits a step reads is a known 0 or 1, and so is each bit it writes. Composing the six steps is running the machine, one row a step:
