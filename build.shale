@@ -6,7 +6,10 @@
 --                              python3 runs the book's Python,
 --                              python/decides.py, python/steps.py and
 --                              python/fourteen_cnf.py, each of which
---                              checks itself.
+--                              checks itself, and python/equations.py
+--                              evaluates the decider's equations, as
+--                              circuit_main prints them, on every program
+--                              and want register.
 --   shale build.shale full=1   the fast tier, then gcc twice: -std=c11 -O2
 --                              -Wall -Wextra -Werror, and -O0 with
 --                              -fsanitize=address,undefined; each builds and
@@ -134,6 +137,18 @@ for file in PYTHON do
   local py_said = trim(py.out)
   local said_its_checks = starts_with(py_said, file .. ": ") and re_find(py_said, "^[a-z/_.]+: [0-9]+ checks passed$") ~= nil
   failures = failures + check(exited_0(py) and said_its_checks, "python3: " .. py_said .. ", " .. how_it_ended(py))
+end
+
+-- The decider's equations, printed by the tier's first circuit_main and
+-- read back by Python that shares no code with it.
+local eq = run({real(OUT .. "/" .. builds[1] .. "/circuit_main"), "equations"}, {timeout_ms = 60000, whole = 400000, want = RAN})
+if exited_0(eq) then
+  replace(OUT .. "/equations.txt", eq.out)
+  local py = run({"python3", "python/equations.py", real(OUT .. "/equations.txt")}, {timeout_ms = 60000, tail = 10, want = PYTHON_WANT})
+  local said = trim(py.out)
+  failures = failures + check(exited_0(py) and said == "python/equations.py: 65536 checks passed", "python3: " .. said .. ", " .. how_it_ended(py))
+else
+  failures = failures + check(false, "circuit_main equations: " .. how_it_ended(eq))
 end
 
 if failures > 0 then fail(failures .. " check(s) failed") end

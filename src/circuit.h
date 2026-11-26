@@ -43,7 +43,9 @@
 
 enum { CIRCUIT_MAX_WIRES = 1600, CIRCUIT_MAX_PORTS = 1400, CIRCUIT_MAX_LINKS = 2400, CIRCUIT_NAME = 40 };
 
-typedef enum { W_ZERO, W_ONE, W_INPUT, W_NOT, W_AND, W_OR } WireKind;
+// W_ALIAS is a named copy of another wire, no gate: a core's input, wired
+// to a constant inside the decider.
+typedef enum { W_ZERO, W_ONE, W_INPUT, W_NOT, W_AND, W_OR, W_ALIAS } WireKind;
 
 typedef struct {
     WireKind kind;
@@ -89,6 +91,7 @@ enum { WIRE_0 = 0, WIRE_1 = 1 };
 // A new net, holding the two constants. A Net is large: keep it static.
 void net_init(Net *net);
 int net_input(Net *net, const char *name);
+int net_alias(Net *net, const char *part, const char *name, int a);
 int net_not(Net *net, const char *part, const char *name, int a);
 int net_and(Net *net, const char *part, const char *name, int a, int b);
 int net_or(Net *net, const char *part, const char *name, int a, int b);
@@ -159,6 +162,18 @@ int net_port_wire(const Net *net, const char *part, const char *name);
 // depths, so every wire runs left to right. The strokes and text take the
 // page's colour (currentColor).
 void net_svg(const Net *net, const char *part, FILE *f);
+
+// The net as Boolean equations, one line a gate in the order they are made,
+// so each reads only names defined above it: first a line `inputs: ...`
+// naming the inputs, then a line `name = value` for each alias, then
+// `name = a AND b`, `name = a OR b` or `name = NOT a` for each gate. A
+// wire's name is its outermost port's, the part's words joined with dots
+// (`core 2 step 3 decr` is `core2.step3.decr`, a number joined to the word
+// before it, and `hb mux` is `hb_mux`), then the port's name:
+// `core2.step3.hb'`. A wire no port names is its gate's own name in its
+// part, `core2.step3.hb_mux.low.pick0`. The constants are 0 and 1. A name
+// made twice stops the program.
+void net_equations(const Net *net, FILE *f);
 
 // A Graphviz drawing of a composed part as its boxes, from the links whose
 // scope is `scope`: each box a node named for its part, each input and

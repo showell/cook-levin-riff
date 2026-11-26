@@ -8,6 +8,10 @@
 //   circuit_main svg DIR    the schematics of the parts drawn at gate level,
 //                           one SVG file each in DIR: nada, zero, decr,
 //                           mod2, mux2, hold and latches
+//   circuit_main equations  the decider as Boolean equations, one a gate
+//                           (net_equations), which "The circuit as
+//                           equations" shows whole and
+//                           python/equations.py evaluates on its own
 //
 // The tables are the simulator's answers on every input they list. Each
 // part's innards are drawn once, as a schematic; above that, a part is a
@@ -210,6 +214,10 @@ static void blocks(void) {
     boxes_block("", "TB");
     circuit_decides(&NET);
     boxes_block("", "LR");
+    circuit_stepper(&NET);
+    printf("```text\n");
+    net_equations(&NET, stdout);
+    printf("```\n\n");
 }
 
 static void write_svg(const char *dir, const char *name, const char *part) {
@@ -245,8 +253,11 @@ int main(int argc, char **argv) {
         blocks();
     } else if (argc == 3 && strcmp(argv[1], "svg") == 0) {
         schematics(argv[2]);
+    } else if (argc == 2 && strcmp(argv[1], "equations") == 0) {
+        circuit_decides(&NET);
+        net_equations(&NET, stdout);
     } else {
-        fprintf(stderr, "usage: circuit_main [svg DIR]\n");
+        fprintf(stderr, "usage: circuit_main [svg DIR | equations]\n");
         return 2;
     }
     return fflush(stdout) == 0 ? 0 : 1;

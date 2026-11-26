@@ -38,6 +38,8 @@ void net_init(Net *net) {
 
 int net_input(Net *net, const char *name) { return new_wire(net, W_INPUT, "", name, -1, -1); }
 
+int net_alias(Net *net, const char *part, const char *name, int a) { return new_wire(net, W_ALIAS, part, name, a, -1); }
+
 int net_not(Net *net, const char *part, const char *name, int a) { return new_wire(net, W_NOT, part, name, a, -1); }
 
 int net_and(Net *net, const char *part, const char *name, int a, int b) {
@@ -107,6 +109,7 @@ void net_eval(const Net *net, const int *inputs, int *values) {
         case W_NOT: values[i] = !values[w->a]; break;
         case W_AND: values[i] = values[w->a] & values[w->b]; break;
         case W_OR: values[i] = values[w->a] | values[w->b]; break;
+        case W_ALIAS: values[i] = values[w->a]; break;
         }
     }
 }
@@ -133,7 +136,7 @@ MachineOut part_nada(Net *net, const char *part, int hb, int lb) {
 // after an accept, as every step of a circuit runs: the accepted latch holds
 // the verdict, and halted stays off, as Steve's stepper has it.
 MachineOut part_zero(Net *net, const char *part, int hb, int lb) {
-    int either = net_or(net, part, "hb OR lb", hb, lb);
+    int either = net_or(net, part, "hb_or_lb", hb, lb);
     MachineOut m = {hb, lb, net_not(net, part, "accepts", either), WIRE_0};
     port_machine(net, part, m);
     return m;
@@ -145,7 +148,7 @@ MachineOut part_zero(Net *net, const char *part, int hb, int lb) {
 MachineOut part_decr(Net *net, const char *part, int hb, int lb) {
     int high = net_and(net, part, "hb'", hb, lb);
     int low = net_not(net, part, "lb'", lb);
-    int either = net_or(net, part, "hb OR lb", hb, lb);
+    int either = net_or(net, part, "hb_or_lb", hb, lb);
     MachineOut m = {high, low, WIRE_0, net_not(net, part, "halts", either)};
     port_machine(net, part, m);
     return m;
@@ -160,9 +163,9 @@ MachineOut part_mod2(Net *net, const char *part, int hb, int lb) {
 }
 
 int part_mux2(Net *net, const char *part, int s, int in0, int in1) {
-    int not_s = net_not(net, part, "NOT s", s);
-    int pick0 = net_and(net, part, "in 0 AND NOT s", in0, not_s);
-    int pick1 = net_and(net, part, "in 1 AND s", in1, s);
+    int not_s = net_not(net, part, "not_s", s);
+    int pick0 = net_and(net, part, "pick0", in0, not_s);
+    int pick1 = net_and(net, part, "pick1", in1, s);
     int out = net_or(net, part, "out", pick0, pick1);
     net_port(net, part, "out", out);
     return out;
@@ -193,7 +196,7 @@ int part_mux4(Net *net, const char *part, int s_hb, int s_lb, const int in[4]) {
 }
 
 void part_hold(Net *net, const char *part, int op_hb, int op_lb, int halted, int sel[2]) {
-    int running = net_not(net, part, "NOT halted", halted);
+    int running = net_not(net, part, "running", halted);
     sel[0] = net_and(net, part, "sel_hb", op_hb, running);
     sel[1] = net_and(net, part, "sel_lb", op_lb, running);
     net_port(net, part, "sel_hb", sel[0]);
@@ -381,7 +384,7 @@ void circuit_decides(Net *net) {
     int want[4];
     char name[CIRCUIT_NAME];
     for (int n = 0; n < 4; n++) {
-        snprintf(name, sizeof name, "want_%d", n);
+        snprintf(name, sizeof name, "want%d", n);
         want[n] = net_input(net, name);
     }
     int prog[12];
@@ -390,22 +393,118 @@ void circuit_decides(Net *net) {
     for (int n = 0; n < 4; n++) {
         char prefix[CIRCUIT_NAME];
         snprintf(prefix, sizeof prefix, "core %d ", n);
-        CircuitState start = {n / 2 ? WIRE_1 : WIRE_0, n % 2 ? WIRE_1 : WIRE_0, WIRE_0, WIRE_0};
+        // The core's input, AX = n, as named copies of the constants.
+        char core[CIRCUIT_NAME];
+        snprintf(core, sizeof core, "core %d", n);
+        int in_hb = net_alias(net, core, "in_hb", n / 2 ? WIRE_1 : WIRE_0);
+        int in_lb = net_alias(net, core, "in_lb", n % 2 ? WIRE_1 : WIRE_0);
+        CircuitState start = {in_hb, in_lb, WIRE_0, WIRE_0};
         CircuitState end = part_core(net, prefix, start, prog);
         // same? is (a AND w) OR (NOT a AND NOT w).
         char part[CIRCUIT_NAME];
         snprintf(part, sizeof part, "same %d", n);
         int a = end.accepted;
-        int both = net_and(net, part, "both 1", a, want[n]);
-        int not_a = net_not(net, part, "~accepted", a);
-        int not_w = net_not(net, part, "~want", want[n]);
-        int neither = net_and(net, part, "both 0", not_a, not_w);
-        int same = net_or(net, part, "same?", both, neither);
-        all = all < 0 ? same : net_and(net, "all", "decides", all, same);
+        int both = net_and(net, part, "both1", a, want[n]);
+        int not_a = net_not(net, part, "not_accepted", a);
+        int not_w = net_not(net, part, "not_want", want[n]);
+        int neither = net_and(net, part, "both0", not_a, not_w);
+        int same = net_or(net, part, "same", both, neither);
+        char so_far[CIRCUIT_NAME];
+        snprintf(so_far, sizeof so_far, "upto%d", n);
+        all = all < 0 ? same : net_and(net, "all", so_far, all, same);
         decider_links(net, n);
     }
     net_link(net, "", "", "decides", "all", "decides");
     net_port(net, "", "decides", all);
+}
+
+// ── Equations ───────────────────────────────────────────────────────────
+
+// A part's name as an equation's prefix: words joined with dots, a number
+// joined to the word before it, and `mux` joined to the word before it with
+// an underscore.
+static void equation_part(const char *part, char *out, size_t size) {
+    size_t n = 0;
+    out[0] = '\0';
+    const char *s = part;
+    while (*s) {
+        while (*s == ' ') s++;
+        if (*s == '\0') break;
+        const char *end = s;
+        while (*end && *end != ' ') end++;
+        size_t len = (size_t)(end - s);
+        int digits = 1;
+        for (const char *p = s; p < end; p++) {
+            if (*p < '0' || *p > '9') digits = 0;
+        }
+        const char *glue = n == 0 ? "" : digits ? "" : (len == 3 && strncmp(s, "mux", 3) == 0) ? "_" : ".";
+        if (n + strlen(glue) + len + 1 > size) circuit_die("an equation's name past the limit", (long)(n + len));
+        memcpy(out + n, glue, strlen(glue));
+        n += strlen(glue);
+        memcpy(out + n, s, len);
+        n += len;
+        out[n] = '\0';
+        s = end;
+    }
+}
+
+static int part_words(const char *part) {
+    int words = 0, in_word = 0;
+    for (; *part; part++) {
+        if (*part != ' ' && !in_word) words++;
+        in_word = *part != ' ';
+    }
+    return words;
+}
+
+static void equation_name(const Net *net, int i, char *out, size_t size) {
+    const Wire *w = &net->wires[i];
+    char prefix[2 * CIRCUIT_NAME];
+    const char *part = w->part;
+    const char *name = w->name;
+    if (is_gate(w->kind)) {
+        int best = -1;
+        for (int p = 0; p < net->num_ports; p++) {
+            if (net->ports[p].wire != i) continue;
+            if (best < 0 || part_words(net->ports[p].part) < part_words(net->ports[best].part)) best = p;
+        }
+        if (best >= 0) {
+            part = net->ports[best].part;
+            name = net->ports[best].name;
+        }
+    }
+    equation_part(part, prefix, sizeof prefix);
+    if (prefix[0] == '\0') snprintf(out, size, "%s", name);
+    else snprintf(out, size, "%s.%s", prefix, name);
+}
+
+void net_equations(const Net *net, FILE *f) {
+    enum { NAME = 3 * CIRCUIT_NAME };
+    static char names[CIRCUIT_MAX_WIRES][NAME];
+    for (int i = 0; i < net->num_wires; i++) equation_name(net, i, names[i], NAME);
+    for (int i = 2; i < net->num_wires; i++) {
+        for (int j = i + 1; j < net->num_wires; j++) {
+            if (strcmp(names[i], names[j]) == 0) {
+                fprintf(stderr, "circuit: the equation name %s is made twice\n", names[i]);
+                abort();
+            }
+        }
+    }
+    fprintf(f, "inputs:");
+    for (int i = 0; i < net->num_wires; i++) {
+        if (net->wires[i].kind == W_INPUT) fprintf(f, " %s", names[i]);
+    }
+    fprintf(f, "\n");
+    for (int i = 0; i < net->num_wires; i++) {
+        const Wire *w = &net->wires[i];
+        switch (w->kind) {
+        case W_ALIAS: fprintf(f, "%s = %s\n", names[i], names[w->a]); break;
+        case W_NOT: fprintf(f, "%s = NOT %s\n", names[i], names[w->a]); break;
+        case W_AND: fprintf(f, "%s = %s AND %s\n", names[i], names[w->a], names[w->b]); break;
+        case W_OR: fprintf(f, "%s = %s OR %s\n", names[i], names[w->a], names[w->b]); break;
+        default: break;
+        }
+    }
 }
 
 // ── Drawing ─────────────────────────────────────────────────────────────
