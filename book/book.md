@@ -67,7 +67,7 @@ Steve wrote the first version by hand in Python, in [virtual-machine](https://gi
 
 The first part is the toy for its own sake: a finite machine, completely understood, every question settled by running everything, even in Python. It runs from {{chapter The machine}} and the theory behind the word "language" through plain Python, the search of all 4,096 programs and its theorems, the puzzle page and the machine as hardware, to {{chapter Some history of the approach}}, the order in which Steve built it.
 
-The second part is Cook-Levin: {{chapter How it got here}}, {{chapter P, NP and Cook-Levin}}, {{chapter Six expressions, composed}}, then the step as polynomials, from {{chapter Arithmetization}} to {{chapter The polynomials, in full}}, and the circuit as a tableau and a formula, from {{chapter The Cook-Levin machine}} to {{chapter The solver's work, in full}}.
+The second part is Cook-Levin: {{chapter How it got here}}, {{chapter P, NP and Cook-Levin}}, {{chapter The Boolean view}}, then the step as polynomials, from {{chapter Arithmetization}} to {{chapter The polynomials, in full}}, and the circuit as a tableau and a formula, from {{chapter The Cook-Levin machine}} to {{chapter The solver's work, in full}}.
 
 The third part is the cross-checks: {{chapter The oracles}}, {{chapter The Roc port}}, {{chapter What is Shale?}} and {{chapter The VM in Shale}}, then {{chapter What comes next}}. The theorems are numbered through the book, each proved by an exhaustive run that its proof names.
 
@@ -202,7 +202,7 @@ Many of the 16 problems have a natural test of n, or of its two bits, `hb` and `
 
 {{lines python/decides.py from "ONE_LINERS = {" to "hb XOR lb"}}
 
-{{chapter Some history of the approach}} lists all 16 this way, as Boolean expressions of the two bits.
+{{chapter The Boolean view}} lists all 16 this way, as Boolean expressions of the two bits.
 
 ### What the machine adds
 
@@ -502,32 +502,7 @@ The virtual-machine log records the order. All of it came in four days of March 
 
 ### The view the order passed over
 
-From the machine Steve went straight to arithmetization, polynomials over the integers. The plain Boolean view sits between the two. Read an input n as its two bits, n = 2·`hb` + `lb`, and each problem is a Boolean function of them: {3} is `hb AND lb`, {1, 2, 3} is `hb OR lb`, {1, 2} is `hb XOR lb`, and {0, 2, 3} is `hb OR NOT lb`.
-
-**Theorem 9.** The 16 problems are exactly the 16 Boolean functions of two bits: each problem is one function of `hb` and `lb`, and each function is one problem.
-
-*Proof.* A function of two bits is its four values, one per input, and a problem is the same four answers, so the two are counted alike, 2^4 = 16. `tests/test_theorems.c` evaluates the 16 expressions below at all four inputs, finds each one true at its problem's members alone and the 16 truth tables all different, and finds each problem decided by some program. `src/boolean_main.c` holds each expression to a program run on the machine and prints the table, and the book's build holds the table to that output.
-
-| code | problem | as hb and lb |
-|---|---|---|
-| 0 | { } | `0` |
-| 1 | {0} | `NOT (hb OR lb)` |
-| 2 | {1} | `NOT hb AND lb` |
-| 3 | {0, 1} | `NOT hb` |
-| 4 | {2} | `hb AND NOT lb` |
-| 5 | {0, 2} | `NOT lb` |
-| 6 | {1, 2} | `hb XOR lb` |
-| 7 | {0, 1, 2} | `NOT (hb AND lb)` |
-| 8 | {3} | `hb AND lb` |
-| 9 | {0, 3} | `NOT (hb XOR lb)` |
-| 10 | {1, 3} | `lb` |
-| 11 | {0, 1, 3} | `NOT hb OR lb` |
-| 12 | {2, 3} | `hb` |
-| 13 | {0, 2, 3} | `hb OR NOT lb` |
-| 14 | {1, 2, 3} | `hb OR lb` |
-| 15 | {0, 1, 2, 3} | `1` |
-
-So the 16 problems, the 16 puzzles of Nibble, are the 16 two-input connectives, and one step of the machine is a Boolean expression of six bits, which {{chapter Six expressions, composed}} writes out.
+From the machine Steve went straight to polynomials: he wrote the machine's logic as arithmetic on integers, so that the machine's whole run could become one big polynomial. The plain Boolean view of the toy, its problems and its step written with ordinary logic gates, sits between the two, and the order passed over it. {{chapter The Boolean view}} sets it out.
 
 ### Why polynomials
 
@@ -563,13 +538,42 @@ Decidable languages differ in cost. P is the class decided in time polynomial in
 
 The toy is such a checker. Given a problem and a program, it runs the program on four inputs and says whether the program decides the problem; the program is the certificate. The chapters that follow take that checker apart two ways, after {{chapter Six expressions, composed}} sets the two side by side. {{chapter Arithmetization}} through {{chapter The polynomials, in full}} write its step as polynomials and compose all six, the riff's own route. {{chapter The Cook-Levin machine}} through {{chapter The solver's work, in full}} take Cook and Levin's route: the run as a tableau, the tableau as clauses, and a SAT solver to find the certificates.
 
-## Six expressions, composed
+## The Boolean view
 
-{{chapter Some history of the approach}} showed each problem as a Boolean function of two bits. The machine's step is a function too, of six bits, and six steps composed are one function of fourteen bits: the input's two and the program's twelve. This chapter writes the step as plain Boolean expressions, composes them into the question a puzzle asks, and then names the two ways of composing that the rest of this part follows.
+{{chapter Programs as languages}} found every problem by running programs. This chapter states the same problems, and then one step of the machine, as plain Boolean expressions: AND, OR and NOT on bits. The next chapter composes the steps.
+
+### Each problem as two bits
+
+Read an input n as its two bits, n = 2·`hb` + `lb`, and each problem is a Boolean function of them: {3} is `hb AND lb`, {1, 2, 3} is `hb OR lb`, {1, 2} is `hb XOR lb`, and {0, 2, 3} is `hb OR NOT lb`.
+
+**Theorem 9.** The 16 problems are exactly the 16 Boolean functions of two bits: each problem is one function of `hb` and `lb`, and each function is one problem.
+
+*Proof.* A function of two bits is its four values, one per input, and a problem is the same four answers, so the two are counted alike, 2^4 = 16. `tests/test_theorems.c` evaluates the 16 expressions below at all four inputs, finds each one true at its problem's members alone and the 16 truth tables all different, and finds each problem decided by some program. `src/boolean_main.c` holds each expression to a program run on the machine and prints the table, and the book's build holds the table to that output.
+
+| code | problem | as hb and lb |
+|---|---|---|
+| 0 | { } | `0` |
+| 1 | {0} | `NOT (hb OR lb)` |
+| 2 | {1} | `NOT hb AND lb` |
+| 3 | {0, 1} | `NOT hb` |
+| 4 | {2} | `hb AND NOT lb` |
+| 5 | {0, 2} | `NOT lb` |
+| 6 | {1, 2} | `hb XOR lb` |
+| 7 | {0, 1, 2} | `NOT (hb AND lb)` |
+| 8 | {3} | `hb AND lb` |
+| 9 | {0, 3} | `NOT (hb XOR lb)` |
+| 10 | {1, 3} | `lb` |
+| 11 | {0, 1, 3} | `NOT hb OR lb` |
+| 12 | {2, 3} | `hb` |
+| 13 | {0, 2, 3} | `hb OR NOT lb` |
+| 14 | {1, 2, 3} | `hb OR lb` |
+| 15 | {0, 1, 2, 3} | `1` |
+
+So the 16 problems, the 16 puzzles of Nibble, are the 16 two-input connectives. One step of the machine is a Boolean function too, of six bits.
 
 ### The step as expressions
 
-A step reads six bits, as in {{chapter Arithmetization}}: the four of the state, `hb`, `lb`, `halted` and `accepted`, and the line's two, `op_hb` and `op_lb`. It is twelve statements (`src/decides.c`):
+A step reads six bits: the four of the state, `hb`, `lb`, `halted` and `accepted`, and the line's two, `op_hb` and `op_lb`. It is twelve statements (`src/decides.c`):
 
 - **eight intermediate facts** about the machine, each used only inside this step;
 - **four primed bits**, `hb'`, `lb'`, `halted'` and `accepted'`, the next state. These four are all that survive into the next step, where they are its unprimed four.
@@ -590,6 +594,10 @@ accepted' = accepted OR (ax_is_0 AND is_zero AND runs)
 ```
 
 `keeps` says that `AX` stays as it is: the machine has halted, or the line is `nada` or `zero`. So `hb'` is the old `hb` kept, or a `decr` from 3 to 2. `lb'` is the old `lb` kept, or kept by `mod2`, which keeps `lb` and clears `hb`, or a `decr` from 2 to 1. `halted'` adds a `decr` at 0, and `accepted'` a `zero` at 0 on a running machine. `tests/test_boolean.c` holds the four to `src/stepper.c`'s step on all 64 settings of the six bits, and `src/boolean_main.c` checks them again before it prints them for this book. They are the gates of `sat_step` in {{chapter The Cook-Levin machine}}, merged by hand.
+
+## Six expressions, composed
+
+{{chapter The Boolean view}} wrote one step of the machine as twelve Boolean statements of six bits. Six steps composed are one function of fourteen bits: the input's two and the program's twelve. This chapter composes them into the question a puzzle asks, and then names the two ways of composing that the rest of this part follows.
 
 ### Composition
 
@@ -662,7 +670,7 @@ The counts for all 16, programs and products, from the same run:
 
 The composing above ran all 4,096 programs, which a toy allows. For a real checker there are two ways to compose the step's expressions, and the rest of this part takes each in turn.
 
-- **Expand it.** Substitute each step's expressions into the next and multiply out. That is arithmetization: {{chapter Arithmetization}} writes the step as polynomials over the integers, and {{chapter Six steps composed}} expands all six, to 10,324 terms for `accepted`. The size grows with every step substituted.
+- **Expand it.** Substitute each step's expressions into the next and multiply them out, into one big expression of the fourteen bits. {{chapter Arithmetization}} does this with the logic written as arithmetic on integers, AND as a product and the complement of x as 1 − x, which makes each expression a polynomial; that move is called arithmetization. {{chapter Six steps composed}} expands all six, to 10,324 terms for `accepted`. The size grows with every step substituted.
 - **Name it.** Give each intermediate wire a fresh variable, and state only how it relates to its inputs. That is Tseitin's encoding and SAT: {{chapter Cook-Levin as SAT}} has 416 variables and 1,216 clauses for each problem, and the count grows linearly with the steps, one step unit's gates per step.
 
 Naming is why Cook-Levin's formula stays polynomial in size: each step adds the same few clauses, whatever came before it.
