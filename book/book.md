@@ -522,9 +522,9 @@ Written out as text, each line's formula repeats the last line's state bits wher
 
 The last row is f: 174 gates, or more than half a million characters. {{chapter Checking a claim}} works with the graph.
 
-## Checking a claim
+## The SAT solver
 
-A claim such as "program 1689 accepts input 2" can be checked by a tool that knows only formulas and clauses. This chapter turns f's graph into the format SAT tools read and hands the claim to the checker inside Matthieu Pizenberg's [rocsat](https://github.com/mpizenberg/rocsat).
+Several chapters from here on hand a formula to a SAT solver, [rocsat](https://github.com/mpizenberg/rocsat), written in Roc by Matthieu Pizenberg. It is his project, and its README is the place to read about it: a CDCL solver, the kind that learns a new clause from each contradiction it meets, with a model checker and DRAT proofs beside it. This book uses it as an outside oracle. Its code is separate from the machine's, so when it agrees with the machine, two separate programs agree. This chapter says once what the book asks it, so that each later chapter needs only to name its question.
 
 ### CNF, the solvers' format
 
@@ -537,6 +537,60 @@ A *literal* is a variable or its complement: v3, or ¬v3. A *clause* is an OR of
 holds at v1 = 1, v2 = 1, v3 = 0, among other settings. In DIMACS, the text format SAT tools read, it is three lines, each clause's literals as signed numbers ending in 0: `1 -2 0`, `2 3 0`, `-1 -3 0`.
 
 Solvers want CNF because its pieces can be reasoned about one at a time. A clause whose literals are all false but one forces that one to be true, and a contradiction a solver runs into can be kept as one more clause. Any formula can be written in CNF, but writing it out directly can multiply its size, the way writing out f's text did.
+
+### Two questions
+
+The book asks rocsat one of two questions.
+
+- **`rocsat check F A`: does the assignment A satisfy the formula F?** A gives every variable a value, and rocsat tests the clauses one by one. That is evaluation alone: rocsat is an outside calculator. It exits 0 and says `c model ok`, or exits 1 and names the first clause A breaks, counting from 0.
+- **`rocsat solve F`: does any assignment satisfy F?** This is the solver's full power, a search over every assignment. It exits 10 and says `s SATISFIABLE`, with an assignment it found, or exits 20 and says `s UNSATISFIABLE`: every assignment breaks some clause of F. Given a second path, it writes a DRAT proof of that answer, which this repository's own checker replays ({{chapter The solver's work, in full}}).
+
+UNSATISFIABLE is often the answer the book wants. To show that every program of five lines decides some problem other than {0, 2, 3}, say, the book writes a formula whose satisfying assignments would be five-line programs that decide it, and expects UNSATISFIABLE. Each chapter says which answer it expects.
+
+### The happy path
+
+`sat/intro.shale` writes the CNF above as `example.cnf`:
+
+```text
+p cnf 3 3
+1 -2 0
+2 3 0
+-1 -3 0
+```
+
+Our claim is that v1 = 1, v2 = 1, v3 = 0 satisfies it, the assignment `v 1 2 -3 0` in `ours.v`. rocsat agrees:
+
+```text
+rocsat check example.cnf ours.v: exit 0, c model ok
+rocsat solve example.cnf: exit 10, s SATISFIABLE, v -1 -2 3 0
+rocsat check example.cnf found.v: exit 0, c model ok
+```
+
+`check` confirms our assignment. `solve` finds one of its own, v3 alone true: a solver promises some satisfying assignment, whichever it reaches first. The script writes it to `found.v`, and `check` confirms that one too.
+
+### The unhappy paths
+
+An oracle that said yes to everything would pass the happy path. So the script also hands rocsat two false claims. The assignment `v 1 2 3 0`, in `wrong.v`, breaks the third clause, ¬v1 ∨ ¬v3. And `forced.cnf` is `example.cnf` with two unit clauses added, `1 0` and `3 0`, asking for v1 and v3 both true, which the third clause forbids, so the answer expected is UNSATISFIABLE:
+
+```text
+rocsat check example.cnf wrong.v: exit 1, c model falsifies clause 2
+rocsat solve forced.cnf: exit 20, s UNSATISFIABLE
+```
+
+The script stops at the first answer other than the one it expects. Each script in this repository that runs rocsat holds it both ways: a claim that should hold must be confirmed, and a claim that should fail must be refused, at the clause or with the verdict the script names. The book's build holds each rocsat answer it shows to the file its script wrote, so the book builds from the committed files alone.
+
+### Where the book asks
+
+| chapter | the question | the expected refusal |
+|---|---|---|
+| {{chapter Checking a claim}} | `check`: does program 1689's run on input n satisfy f's CNF with f = 1? | input 1 breaks the clause f = 1 |
+| {{chapter From equations to CNF}} | `solve`, with every input fixed, so the search only evaluates the circuit | program 1689 deciding {0, 2}: UNSATISFIABLE |
+| {{chapter Cook-Levin as SAT}} | `solve`, with the program's bits free: find the programs | UNSATISFIABLE once every program is found, and one line below each shortest length |
+| {{chapter Solved by hand}}, {{chapter The solver's work, in full}} | `solve`, with a DRAT proof | the proofs behind those UNSATISFIABLE answers |
+
+## Checking a claim
+
+A claim such as "program 1689 accepts input 2" can be checked by a tool that knows only formulas and clauses. This chapter turns f's graph into CNF and asks `rocsat check` about the claim ({{chapter The SAT solver}}).
 
 ### Naming each gate
 
@@ -598,13 +652,13 @@ v 1 -2 -3 4 5 -6 7 -8 -9 10 11 -12 -13 14 15 -16 -17 -18 -19 -20 -21 -22 23 24 -
 
 ### rocsat checks it
 
-`rocsat check` reads a formula and an assignment and tests every clause, one by one, and that is all it does. `sat/fourteen.shale` hands it the claim for each of the four inputs, with program 1689:
+The question is `rocsat check`'s: does this assignment satisfy the CNF? `sat/fourteen.shale` asks it for each of the four inputs, with program 1689. For inputs 0, 2 and 3, which the program accepts, the answer expected is yes; for input 1, which it rejects, the expected answer is that the assignment breaks the last clause, f = 1, and the script fails on any other answer:
 
 ```text
 input 0, program 1689: exit 0: c model ok
-input 1, program 1689: exit 1: c model falsifies clause 438
 input 2, program 1689: exit 0: c model ok
 input 3, program 1689: exit 0: c model ok
+input 1, program 1689: exit 1: c model falsifies clause 438
 ```
 
 Clause 438, counted from 0, is the last of the 439, `160 0`: f = 1. So program 1689 accepts 0, 2 and 3 and rejects 1, the problem {0, 2, 3}, as Theorem 5 says.
@@ -1091,15 +1145,15 @@ c core0.step2.lb_mux.low.out = 24
 
 ### rocsat evaluates it
 
-`sat/claims.shale` runs `rocsat solve` on three claims and writes its verdicts to `sat/claims/verdicts.txt`, which the book's build holds here:
+`sat/claims.shale` asks `rocsat solve` whether each of three claims' CNFs is satisfiable ({{chapter The SAT solver}}). Every input is fixed by a unit clause, so the solver's search only evaluates. The first two claims are true, and the answer expected is SATISFIABLE. The third, that program 1689 decides {0, 2}, is false, since the program accepts 3 too, and the answer expected is UNSATISFIABLE. The script fails on any other answer, and writes the verdicts to `sat/claims/verdicts.txt`, which the book's build holds here:
 
 ```text
 program 1689 decides {0, 2, 3}: 477 variables, 1400 clauses: exit 10, s SATISFIABLE, decisions=0 conflicts=0 propagations=477; rocsat check: c model ok; decides (477) = 1
-program 1689 decides {0, 2}: 477 variables, 1400 clauses: exit 20, s UNSATISFIABLE, decisions=0 conflicts=0 propagations=477
 program 2704 decides {3}: 477 variables, 1400 clauses: exit 10, s SATISFIABLE, decisions=0 conflicts=0 propagations=477; rocsat check: c model ok; decides (477) = 1
+program 1689 decides {0, 2}: 477 variables, 1400 clauses: exit 20, s UNSATISFIABLE, decisions=0 conflicts=0 propagations=477
 ```
 
-A decision is a solver's guess: it sets a variable that propagation left open, and backs up if the guess fails. All three claims took 0. The 16 units fix every input, and each gate comes after its operands, so once both are known one of its three clauses forces its value. Propagation alone settles the whole circuit, 477 propagations for 477 variables, and the solver evaluates the circuit, as the circuit's own wires would. For {0, 2}, propagation sets `decides` to 0 against its unit clause, so rocsat answers UNSAT from the same 0 decisions. For each SAT claim the script checks the model with `rocsat check` and reads `decides` from it, by the literal its comment line names.
+A decision is a solver's guess: it sets a variable that propagation left open, and backs up if the guess fails. All three claims took 0. The 16 units fix every input, and each gate comes after its operands, so once both are known one of its three clauses forces its value. Propagation alone settles the whole circuit, 477 propagations for 477 variables, and the solver evaluates the circuit, as the circuit's own wires would. For {0, 2}, propagation sets `decides` to 0 against its unit clause, so rocsat answers UNSATISFIABLE from the same 0 decisions. For each SATISFIABLE claim the script checks the model with `rocsat check` and reads `decides` from it, by the literal its comment line names.
 
 ### By distribution
 
@@ -1651,7 +1705,7 @@ Each of the six lines, on each of the four cores, is such a stepper, wired to th
 
 ### rocsat as an oracle
 
-`sat/oracle.shale` hands the formulas to [rocsat](https://github.com/mpizenberg/rocsat), Matt Pizenberg's CDCL SAT solver, written in Roc (`f977bcc`). For each problem it counts the models by blocking each one and solving again until UNSAT, runs each model's program on the machine, and proves the shortest length: SAT at it, UNSAT one line shorter, with a DRAT proof the repository's checker replays. That is Theorem 4 again, by Theorem 12. It starts rocsat 4,143 times, so it runs as its own script; its last run, on 2026-11-25, spent 62.6 s in its programs and ended "rocsat agrees with the machine on all 16 puzzles", with 4,096 models and all 15 proofs verified.
+`sat/oracle.shale` asks `rocsat solve` about each problem's formula with the program's bits free (`f977bcc`), so the solver searches ({{chapter The SAT solver}}). Each SATISFIABLE answer is a program, which the script runs on the machine and blocks with a clause before asking again; UNSATISFIABLE, expected once every program is found, ends the count. Each shortest length is then SATISFIABLE, and one line shorter UNSATISFIABLE, as expected, with a DRAT proof our checker replays. That is Theorem 4 again, by Theorem 12. It starts rocsat 4,143 times, so it runs as its own script; its last run, on 2026-11-25, spent 62.6 s in its programs and ended "rocsat agrees with the machine on all 16 puzzles", with 4,096 models and all 15 proofs verified.
 
 ## Solved by hand
 
@@ -1693,7 +1747,7 @@ Run through the gates, each other op on line 1 leaves core 0's final `accepted` 
 
 `is_not_one` accepts {0, 2, 3} (code 13), and its one program uses all six lines (Theorem 5). For the programs of `nada`, `zero` and `decr`, counting lines settles it. Input 0 needs a `zero` before any `decr`, since `decr` at 0 halts. Input 2 reaches 0 after two `decr`s and input 3 after three, on different lines, and each then needs a `zero`. Input 1 reaches 0 after the first `decr`, so the second `decr` has to come before any later `zero`, and it halts input 1. That is three `zero`s and three `decr`s: six lines. Theorem 3's search, over all 4,096 programs, settles the ones with `mod2` too.
 
-The formula says the same. `sat 13 len=5` is the full formula plus the unit clauses `-11` and `-12`, and rocsat answers UNSAT with a DRAT proof. Such a proof is a list of lemmas, each a clause that follows from the formula and the lemmas before it by unit propagation, with deletions mixed in, ending at the empty clause; a checker replays it, and once the empty clause follows, the formula is unsatisfiable. The first 12 distinct lemmas of this one, each literal named by `src/sat_hand_main.c` from the encoder's own record of its wires:
+The formula says the same. `sat 13 len=5` is the full formula plus the unit clauses `-11` and `-12`. Asked to solve it, rocsat answers UNSATISFIABLE, the answer expected, with a DRAT proof. Such a proof is a list of lemmas, each a clause that follows from the formula and the lemmas before it by unit propagation, with deletions mixed in, ending at the empty clause; a checker replays it, and once the empty clause follows, the formula is unsatisfiable. The first 12 distinct lemmas of this one, each literal named by `src/sat_hand_main.c` from the encoder's own record of its wires:
 
 ```text
 `-11 0`: v11 = 0 (line 6's hb)

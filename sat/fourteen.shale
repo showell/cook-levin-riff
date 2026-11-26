@@ -27,7 +27,8 @@ local clauses = 0
 for l in lines(read(cnf)) do
   if l ~= "" and not starts_with(l, "c") and not starts_with(l, "p") then clauses = clauses + 1 end
 end
-for n = 0, 3 do
+-- The inputs it accepts first, then input 1, which it rejects.
+for n in {0, 2, 3, 1} do
   local model = OUT .. "/claim-" .. n .. ".txt"
   replace(model, must(run({"python3", "python/fourteen_cnf.py", "model", "" .. n, "" .. PROGRAM}, {timeout_ms = 60000, whole = 10000, want = WANT_PY})).out)
   local r = run({real(rocsat), "check", real(cnf), real(model)}, {timeout_ms = 60000, whole = 4000, want = WANT_ROCSAT})

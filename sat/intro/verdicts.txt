@@ -1,0 +1,6 @@
+rocsat check example.cnf ours.v: exit 0, c model ok
+rocsat solve example.cnf: exit 10, s SATISFIABLE, v -1 -2 3 0
+rocsat check example.cnf found.v: exit 0, c model ok
+
+rocsat check example.cnf wrong.v: exit 1, c model falsifies clause 2
+rocsat solve forced.cnf: exit 20, s UNSATISFIABLE

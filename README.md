@@ -235,6 +235,17 @@ and `sat/claims/gates.txt`, which the book shows:
 shale sat/claims.shale     # needs rocsat built at build:rocsat/src/rocsat (or rocsat=PATH)
 ```
 
+`sat/intro.shale` shows rocsat's two jobs, for the book's chapter "The SAT
+solver", on a three-clause CNF: `rocsat check` confirms a true assignment
+and names the clause a false one breaks, and `rocsat solve` finds an
+assignment and answers UNSATISFIABLE once two unit clauses contradict the
+third clause. It fails unless each answer is the expected one, and writes
+the files it hands rocsat and `sat/intro/verdicts.txt` to `sat/intro/`:
+
+```sh
+shale sat/intro.shale      # needs rocsat built at build:rocsat/src/rocsat (or rocsat=PATH)
+```
+
 rocsat builds with its pinned Roc nightly (`roc-version`,
 `nightly-2026-08-18-e9be50a`), via `make build`. Its `scripts/install-roc`
 installs that nightly under `~/.roc`, or under `ROC_INSTALL_DIR`.

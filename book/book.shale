@@ -26,7 +26,8 @@
 -- shows them is held to what this finds: each proof's row of its table, the
 -- checker's line for each proof it shows, and each shown answer's program.
 -- The chapter "From equations to CNF" is held to python/distribute.py's
--- sizes and to sat/claims.shale's verdicts (check_cnf).
+-- sizes and to sat/claims.shale's verdicts (check_cnf), and "The SAT
+-- solver" to sat/intro.shale's (check_intro).
 --
 -- Then the book builder's tools/build_book.shale runs the app's expects, held
 -- to exactly APP_TESTS, builds the app into book_builder/zig-out/cook-levin,
@@ -133,6 +134,24 @@ function check_steps()
     end
   end
   print("book: the 3 blocks of python/steps.py are in book/book.md as it prints them")
+  return nil
+end
+
+-- The blocks of "The SAT solver": sat/intro.shale's example CNF, and
+-- rocsat's answers on the happy path and the unhappy paths, as it wrote them
+-- to sat/intro/. The book's source must hold each byte for byte.
+function check_intro()
+  local blocks = {"```text\n" .. trim(read("sat/intro/example.cnf")) .. "\n```"}
+  for b in split(trim(read("sat/intro/verdicts.txt")), "\n\n") do push(blocks, "```text\n" .. b .. "\n```") end
+  if #blocks ~= 3 then fail("book: sat/intro/verdicts.txt holds " .. (#blocks - 1) .. " blocks, not 2") end
+  local source = read(SOURCE)
+  for b in blocks do
+    if find(source, b) == nil then
+      print(b)
+      fail("book: book/book.md lacks the SAT solver block above, so /" .. DEST_NAME .. "/ is left as it was")
+    end
+  end
+  print("book: sat/intro.shale's CNF and rocsat's 5 answers on it are in book/book.md")
   return nil
 end
 
@@ -454,6 +473,7 @@ function main()
   check_cnf()
   check_steps()
   check_program_numbers()
+  check_intro()
   check_fourteen()
   check_hand()
   check_solver_files()

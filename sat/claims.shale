@@ -24,8 +24,8 @@ const VERDICTS = "sat/claims/verdicts.txt"
 const GATES = "sat/claims/gates.txt"
 const CLAIMS = {
   {program = 1689, problem = 13, sat = true},
-  {program = 1689, problem = 5, sat = false},
   {program = 2704, problem = 8, sat = true},
+  {program = 1689, problem = 5, sat = false},
 }
 const WANT_ROC = "claims: the Roc port's pinned compiler"
 const WANT_RAN = "claims: circuit_main and claim-cnf, just built by this script"

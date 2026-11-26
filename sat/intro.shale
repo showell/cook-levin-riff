@@ -1,0 +1,78 @@
+-- sat/intro.shale: rocsat's two jobs on a CNF small enough to read, for the
+-- book's chapter "The SAT solver". `rocsat check` evaluates a CNF at an
+-- assignment; `rocsat solve` searches for one. Each is run first on a claim
+-- that holds, then on one that doesn't, and the script fails unless rocsat
+-- says yes to the first and no to the second.
+--
+-- It writes the CNFs and assignments it hands rocsat to sat/intro/, and
+-- rocsat's answers to sat/intro/verdicts.txt, the happy path, a blank line,
+-- then the unhappy path. The book's build holds the CNF and both blocks byte
+-- for byte, so the book builds without rocsat. From the repository's root:
+--
+--   shale sat/intro.shale
+--
+-- rocsat is the one sat/oracle.shale runs, built in build:rocsat.
+
+const DIR = "sat/intro"
+const WANT_ROCSAT = "intro: rocsat, built in build:rocsat from its pinned nightly"
+
+-- (v1 OR NOT v2) AND (v2 OR v3) AND (NOT v1 OR NOT v3).
+const EXAMPLE = "p cnf 3 3\n1 -2 0\n2 3 0\n-1 -3 0\n"
+-- The same, with v1 and v3 both asked to be 1: the third clause forbids it.
+const FORCED = "p cnf 3 5\n1 -2 0\n2 3 0\n-1 -3 0\n1 0\n3 0\n"
+-- v1 = 1, v2 = 1, v3 = 0, which satisfies EXAMPLE.
+const OURS = "v 1 2 -3 0\n"
+-- v1 = v2 = v3 = 1, which breaks EXAMPLE's third clause.
+const WRONG = "v 1 2 3 0\n"
+
+local rocsat = arg("rocsat", "build:rocsat/src/rocsat")
+if not exists(rocsat) then fail("rocsat is not built at " .. rocsat .. ": see README.md, \"SAT\"") end
+mkdir(DIR)
+for f in {{"example.cnf", EXAMPLE}, {"forced.cnf", FORCED}, {"ours.v", OURS}, {"wrong.v", WRONG}} do replace(DIR .. "/" .. f[1], f[2]) end
+
+-- rocsat, at path `rocsat`, on files of DIR: the command as the book prints
+-- it, its exit code and its output.
+function rocsat_on(rocsat, args)
+  local argv = {real(rocsat)}
+  for a in args do
+    if find(a, ".") ~= nil then push(argv, real(DIR .. "/" .. a)) else push(argv, a) end
+  end
+  local r = run(argv, {timeout_ms = 10000, whole = 4000, want = WANT_ROCSAT})
+  return {said = "rocsat " .. join(args, " "), code = get(r, "code", -1), out = r.out}
+end
+
+-- The line of `out` starting with `prefix`.
+function line_of(out, prefix)
+  for l in lines(out) do
+    if starts_with(l, prefix) then return l end
+  end
+  fail("rocsat said no line starting `" .. prefix .. "`: " .. out)
+end
+
+local happy = {}
+local unhappy = {}
+
+local ok = rocsat_on(rocsat, {"check", "example.cnf", "ours.v"})
+if ok.code ~= 0 or trim(ok.out) ~= "c model ok" then fail("rocsat check refused ours.v: exit " .. ok.code .. ", " .. trim(ok.out)) end
+push(happy, ok.said .. ": exit 0, " .. trim(ok.out))
+
+local found = rocsat_on(rocsat, {"solve", "example.cnf"})
+if found.code ~= 10 then fail("rocsat solve on example.cnf: exit " .. found.code .. ", not 10") end
+local model = line_of(found.out, "v ")
+replace(DIR .. "/found.v", model .. "\n")
+push(happy, found.said .. ": exit 10, " .. line_of(found.out, "s ") .. ", " .. model)
+local rechecked = rocsat_on(rocsat, {"check", "example.cnf", "found.v"})
+if rechecked.code ~= 0 or trim(rechecked.out) ~= "c model ok" then fail("rocsat check refused solve's own model: " .. trim(rechecked.out)) end
+push(happy, rechecked.said .. ": exit 0, " .. trim(rechecked.out))
+
+local bad = rocsat_on(rocsat, {"check", "example.cnf", "wrong.v"})
+if bad.code == 0 or trim(bad.out) ~= "c model falsifies clause 2" then fail("rocsat check on wrong.v: exit " .. bad.code .. ", " .. trim(bad.out) .. "; the third clause, clause 2, is the one it breaks") end
+push(unhappy, bad.said .. ": exit " .. bad.code .. ", " .. trim(bad.out))
+
+local none = rocsat_on(rocsat, {"solve", "forced.cnf"})
+if none.code ~= 20 then fail("rocsat solve on forced.cnf: exit " .. none.code .. ", not 20 (UNSATISFIABLE)") end
+push(unhappy, none.said .. ": exit 20, " .. line_of(none.out, "s "))
+
+replace(DIR .. "/verdicts.txt", join(happy, "\n") .. "\n\n" .. join(unhappy, "\n") .. "\n")
+print(read(DIR .. "/verdicts.txt"))
+print("intro: rocsat said yes to both true claims and no to both false ones; " .. DIR .. "/verdicts.txt written")

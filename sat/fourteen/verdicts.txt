@@ -1,4 +1,4 @@
 input 0, program 1689: exit 0: c model ok
-input 1, program 1689: exit 1: c model falsifies clause 438
 input 2, program 1689: exit 0: c model ok
 input 3, program 1689: exit 0: c model ok
+input 1, program 1689: exit 1: c model falsifies clause 438
