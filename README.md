@@ -36,6 +36,7 @@ variables, and composing six steps gives the whole program as polynomials.
 - `src/sat.c`: each puzzle as DIMACS CNF, the Cook-Levin construction;
   `src/sat_main.c` is its command line, and `sat/oracle.shale` checks it
   against rocsat (below, "SAT").
+- `src/plus.c`, `src/census.c`: Nibble++ (below, "Nibble++").
 - `web/`: the playground (below).
 - `js/`: the machine, the search and the composition in JavaScript, run by
   node, roc-js-interpreter's VM and its x86-64 compiler (below,
@@ -60,6 +61,24 @@ shale build.shale full=1   # also gcc -O2 -Wall -Wextra -Werror, and ASan/UBSan
 
 Each check prints one line; the run exits 0 only when all pass. Binaries go
 to `out/`.
+
+## Nibble++
+
+Nibble++ is Nibble with a 4-bit AX (inputs 0 to 15, so 65,536 languages),
+programs of any length, and the opcodes `half` (AX >> 1, code 0, where
+Nibble has `nada`), `zero`, `decr` and `mod2`. `src/plus.c` is its plain
+interpreter. `src/census.c` finds every language's shortest program
+exactly, with a witness, by breadth-first search over the machine's states
+(each input's AX, or accepted, or rejected), each state kept once; with all
+four opcodes it reaches 374,003 states. `src/census_main.c` prints the
+count of languages at each shortest length for {zero, decr},
+{zero, decr, mod2}, {zero, decr, half} and all four, held by `build.shale`
+to `tests/golden/census.txt`, and `python/census4.py` is a second oracle
+held to the same file. `tests/test_census.c` runs every witness on the
+interpreter, enumerates every program of up to 9 lines, and checks three
+theorems: `decr` pads any witness to 32 lines (64 bits) safely, {zero,
+decr} needs max(S) + |S| lines, and the Fibonacci counts hold where the
+census says they do.
 
 ## Playground
 The machine's assembly language is called **Nibble**. `web/` is a puzzle
