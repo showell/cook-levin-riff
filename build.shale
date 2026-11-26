@@ -14,6 +14,10 @@
 --                              port's CNF expects read; python/distribute.py
 --                              expands them into CNF by distribution and
 --                              checks that CNF on every point.
+--                              The Nibble++ census, src/census_main.c, is
+--                              held to tests/golden/census.txt, and so is
+--                              python/census4.py's output, an oracle that
+--                              shares no code with the C.
 --   shale build.shale full=1   the fast tier, then gcc twice: -std=c11 -O2
 --                              -Wall -Wextra -Werror, and -O0 with
 --                              -fsanitize=address,undefined; each builds and
@@ -27,10 +31,11 @@
 -- Run from the repository's root.
 
 const OUT = "out"
-const TESTS = {"tests/test_vm.c", "tests/test_reference.c", "tests/test_golden.c", "tests/test_ring_int.c", "tests/test_poly.c", "tests/test_stepper.c", "tests/test_cross_check.c", "tests/test_boolring.c", "tests/test_compose.c", "tests/test_sat.c", "tests/test_drat.c", "tests/test_theorems.c", "tests/test_boolean.c", "tests/test_circuit.c"}
+const TESTS = {"tests/test_vm.c", "tests/test_reference.c", "tests/test_golden.c", "tests/test_ring_int.c", "tests/test_poly.c", "tests/test_stepper.c", "tests/test_cross_check.c", "tests/test_boolring.c", "tests/test_compose.c", "tests/test_sat.c", "tests/test_drat.c", "tests/test_theorems.c", "tests/test_boolean.c", "tests/test_circuit.c", "tests/test_census.c"}
 -- The command lines the oracles and the book run, compiled in each tier.
 const CLIS = {"src/sat_main.c", "src/drat_main.c", "src/boolean_main.c", "src/sat_hand_main.c", "src/circuit_main.c"}
 const GOLDEN = "tests/golden/find_solutions.txt"
+const CENSUS_GOLDEN = "tests/golden/census.txt"
 const EQUATIONS_GOLDEN = "roc/golden/equations.txt"
 -- Why `run` may start a binary git does not track: this build just made it.
 const RAN = "build: a test binary this build just compiled"
@@ -120,6 +125,16 @@ function run_golden(build)
   return check(same, build .. ": main's stdout is " .. GOLDEN .. ": " .. #r.out .. " bytes of " .. #want .. ", " .. how_it_ended(r))
 end
 
+-- The Nibble++ census, held to its golden.
+function run_census(build)
+  local bin = compiled(build, "src/census_main.c")
+  if bin == nil then return 1 end
+  local r = run({real(bin)}, {timeout_ms = 60000, whole = 65536, want = RAN})
+  local want = read(CENSUS_GOLDEN)
+  local same = exited_0(r) and r.out == want
+  return check(same, build .. ": census_main's stdout is " .. CENSUS_GOLDEN .. ": " .. #r.out .. " bytes of " .. #want .. ", " .. r.ms .. " ms, " .. how_it_ended(r))
+end
+
 local failures = 0
 local builds = {"tcc"}
 if arg("full", false) then builds = {"tcc", "release", "asan"} end
@@ -135,6 +150,7 @@ for build in builds do
     end
   end
   failures = failures + run_golden(build)
+  failures = failures + run_census(build)
 end
 
 for file in PYTHON do
@@ -143,6 +159,10 @@ for file in PYTHON do
   local said_its_checks = starts_with(py_said, file .. ": ") and re_find(py_said, "^[a-z/_.]+: [0-9]+ checks passed$") ~= nil
   failures = failures + check(exited_0(py) and said_its_checks, "python3: " .. py_said .. ", " .. how_it_ended(py))
 end
+
+-- The census once more, by Python that shares no code with the C.
+local census_py = run({"python3", "python/census4.py"}, {timeout_ms = 120000, whole = 65536, want = PYTHON_WANT, nice = 10})
+failures = failures + check(exited_0(census_py) and census_py.out == read(CENSUS_GOLDEN), "python3: python/census4.py's stdout is " .. CENSUS_GOLDEN .. ": " .. #census_py.out .. " bytes, " .. census_py.ms .. " ms, " .. how_it_ended(census_py))
 
 -- The decider's equations, printed by the tier's first circuit_main and
 -- read back by Python that shares no code with it.
