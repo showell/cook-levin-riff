@@ -1252,7 +1252,7 @@ digraph {
 
 The three machines `nada`, `zero` and `decr` are wires alone, at 0 gates. The selector is more than half the stepper: one AND for each wire a machine drives, and the ORs that join them. One wire ends at the selector: it builds `next_0`, and the encoder reads only wires 1 to 3. It stays, because each part does its whole job as its rule says.
 
-`sat_step` in `src/sat.c`, the stepper of {{chapter The Cook-Levin machine}}, is the same logic in 34 gates. It folds and merges where this drawing is literal; the 15 gates between them are these:
+`sat_step` in `src/sat.c`, the stepper of {{chapter The Cook-Levin machine}}, is the same design in 34 gates. It folds and merges where this drawing is literal; the 15 gates between them are these:
 
 - it writes each NOT as a literal's sign, which is free in a formula: 5 gates;
 - it leaves out wire 0, since value 0 is what remains when wires 1 to 3 are off: `fold_0` and `next_0`'s 4 AND and 3 OR gates, 8 in all;
@@ -1262,7 +1262,7 @@ A core, six steppers, is 294 gates, and `circuit_main core` draws all of them in
 
 ### Four cores decide a problem
 
-The machine's question is whether a program decides a problem, and four cores answer it. The *want* register holds four bits, one per input, saying which inputs the problem holds: {1, 2, 3} is `0111`, input 0's bit first. The *program* register holds the twelve bits of a program. The program goes to four cores side by side, one per input, each with its input wired in as constants, and each core answers whether its input is accepted. Four comparators check each answer against its want bit, and a final AND joins them.
+Whether a program decides a problem takes four cores, one per input. The *want* register holds four bits, one per input, saying which inputs the problem holds: {1, 2, 3} is `0111`, input 0's bit first. The *program* register holds the twelve bits of a program. The program goes to the four cores side by side, each with its input wired in as constants, and each core answers whether its input is accepted. Four comparators check each answer against its want bit, and a final AND joins them.
 
 The circuit, end to end
 ```dot
