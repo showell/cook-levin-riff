@@ -779,17 +779,59 @@ Each variable here is a gate's output, and its three clauses tie it to the cell 
 
 ## Cook-Levin as SAT
 
-`src/sat.c` writes each puzzle as a Boolean formula in DIMACS CNF, the input format of SAT solvers (`8de51b7`). This is the Cook-Levin construction itself: the question "which six-instruction programs accept exactly this language?" becomes one formula whose satisfying assignments are exactly those programs.
+`src/sat.c` writes each puzzle as one Boolean formula in DIMACS CNF, the input format of SAT solvers (`8de51b7`), whose satisfying assignments are exactly the programs that decide the puzzle's language: the Cook-Levin construction itself. Expanded as polynomials, the circuit's `accepted` alone reached 10,324 terms ({{chapter The polynomials, in full}}). The formula names every wire instead: each gate's output gets a variable, tied to the gate's inputs by three clauses, so the formula grows linearly with the steps.
 
-### The unrolling
+### One gate, three clauses
 
-The formula's first 12 variables are the program's bits, two an instruction, so a solver's model reads straight off as a program. The machine is then unrolled: each of the six steps, on each of the four inputs, is a copy of the step's logic, wired to the state the step before left. The logic is the stepper's, gate for gate, NOT, AND and OR as in {{chapter Arithmetization}}.
+A clause is an OR of literals, each a variable or its complement, and a CNF formula is an AND of clauses; in DIMACS, `-14 2` says "v14 is 0 or v2 is 1". The gate g = a AND b becomes `-g a`, `-g b` and `g -a -b`: g forces a, g forces b, and a and b together force g. `src/sat_hand_main.c`, run at the book's build, checks the eight rows: the three hold together exactly where g equals a AND b.
 
-Each AND and OR becomes a Tseitin variable, tied to its inputs by three clauses, and a NOT is a literal's sign:
+| a | b | g | `-g a` | `-g b` | `g -a -b` | all three | a AND b |
+|---|---|---|---|---|---|---|---|
+| 0 | 0 | 0 | 1 | 1 | 1 | 1 | 0 |
+| 0 | 0 | 1 | 0 | 0 | 1 | 0 | 0 |
+| 0 | 1 | 0 | 1 | 1 | 1 | 1 | 0 |
+| 0 | 1 | 1 | 0 | 1 | 1 | 0 | 0 |
+| 1 | 0 | 0 | 1 | 1 | 1 | 1 | 0 |
+| 1 | 0 | 1 | 1 | 0 | 1 | 0 | 0 |
+| 1 | 1 | 0 | 1 | 1 | 0 | 0 | 1 |
+| 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 |
+
+The OR gate g = a OR b is the mirror image: `g -a`, `g -b` and `-g a b`. Each AND and OR becomes a Tseitin variable, tied to its inputs by three clauses, and a NOT is a literal's sign:
 
 {{lines src/sat.c from "Lit sat_and(Cnf *c, Lit x, Lit y) {" to "Lit c3[3] = {out, -a, -b};"}}
 
-A gate on a constant is folded, and a gate already built from the same inputs is reused, so every puzzle's formula has 416 variables and 1,216 clauses. `out/tcc/sat facts`, run for this book, prints those two numbers for all 16. The last four clauses ask that each input's final `accepted` be what the language wants. `len=N` forces the lines past N to `nada`, and `fix=K:OP` fixes line K, as the puzzle page does.
+### One step unit
+
+The formula's first 12 variables are the program's bits: line k's `hb` is v(2k − 1) and its `lb` v(2k), so `nada` is 0 0, `zero` 0 1, `decr` 1 0 and `mod2` 1 1. The logic is the stepper's, gate for gate, NOT, AND and OR as in {{chapter Arithmetization}}. A gate on a constant is folded, and a gate already built from the same two inputs is reused. Core 0 starts with `AX` = 0 and both flags 0, so its state after line 1 reads two gates:
+
+| wire | gate | its clauses | 1 when line 1 is |
+|---|---|---|---|
+| v14 | -v1 AND v2 | `-14 -1` `-14 2` `14 1 -2` | `zero` |
+| v15 | -v2 AND v1 | `-15 -2` `-15 1` `15 2 -1` | `decr` |
+
+```text
+core 0 after line 1: hb 0, lb 0, halted v15, accepted v14
+```
+
+Core 0 is accepted after line 1 exactly when line 1 is `zero`, and halted exactly when it is `decr`; its `AX` stays the constant 0. These are the names in the symbolic tableau of {{chapter The tableau, filled in}}. Core 1 starts with `AX` = 1. Its unit reads three of line 1's four decoders, built once for all four cores, and adds two OR gates:
+
+| wire | gate | its clauses | 1 when line 1 is |
+|---|---|---|---|
+| v13 | -v2 AND -v1 | `-13 -2` `-13 -1` `13 2 1` | `nada` |
+| v14 | -v1 AND v2 | `-14 -1` `-14 2` `14 1 -2` | `zero` |
+| v16 | v1 AND v2 | `-16 1` `-16 2` `16 -1 -2` | `mod2` |
+| v67 | v13 OR v14 | `67 -13` `67 -14` `-67 13 14` | `nada` or `zero` |
+| v68 | v16 OR v67 | `68 -16` `68 -67` `-68 16 67` | `nada`, `zero` or `mod2` |
+
+```text
+core 1 after line 1: hb 0, lb v68, halted 0, accepted 0
+```
+
+Core 1's `AX` falls to 0 exactly when line 1 is `decr`.
+
+### The unrolling
+
+Each of the six lines, on each of the four cores, is such a unit, wired to the state the unit above it left, and the last four clauses ask that each core's final `accepted` be what the language wants. Every puzzle's formula has 416 variables and 1,216 clauses (`out/tcc/sat facts`, run for this book). `len=N` forces the lines past N to `nada`, two unit clauses a line, and `fix=K:OP` fixes line K.
 
 ### The proof by propagation
 
@@ -799,9 +841,66 @@ A gate on a constant is folded, and a gate already built from the same inputs is
 
 ### rocsat as an oracle
 
-`sat/oracle.shale` hands the formulas to [rocsat](https://github.com/mpizenberg/rocsat), Matt Pizenberg's CDCL SAT solver, written in Roc (`f977bcc`). For each puzzle it solves the formula and runs the model's program on the machine. It counts the solutions by adding a clause that blocks each model and solving again until rocsat says UNSAT, and holds that count to the machine's. Then it proves the shortest length: one line shorter is UNSAT, and the shortest length itself is SAT. That is Theorem 4 again, by Theorem 9, from a solver that searches clauses where `tests/test_theorems.c` runs programs.
+`sat/oracle.shale` hands the formulas to [rocsat](https://github.com/mpizenberg/rocsat), Matt Pizenberg's CDCL SAT solver, written in Roc (`f977bcc`). For each puzzle it counts the models by blocking each one and solving again until UNSAT, runs each model's program on the machine, and proves the shortest length: SAT at it, UNSAT one line shorter, with a DRAT proof the repository's checker replays. That is Theorem 4 again, by Theorem 9. It starts rocsat 4,143 times, so it runs as its own script; its last run, on 2026-11-25, spent 62.6 s in its programs and ended "rocsat agrees with the machine on all 16 puzzles", with 4,096 models and all 15 proofs verified.
 
-An UNSAT answer claims that the formula is unsatisfiable, and rocsat backs each one with a DRAT proof, a list of clause additions and deletions that a separate checker can replay. Here an UNSAT at length N - 1 says that every program of N - 1 lines fails the puzzle, and the oracle checks its proof with the repository's own checker, `src/drat.c`, as {{chapter The solver's work, in full}} shows. The oracle starts rocsat 4,143 times, so it takes about a minute and runs as its own script, `sat/oracle.shale`, beside `build.shale`'s quicker tiers. Its last run for this book, on 2026-11-25, spent 62.6 s in its programs and ended "rocsat agrees with the machine on all 16 puzzles": 4,096 models in all, and every shortest length confirmed by an UNSAT one line shorter, with all 15 proofs verified.
+## Solved by hand
+
+With the constants folded, the smallest puzzle solves on paper, and the start of the hardest puzzle's proof reads as plain statements about the program.
+
+### {0} in one line
+
+`is_tiny` accepts exactly {0} (code 1), and its shortest program has one line (Theorem 4). With lines 2 to 6 forced to `nada` (`sat 1 len=1`), the formula opens with ten unit clauses, `-3` to `-12`, and ends with four, one an input. Unit propagation repeats one rule: a clause whose literals are all false but one makes that one true. From the formula's own unit clauses, `src/sat_hand_main.c` finds that the rule decides every variable:
+
+```text
+{0} at length 1: 416 variables, 1226 clauses; unit propagation fixes 416 of the variables in 9 passes, with 0 conflicts
+v65 = 1 by `65`: core 0's accepted after line 6
+v55 = 1 by `-65 55 62`: core 0's accepted after line 5
+v45 = 1 by `-55 45 52`: core 0's accepted after line 4
+v35 = 1 by `-45 35 42`: core 0's accepted after line 3
+v25 = 1 by `-35 25 32`: core 0's accepted after line 2
+v14 = 1 by `-25 14 22`: core 0's accepted after line 1
+v1 = 0 by `-14 -1`: line 1's hb
+v2 = 1 by `-14 2`: line 1's lb
+the program: line 1 is `zero`, lines 2 to 6 `nada`
+```
+
+Input 0's unit clause sets core 0's final `accepted`, v65. Each line's `accepted` is an OR of the one above and that line's new accept, which is 0 on a `nada` line (v62 at line 6, and so on), so each OR's third clause passes the demand one line up, to v14, line 1's `zero` decoder. Its two clauses `-14 -1` and `-14 2` then set the program's bits. rocsat agrees: `sat/proofs/1-len1.model` records 0 conflicts and 0 decisions.
+
+### The other three ops
+
+Run through the gates, each other op on line 1 leaves core 0's final `accepted` at 0 and breaks the unit clause `65`:
+
+| line 1 | accepted after line 6, inputs 0 1 2 3 | {0} asks for | unit clauses broken |
+|---|---|---|---|
+| `nada` | 0 0 0 0 | 1 0 0 0 | `65` (input 0) |
+| `zero` | 1 0 0 0 | 1 0 0 0 | all four hold |
+| `decr` | 0 0 0 0 | 1 0 0 0 | `65` (input 0) |
+| `mod2` | 0 0 0 0 | 1 0 0 0 | `65` (input 0) |
+
+`nada` and `mod2` keep core 0 at 0 with both flags 0, and `decr` at 0 halts it.
+
+### Five lines for {0, 2, 3}
+
+`is_not_one` accepts {0, 2, 3} (code 13), and its one program uses all six lines (Theorem 5). For the programs of `nada`, `zero` and `decr`, counting lines settles it. Input 0 needs a `zero` before any `decr`, since `decr` at 0 halts. Input 2 reaches 0 after two `decr`s and input 3 after three, on different lines, and each then needs a `zero`. Input 1 reaches 0 after the first `decr`, so the second `decr` has to come before any later `zero`, and it halts input 1. That is three `zero`s and three `decr`s: six lines. Theorem 3's search, over all 4,096 programs, settles the ones with `mod2` too.
+
+The formula says the same. `sat 13 len=5` is the full formula plus the unit clauses `-11` and `-12`, and rocsat answers UNSAT with a DRAT proof. Such a proof is a list of lemmas, each a clause that follows from the formula and the lemmas before it by unit propagation, with deletions mixed in, ending at the empty clause; a checker replays it, and once the empty clause follows, the formula is unsatisfiable. The first 12 distinct lemmas of this one, each literal named by `src/sat_hand_main.c` from the encoder's own record of its wires:
+
+```text
+`-11 0`: v11 = 0 (line 6's hb)
+`-12 0`: v12 = 0 (line 6's lb)
+`57 0`: v57 = 1 (1 when line 6 is `nada`)
+`-58 0`: v58 = 0 (1 when line 6 is `zero`)
+`-59 0`: v59 = 0 (1 when line 6 is `decr`)
+`-60 0`: v60 = 0 (1 when line 6 is `mod2`)
+`61 0`: v61 = 1 (v56 OR v57)
+`-62 0`: v62 = 0 (-v56 AND v58)
+`-63 0`: v63 = 0 (-v56 AND v59)
+`-64 0`: v64 = 0 (-v56 AND v60)
+`55 -65 0`: v55 = 1 (core 0's accepted after line 5), or v65 = 0 (core 0's accepted after line 6)
+`56 -66 0`: v56 = 1 (core 0's halted after line 5), or v66 = 0 (core 0's halted after line 6)
+```
+
+The first two restate the length bound, and the next four decode line 6 as `nada`. v61 to v64 say which op core 0 runs on line 6, v56 being its `halted` after line 5: it runs `nada`. The last two say that core 0's flags after line 6 are those after line 5. {{chapter The solver's work, in full}} prints the whole proof, 286 lemmas, and checks it.
 
 ## The solver's work, in full
 
@@ -837,7 +936,7 @@ Instruction i is 2·v[2i − 1] + v[2i], so the first 12 values read as `zero, d
 
 ### Five lines are too few
 
-With line 6 forced to `nada` (`sat 13 len=5`), the formula is the one above with two unit clauses at its top, `-11 0` and `-12 0`, 1,218 clauses in all. rocsat answers UNSAT and writes this proof:
+With line 6 forced to `nada` (`sat 13 len=5`), the formula is the one above with two unit clauses at its top, 1,218 clauses in all, and {{chapter Solved by hand}} reads the start of rocsat's proof. Here it is whole:
 
 ```dimacs sat/proofs/13-len5.drat
 rocsat's DRAT proof that the CNF of {0, 2, 3} at length 5 is unsatisfiable
