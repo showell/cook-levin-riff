@@ -67,7 +67,7 @@ Steve wrote the first version by hand in Python, in [virtual-machine](https://gi
 
 The first part is the toy for its own sake: a finite machine, completely understood, every question settled by running everything, even in Python. It runs from {{chapter The machine}} and the theory of formal languages through plain Python, the search of all 4,096 programs, the puzzle page, and the machine as Boolean functions and as hardware, to {{chapter Some history of the approach}}, the order in which Steve built it.
 
-The second part is Cook-Levin: {{chapter How it got here}}, {{chapter P and NP}}, {{chapter Nibble, sized}}, {{chapter Nibble++}}, {{chapter Two theorems about Nibble++}}, {{chapter Nibble++ meets rocsat}}, {{chapter P, NP and Cook-Levin}}, {{chapter Six expressions, composed}}, then the step as polynomials, from {{chapter Arithmetization}} to {{chapter The polynomials, in full}}, and the circuit as tableau and formula, from {{chapter The Cook-Levin machine}} to {{chapter The solver's work, in full}}.
+The second part is Cook-Levin: {{chapter How it got here}}, {{chapter P and NP}}, {{chapter Nibble, sized}}, {{chapter Nibble++}}, {{chapter Two theorems about Nibble++}}, {{chapter Nibble++ meets rocsat}}, {{chapter Guided search}}, {{chapter P, NP and Cook-Levin}}, {{chapter Six expressions, composed}}, then the step as polynomials, from {{chapter Arithmetization}} to {{chapter The polynomials, in full}}, and the circuit as tableau and formula, from {{chapter The Cook-Levin machine}} to {{chapter The solver's work, in full}}.
 
 The third part is the cross-checks: {{chapter The oracles}}, {{chapter The Roc port}}, {{chapter What is Shale?}} and {{chapter The VM in Shale}}, then {{chapter What comes next}}. The theorems are numbered through the book, each checked by a run that its proof names.
 
@@ -1548,6 +1548,35 @@ rocsat's programs are its own. A solver hands back whichever model it reaches fi
 After the second `half`, input 15 holds 3 in both. The census brings it to 0 with `decr, half, decr`, and rocsat with three `decr`s, in the same four lines with `zero`.
 
 Three methods agree on every case: the census, a breadth-first search over states in `src/census.c`; rocsat's search over assignments, in Roc; and `src/drat.c`'s replay of each refutation. Each is its own code, so each shortest length in the table is confirmed three separate ways.
+
+## Guided search
+
+The search of {{chapter Nibble++ meets rocsat}} hands rocsat all 16 runs at once. A guided search, counterexample by counterexample, starts with a few runs and adds the others as they are needed. `plus_sat search-on` writes the search CNF with copies for the named inputs alone, and `sat/plus_guided.shale` runs the loop on the same 11 cases. For a formal language W and a length k:
+
+1. Start with inputs 0 and 15.
+2. Ask rocsat for a k-line program that gets W right on those inputs.
+3. On SATISFIABLE, run the program on all 16 inputs with `src/plus.c`'s interpreter. If it decides W, the search ends. Otherwise the lowest input it gets wrong joins the set, and the loop goes back to step 2.
+4. On UNSATISFIABLE, every k-line program gets some input of the set wrong, so every one fails on W too, and the search ends.
+
+Step 4 proves minimality from part of the machine. Its DRAT proof covers a formula with fewer copies, and `src/drat.c` checks it as before. The last SATISFIABLE answer gets the full search's three checks: `rocsat check`, `src/drat.c`'s model check and the interpreter.
+
+The inputs each answer asked about, and the proofs at L − 1 beside the full search's, from `sat/plus/guided.txt`:
+
+| Formal language | L | Inputs asked at L | Inputs asked at L − 1 | Its proof | The full proof | Checked |
+|---|---:|---:|---:|---:|---:|---|
+| {0} | 1 | 2 | 2 | 6 bytes | 6 bytes | yes |
+| {0, 1} | 2 | 2 | 3 | 41 bytes | 53 bytes | yes |
+| {2, 3, 6, 7, 10, 11, 14, 15} | 4 | 2 | 3 | 2,476 bytes | 13,638 bytes | yes |
+| {8, ..., 15} | 5 | 2 | 4 | 16,910 bytes | 34,723 bytes | yes |
+| {15} | 8 | 9 | 11 | 138,847 bytes | 117,323 bytes | yes |
+| {0, ..., 4, 6} | 12 | 9 | 9 | 381,506 bytes | 490,951 bytes | yes |
+| {0, ..., 6, 8} | 16 | 12 | 11 | 2,100,056 bytes | 1,640,192 bytes | yes |
+| {0, ..., 8, 10} | 20 | 13 | 13 | 3,028,426 bytes | 2,691,961 bytes | yes |
+| {0, ..., 10, 12} | 24 | 15 | 15 | 9,784,203 bytes | 6,145,378 bytes | yes |
+| {1, ..., 10, 12, 15} | 27 | 16 | 16 | 11,954,817 bytes | 11,954,817 bytes | yes |
+| {0, ..., 13, 15} | 28 | 16 | 16 | 17,192,870 bytes | 17,192,870 bytes | yes |
+
+Every answer agreed with the census, and every proof checked. The short cases settled on 2 to 4 inputs, with proofs the same size or smaller. The long ones needed most of the inputs, and from 27 lines on all 16, so the last round asked the full search's own question. Each round solves from the start, so the rounds add up: in the one run that `sat/plus/guided.txt` records, the case at 28 lines took 35.1 s at L and 38.1 s at L − 1, against 8.3 s and 17.0 s for the full search in `sat/plus/search.txt`. `sat/plus.shale` runs the case of {15} in the build.
 
 ## P, NP and Cook-Levin
 
