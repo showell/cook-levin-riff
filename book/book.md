@@ -1478,6 +1478,56 @@ The census agrees. The last column is {zero, decr, mod2}, for contrast:
 
 With `mod2` the counts follow the Fibonacci numbers one place on, F(L + 1), from length 1 to 15, apart from length 4, which has 6 where F(5) is 5. At 16 the count is 1,595, two below F(17). `mod2` breaks the lockstep that Theorem 10 rests on, since it merges inputs, and a formula for these counts is open here.
 
+## Shortest programs with mod2 and half
+
+{{chapter Two theorems about Nibble++}} settles `zero` and `decr` alone. This chapter brings in `mod2` and `half`, the split lines, and explains every length the census of {{chapter Nibble++}} finds. The proofs are in `docs/NIBBLE_PLUS_THEORY.md`, and `tests/test_theory_plus.c` holds each theorem to the census on all 65,536 formal languages, in the build.
+
+### Walks and splits
+
+A walk is a program of `zero` and `decr` alone, and Theorem 10 gives its length. Every other program is a walk, then its first split line, then the rest. A split line merges inputs: `half` sends d and d + 1 to one value, d + 2 and d + 3 to the next, and so on, and `mod2` sends every input of one parity to one value. Inputs merged into a block share `AX` from then on, so they share every verdict, and the rest of the program runs on a smaller machine with one input a block. After `half` that machine has at most half the inputs, after `mod2` at most 2.
+
+A formal language S lines up at d for a split line when each block of the inputs still running is wholly inside S or wholly outside it. Input d may be the one exception, accepted alone by a `zero` just before the split.
+
+### The recursion
+
+**Theorem 12.** For every opcode set holding `zero` and `decr`, the shortest program for S is the least of its walk, max(S) + |S| lines, and, for each split line f and each d where S lines up for f, the walk to d, f, and the shortest program for the smaller formal language on the smaller machine.
+
+The smaller machines have 8, 4, 2 and 1 inputs, so `src/theory_plus.c` fills four small tables. Its lengths are the census's for all 65,536 formal languages under each of the four opcode sets, and the programs it builds decide their formal languages on `src/plus.c`'s interpreter.
+
+**Theorem 13.** A shortest program has at most four split lines, at most one `mod2`, and at most one `half` after its `mod2`.
+
+A split line that leaves every `AX` as it was can be dropped, so each split in a shortest program lowers the largest `AX` still running. From 15 that is at most 15, 7, 3, 1, 0: four steps. After `mod2` every value is 0 or 1, which a second `mod2` leaves as it is.
+
+### {zero, decr, mod2}
+
+**Theorem 14.** With {zero, decr, mod2}, every formal language has a shortest program of one of three shapes:
+
+1. a walk;
+2. a walk to d, then `mod2, zero`, when S from d on is the inputs of d's parity;
+3. a walk to d, then `mod2, zero, decr, zero`, when S holds every input from d on.
+
+**Theorem 15.** With {zero, decr, mod2}, the number of formal languages whose shortest program has L lines is F(L + 1) for L from 1 to 15, apart from 6 at L = 4, and F(17) − 2 at L = 16.
+
+The count comes from tiles. A walk is a row of tiles, `zero, decr` for a member and `decr` for the rest, and rows of tiles of 1 and 2 lines are counted by Fibonacci numbers. The walks give F(L) and the parity shapes F(L − 1), F(L + 1) together. At length 4 the third shape with an empty walk adds one: `mod2, zero, decr, zero` accepts all 16 inputs. At 16, two formal languages the count places there belong lower, {14} at 15 lines and {12, 14} at 14. This explains the table of {{chapter Two theorems about Nibble++}}.
+
+### When half helps
+
+**Theorem 16.** With {zero, decr, half}, `half` gives S a program shorter than its walk exactly when S lines up at some d with a pair among its accepted blocks, or S holds 15 and leaves out 12, 13 and 14.
+
+`tests/test_theory_plus.c` counts 38,911 formal languages that `half` helps, 3,414 of them by the second condition alone. That condition is the trick behind {15}: a walk to 11, then `half`, leaves 15 alone at 2, which `decr, decr, zero` accepts.
+
+### Open, and refuted
+
+One conjecture stands, checked on all 65,536 formal languages and unproved: `half` helps over {zero, decr, mod2} exactly when it helps over {zero, decr}, 38,911 formal languages each way.
+
+Three guesses failed on the census:
+
+- The four opcodes beat both three-opcode sets on 4,178 formal languages. The inputs with bit 2 clear, {0, ..., 3, 8, ..., 11}, take 4 lines with all four, `half, half, mod2, zero`, against 6 with {zero, decr, half} and 19 with {zero, decr, mod2}.
+- `half` helps 377 formal languages whose members are all at least 2 apart, {15} the first: 8 lines against a 16-line walk.
+- Lining up for `half` is required for it to help, and short of enough: 10,240 formal languages line up with {15} as their one accepted block and keep their walk's length.
+
+A closed form for {zero, decr, half} like Theorem 14 is open, and so is the reason four opcodes beat three.
+
 ## Nibble++ meets rocsat
 
 {{chapter Nibble++}} settles every formal language's shortest program by searching the machine's states. This chapter puts the same questions to rocsat, as {{chapter The SAT solver}} frames them, in a CNF that `src/plus_sat.c` builds on the toy's gates.
