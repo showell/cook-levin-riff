@@ -1999,7 +1999,7 @@ The formulas come from the repository's C: `book/book.shale` builds `src/sat_mai
 
 A DRAT proof is a list of lines, each a clause added, a lemma, or a clause deleted, after a `d`. `src/drat.c` replays it forward. Each lemma has to follow by reverse unit propagation: set all its literals false, propagate over the formula and the lemmas so far, and some clause must come out with every literal false. Each deletion has to name a clause the database holds, and it is applied. The proof ends at the empty clause, which follows when propagation over the database alone reaches a conflict. A lemma that fails this test may still pass as a RAT on its first literal; all 15 of rocsat's proofs pass by the first test alone.
 
-`tests/test_drat.c` holds the checker both ways in 12 tests: hand-made proofs that pass, planted ones that fail (a lemma the formula leaves open, a proof that stops short of the empty clause, a deletion of a clause a later lemma needs), and each committed proof, which verifies against its formula and fails against the formula one line longer.
+`tests/test_drat.c` holds the checker both ways in 16 tests: hand-made proofs that pass, planted ones that fail (a lemma the formula leaves open, a proof that stops short of the empty clause, a deletion of a clause a later lemma needs, a deletion of the clause that set a literal), and each committed proof, which verifies against its formula and fails against the formula one line longer.
 
 ### {0, 2, 3}, the problem with one answer
 
