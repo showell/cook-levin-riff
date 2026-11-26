@@ -74,7 +74,8 @@ four opcodes it reaches 374,003 states. `src/census_main.c` prints the
 count of languages at each shortest length for {zero, decr},
 {zero, decr, mod2}, {zero, decr, half} and all four, held by `build.shale`
 to `tests/golden/census.txt`, and `python/census4.py` is a second oracle
-held to the same file. `tests/test_census.c` runs every witness on the
+held to the same file, and so is the Roc port's census (`roc/Census.roc`,
+below). `tests/test_census.c` runs every witness on the
 interpreter, enumerates every program of up to 9 lines, and checks three
 theorems: `decr` pads any witness to 32 lines (64 bits) safely, {zero,
 decr} needs max(S) + |S| lines, and the Fibonacci counts hold where the
@@ -370,17 +371,27 @@ that `roc/roc-version` pins (0.1.0_RC1, at `~/tools/roc-0.1.0_RC1/roc`).
   clauses, read from `roc/golden/equations.txt`, which `build.shale` holds to
   `circuit_main equations`. `python/distribute.py` expands the same
   equations into CNF by distribution, 3,869 clauses for `decides`.
+- `PlusOp.roc`, `Plus.roc`, `Census.roc` and the app `PlusCensus.roc`:
+  Nibble++. `Plus.roc` is the interpreter on `Machine.State`, its `zero`,
+  `decr` and `mod2` stepped by `Machine.step`. `Census.roc` is
+  `src/census.c`'s breadth-first search, a state packed five bits an input
+  into a U128, expanded in the C's order, so its witnesses are the C's.
+  The app prints `census_main`'s report for the opcode sets it is given,
+  after running every witness on `Plus.roc`.
 
 ```sh
 shale roc/check.shale      # the gate, from the repository's root
 shale roc/bench.shale      # one release build, and the composition timed beside the C's
 ```
 
-The gate runs `roc fmt --check`; `roc check` of the seven apps and
+The gate runs `roc fmt --check`; `roc check` of the eight apps and
 modules, with no errors and no warnings; `roc test` of each, its expects
-held exactly (13, 9, 30, 28, 5, 21 and 28); and the three apps but `NibbleWasm.roc` (whose wasm
-`web/build.shale` builds and checks) built on the dev backend, its output held byte
-for byte to a golden: `tests/golden/find_solutions.txt`,
+held exactly (13, 9, 30, 28, 5, 21, 37 and 28); and the four apps but `NibbleWasm.roc` (whose wasm
+`web/build.shale` builds and checks) built and run, each output held byte
+for byte to a golden. `PlusCensus.roc` is built on LLVM (about 2 s; its
+dev build's code takes about 50 s for the four sets) and held to
+`tests/golden/census.txt`; the others are built on the dev backend and held to
+`tests/golden/find_solutions.txt`,
 `roc/golden/step_polynomials.txt` (written by the C's `bp_str`) and
 `roc/golden/composition.txt` (`tests/test_compose.c`'s term counts for
 every step, the final degrees and coefficients, and the proof: 16,384
@@ -395,6 +406,10 @@ table indexed by mask (14 variables make at most 16,384 masks), a straight
 array write that reads back already in order. The C could use the same
 table, and has not been tried with it. The search's report is worked out by
 the compiler as it builds, since every input to it is a constant.
+
+The Nibble++ census's release build (2026-11-26) runs the four searches in
+about 0.8 s, against `census_main`'s 0.5 s at -O2, and about 1.35 s with
+every one of the 262,144 witnesses run on the interpreter, as the gate runs it.
 
 ## JavaScript
 
