@@ -127,6 +127,12 @@ TEST(the_zero_decr_mod2_counts_are_the_tiling_counts) {
     }
     // F(L + 1) at every length from 1 to 15 but 4, which has one more.
     for (int L = 1; L <= 15; L++) EXPECT_EQ(censuses[i].histogram[L], rows_all(L) + (L == 4 ? 1 : 0));
+    // Length 4: three walks, two parity forms and all 16.
+    const uint32_t four[6] = {0x5u, 0x6u, 0x8u, 0xAAABu, 0x5554u, 0xFFFFu};
+    long at_four = 0;
+    for (uint32_t y = 0; y < PLUS_LANGUAGES; y++) at_four += censuses[i].shortest[y] == 4;
+    EXPECT_EQ(at_four, 6);
+    for (int k = 0; k < 6; k++) EXPECT_EQ(censuses[i].shortest[four[k]], 4);
     const uint32_t fourteen = 1u << 14;
     const uint32_t twelve_fourteen = (1u << 12) | (1u << 14);
     EXPECT_EQ(theory_walk_length(fourteen), 15);
@@ -194,6 +200,15 @@ TEST(half_helps_where_its_blocks_line_up) {
         helped += helps;
     }
     EXPECT_EQ(helped, 38911);
+    // Neighbours are not needed: 377 helped have no two neighbouring
+    // members, {15} first, 8 lines against its walk's 16.
+    long no_neighbours = 0;
+    for (uint32_t y = 0; y < PLUS_LANGUAGES; y++) {
+        if (censuses[zdh].shortest[y] < censuses[zd].shortest[y] && (y & (y >> 1)) == 0) no_neighbours++;
+    }
+    EXPECT_EQ(no_neighbours, 377);
+    EXPECT_EQ(censuses[zdh].shortest[1u << 15], 8);
+    EXPECT_EQ(censuses[zd].shortest[1u << 15], 16);
     EXPECT_EQ(between, 13654);
     EXPECT_EQ(between_helped, 3414);
 }

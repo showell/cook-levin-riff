@@ -78,7 +78,11 @@ held to the same file. `tests/test_census.c` runs every witness on the
 interpreter, enumerates every program of up to 9 lines, and checks three
 theorems: `decr` pads any witness to 32 lines (64 bits) safely, {zero,
 decr} needs max(S) + |S| lines, and the Fibonacci counts hold where the
-census says they do.
+census says they do. `docs/NIBBLE_PLUS_THEORY.md` explains the census's
+lengths without a search: a recursion for all four opcode sets
+(`src/theory_plus.c`), a closed form and its counts for {zero, decr, mod2},
+and when `half` helps; `tests/test_theory_plus.c` holds each claim to the
+census.
 
 Nibble++ meets rocsat in `src/plus_sat.c`, a second machine on `sat.c`'s
 gates (the same folding and structural hashing): the Nibble++ step on a
