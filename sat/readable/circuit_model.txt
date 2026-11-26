@@ -1,0 +1,8 @@
+-- a = b = 1, c = 0: both gates are 1, and so is out.
+a = x1
+b = x2
+c = x3
+g1 = x4
+g2 = x5
+out = x6
+a = true, b = true, c = false, g1 = true, g2 = true, out = true

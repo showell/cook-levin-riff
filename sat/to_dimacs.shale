@@ -1,0 +1,14 @@
+-- sat/to_dimacs.shale: a file in the readable form, a CNF or a model,
+-- printed as DIMACS: `(x1 OR NOT x2)` as `1 -2 0`, the count line
+-- `3 variables, 2 clauses` as `p cnf 3 2`, a name line `a = x1` as the
+-- comment `c a = 1`. sat/readable_form.shale has the form;
+-- sat/to_readable.shale is the way back. From the repository's root:
+--
+--   shale sat/to_dimacs.shale file=sat/readable/circuit.txt
+
+use("./readable_form.shale")
+
+local file = arg("file", "")
+if file == "" then fail("say which readable file: file=PATH") end
+local text = to_dimacs(read(file), file)
+print(sub(text, 1, #text - 1))

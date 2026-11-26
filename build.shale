@@ -22,6 +22,10 @@
 --                              and cheap search cases, and its verdicts
 --                              are held to sat/plus/verdicts.txt; it needs
 --                              rocsat built at build:rocsat/src/rocsat.
+--                              sat/check_readable.shale round-trips
+--                              every committed CNF and model in sat/
+--                              through the readable form, and holds the
+--                              planted malformed ones to their stops.
 --   shale build.shale full=1   the fast tier, then gcc twice: -std=c11 -O2
 --                              -Wall -Wextra -Werror, and -O0 with
 --                              -fsanitize=address,undefined; each builds and
@@ -192,6 +196,13 @@ local plus = run({"shale", "sat/plus.shale"}, {timeout_ms = 120000, tail = 20, n
 local plus_now = read("sat/plus/verdicts.txt")
 failures = failures + check(exited_0(plus) and plus_now == plus_held, "sat/plus.shale: rocsat's verdicts are sat/plus/verdicts.txt: " .. #plus_now .. " bytes of " .. #plus_held .. ", " .. plus.ms .. " ms, " .. how_it_ended(plus))
 if not exited_0(plus) then print(plus.out) end
+
+-- The readable form of DIMACS, both ways, on every committed CNF and model.
+local readable = run({"shale", "sat/check_readable.shale"}, {timeout_ms = 60000, tail = 20})
+-- Its last line is its verdict; the first says the budget its header raises.
+local readable_lines = lines(trim(readable.out))
+local readable_said = get(readable_lines, #readable_lines, "")
+failures = failures + check(exited_0(readable) and re_find(readable_said, "^sat/check_readable.shale: .* checks passed$") ~= nil, readable_said .. ", " .. readable.ms .. " ms, " .. how_it_ended(readable))
 
 if failures > 0 then fail(failures .. " check(s) failed") end
 print("all checks passed: " .. join(builds, ", "))

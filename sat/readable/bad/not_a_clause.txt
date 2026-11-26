@@ -1,0 +1,2 @@
+2 variables, 1 clause
+x1 OR x2

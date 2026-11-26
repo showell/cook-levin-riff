@@ -1,0 +1,2 @@
+2 variables, 2 clauses
+(x1)

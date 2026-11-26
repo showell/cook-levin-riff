@@ -1,0 +1,26 @@
+sat/readable/bad/bad_p_line.cnf:1: `p cnf two 1` is not `p cnf VARIABLES CLAUSES`
+sat/readable/bad/before_count.txt:1: `hello` is not a comment (`-- TEXT`) or a name (`NAME = xN`)
+sat/readable/bad/clause_without_count.txt:1: a clause, but no count line (`3 variables, 2 clauses`) before it
+sat/readable/bad/comment_after_p.cnf:2: a comment after the p line: comments and names come before it
+sat/readable/bad/count_wrong.cnf:1: the p line says 3 clauses; the file has 2
+sat/readable/bad/count_wrong.txt:1: the count line says 2 clauses; the text has 1
+sat/readable/bad/double_not.txt:2: `NOT x1` is not a variable: xN, or a name the text gives
+sat/readable/bad/given_twice.v:1: variable 1 is given twice
+sat/readable/bad/name_past_variables.cnf:2: `a` names variable 5, past the 2 the p line says
+sat/readable/bad/name_twice.cnf:2: `a` names a variable twice
+sat/readable/bad/named_written_as_x.txt:3: `x1` is named `a`: write it by its name
+sat/readable/bad/no_newline.cnf:2: no newline at the end
+sat/readable/bad/no_zero.cnf:2: no 0 at the line's end
+sat/readable/bad/not_a_clause.txt:2: `x1 OR x2` is not a clause: (x1 OR NOT x2), or () for the empty one
+sat/readable/bad/not_true_or_false.txt:1: `x1 = yes` is not `VARIABLE = true` or `VARIABLE = false`
+sat/readable/bad/past_variables.cnf:2: variable 3 is past the 2 the p line says
+sat/readable/bad/past_variables.txt:2: `x2` is variable 2, past the 1 the count line says
+sat/readable/bad/plus_sign.cnf:2: `+2` is not a literal
+sat/readable/bad/reserved_name.txt:1: `OR` cannot name a variable: the readable form uses it
+sat/readable/bad/two_spaces.cnf:2: not one space between each number
+sat/readable/bad/unknown_status.v:1: `s MAYBE` is not a model's line: `c`, `s SATISFIABLE`, `s UNSATISFIABLE` or `v ... 0` (a CNF has a `p cnf` line)
+sat/readable/bad/unknown_variable.txt:2: `y` is not a variable: xN, or a name the text gives
+sat/readable/bad/variable_named_twice.cnf:2: variable 1 is named twice
+sat/readable/bad/wrong_plural.txt:1: `1 variables, 0 clauses` is not a count line as the form writes it: `1 variable, 0 clauses`
+sat/readable/bad/x_name.cnf:1: `x2` cannot name a variable: x and a number is a variable's own name
+sat/readable/bad/zero_inside.cnf:2: a 0 before the line's end

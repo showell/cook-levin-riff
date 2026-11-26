@@ -1,0 +1,336 @@
+-- sat/readable_form.shale: DIMACS and the readable form, both ways, exact.
+-- The library sat/to_readable.shale and sat/to_dimacs.shale load, and
+-- sat/check_readable.shale tests.
+--
+-- A CNF, DIMACS on the left, readable on the right:
+--
+--   c the example            -- the example
+--   c a = 1                  a = x1
+--   p cnf 3 2                3 variables, 2 clauses
+--   1 -2 0                   (a OR NOT x2)
+--   0                        ()
+--
+-- A comment `c TEXT` is `-- TEXT` (a bare `c` is `--`). A comment of the
+-- shape `c NAME = N` names variable N, as roc/ClaimCnf.roc's CNF does, and
+-- the readable form writes that variable by its name; an unnamed variable
+-- N is `xN`. Comments and names come before the `p` line, as our writers
+-- write them, one clause a line after it, each ending in its 0.
+--
+-- A model, DIMACS on the left, readable on the right:
+--
+--   c conflicts=1 ...        -- conflicts=1 ...
+--   s SATISFIABLE            satisfiable
+--   v 1 -2 3 0               x1 = true, x2 = false, x3 = true
+--
+-- with `s UNSATISFIABLE` as `unsatisfiable`, `v 0` as `no variables`, and
+-- names as in a CNF. A text with a `p` line is a CNF, else a model; a
+-- readable text with a count line is a CNF, else a model.
+--
+-- Anything else stops, naming the file and the line: a bad literal, a
+-- variable past the `p` line's count, a clause count that is wrong, a name
+-- given twice, a variable named twice, a named variable written as `xN`,
+-- spaces our writers never write, no newline at the end.
+
+const NAME_SHAPE = "^[A-Za-z_][A-Za-z0-9_]*$"
+-- Words a variable may not be named: the form's own.
+const RESERVED = {"NOT", "OR", "AND", "true", "false"}
+
+function stop_at(where, n, why)
+  fail(where .. ":" .. n .. ": " .. why)
+end
+
+-- The text's lines, held to ending in one newline.
+function text_lines(text, where)
+  if text == "" then fail(where .. ": empty") end
+  local ls = lines(text)
+  if not ends_with(text, "\n") then stop_at(where, #ls, "no newline at the end") end
+  for i = 1, #ls do
+    if find(ls[i], "\r") ~= nil then stop_at(where, i, "a carriage return") end
+  end
+  return ls
+end
+
+-- A count as our writers write it, or nil.
+function count_of(s)
+  if re_find(s, "^(0|[1-9][0-9]*)$") == nil then return nil end
+  return tonumber(s)
+end
+
+function count_phrase(n, noun)
+  if n == 1 then return "1 " .. noun end
+  return n .. " " .. noun .. "s"
+end
+
+-- The names a text gives, as a map both ways: `of_var["4"]` is "g1",
+-- `of_name["g1"]` is 4. `shape` finds a name line and gives the name and
+-- the number as its two groups.
+function new_names()
+  return {of_var = {}, of_name = {}}
+end
+
+function add_name(names, where, n, name, var)
+  if re_find(name, NAME_SHAPE) == nil then stop_at(where, n, "`" .. name .. "` cannot name a variable") end
+  if re_find(name, "^x[0-9]+$") ~= nil then stop_at(where, n, "`" .. name .. "` cannot name a variable: x and a number is a variable's own name") end
+  if has_item(RESERVED, name) then stop_at(where, n, "`" .. name .. "` cannot name a variable: the readable form uses it") end
+  if has_key(names.of_name, name) then stop_at(where, n, "`" .. name .. "` names a variable twice") end
+  if has_key(names.of_var, "" .. var) then stop_at(where, n, "variable " .. var .. " is named twice") end
+  names.of_name[name] = var
+  names.of_var["" .. var] = name
+end
+
+-- The DIMACS name lines' names, `c NAME = N`.
+function dimacs_names(ls, where)
+  local names = new_names()
+  for i = 1, #ls do
+    local m = re_find(ls[i], "^c (\\S+) = ([1-9][0-9]*)$")
+    if m ~= nil then add_name(names, where, i, m.groups[1], tonumber(m.groups[2])) end
+  end
+  return names
+end
+
+-- The readable name lines' names, `NAME = xN`.
+function readable_names(ls, where)
+  local names = new_names()
+  for i = 1, #ls do
+    local m = re_find(ls[i], "^(\\S+) = x([1-9][0-9]*)$")
+    if m ~= nil then add_name(names, where, i, m.groups[1], tonumber(m.groups[2])) end
+  end
+  return names
+end
+
+-- Every named variable at most `vars`, the count `line` says, said there.
+function names_within(names, vars, where, n, line)
+  for k in keys(names.of_var) do
+    if tonumber(k) > vars then stop_at(where, n, "`" .. names.of_var[k] .. "` names variable " .. k .. ", past the " .. vars .. " the " .. line .. " says") end
+  end
+end
+
+-- A DIMACS comment line, readable: `-- TEXT`, or `a = x1` for a name.
+function comment_to_readable(l, where, n)
+  local m = re_find(l, "^c (\\S+) = ([1-9][0-9]*)$")
+  if m ~= nil then return m.groups[1] .. " = x" .. m.groups[2] end
+  if l == "c" then return "--" end
+  if starts_with(l, "c ") then return "--" .. sub(l, 2) end
+  stop_at(where, n, "`" .. l .. "` is not a comment: a comment is `c` and a space")
+end
+
+-- A readable comment or name line, DIMACS; nil when the line is neither.
+function comment_to_dimacs(l)
+  local m = re_find(l, "^(\\S+) = x([1-9][0-9]*)$")
+  if m ~= nil then return "c " .. m.groups[1] .. " = " .. m.groups[2] end
+  if l == "--" then return "c" end
+  if starts_with(l, "-- ") then return "c" .. sub(l, 3) end
+  return nil
+end
+
+-- A variable, by its name or as xN.
+function var_text(names, v)
+  return get(names.of_var, "" .. v, "x" .. v)
+end
+
+-- A DIMACS literal as our writers write it: its variable and its sign.
+function dimacs_literal(tok, where, n)
+  local m = re_find(tok, "^(-?)([1-9][0-9]*)$")
+  if m == nil then
+    if tok == "0" then stop_at(where, n, "a 0 before the line's end") end
+    stop_at(where, n, "`" .. tok .. "` is not a literal")
+  end
+  return {var = tonumber(m.groups[2]), negative = m.groups[1] == "-"}
+end
+
+-- A DIMACS line's tokens, held to single spaces and a last 0.
+function dimacs_tokens(l, where, n)
+  local toks = split(l, " ")
+  for t in toks do
+    if t == "" then stop_at(where, n, "not one space between each number") end
+  end
+  if toks[#toks] ~= "0" then stop_at(where, n, "no 0 at the line's end") end
+  return take(toks, #toks - 1)
+end
+
+-- A readable variable's number: xN, or a name the text gives.
+function readable_var(s, names, where, n)
+  local m = re_find(s, "^x([1-9][0-9]*)$")
+  if m ~= nil then
+    local v = tonumber(m.groups[1])
+    if has_key(names.of_var, "" .. v) then stop_at(where, n, "`" .. s .. "` is named `" .. names.of_var["" .. v] .. "`: write it by its name") end
+    return v
+  end
+  if has_key(names.of_name, s) then return names.of_name[s] end
+  stop_at(where, n, "`" .. s .. "` is not a variable: xN, or a name the text gives")
+end
+
+-- ── CNF ──
+
+function cnf_to_readable(ls, where)
+  local names = dimacs_names(ls, where)
+  local out = {}
+  local i = 1
+  while i <= #ls and not starts_with(ls[i], "p") do
+    push(out, comment_to_readable(ls[i], where, i))
+    i = i + 1
+  end
+  local p = re_find(ls[i], "^p cnf (\\S+) (\\S+)$")
+  local vars = nil
+  local want = nil
+  if p ~= nil then
+    vars = count_of(p.groups[1])
+    want = count_of(p.groups[2])
+  end
+  if vars == nil or want == nil then stop_at(where, i, "`" .. ls[i] .. "` is not `p cnf VARIABLES CLAUSES`") end
+  names_within(names, vars, where, i, "p line")
+  local p_line = i
+  push(out, count_phrase(vars, "variable") .. ", " .. count_phrase(want, "clause"))
+  for j = p_line + 1, #ls do
+    if starts_with(ls[j], "c") then stop_at(where, j, "a comment after the p line: comments and names come before it") end
+    local lits = {}
+    for t in dimacs_tokens(ls[j], where, j) do
+      local lit = dimacs_literal(t, where, j)
+      if lit.var > vars then stop_at(where, j, "variable " .. lit.var .. " is past the " .. vars .. " the p line says") end
+      local text = var_text(names, lit.var)
+      if lit.negative then text = "NOT " .. text end
+      push(lits, text)
+    end
+    push(out, "(" .. join(lits, " OR ") .. ")")
+  end
+  local clauses = #ls - p_line
+  if clauses ~= want then stop_at(where, p_line, "the p line says " .. count_phrase(want, "clause") .. "; the file has " .. clauses) end
+  return join(out, "\n") .. "\n"
+end
+
+-- The readable count line's two counts, or nil when `l` is not one.
+function count_line(l)
+  local m = re_find(l, "^(\\S+) variables?, (\\S+) clauses?$")
+  if m == nil then return nil end
+  local vars = count_of(m.groups[1])
+  local want = count_of(m.groups[2])
+  if vars == nil or want == nil then return nil end
+  if l ~= count_phrase(vars, "variable") .. ", " .. count_phrase(want, "clause") then return nil end
+  return {vars = vars, clauses = want}
+end
+
+function readable_cnf_to_dimacs(ls, where, at)
+  local names = readable_names(ls, where)
+  local out = {}
+  for i = 1, at - 1 do
+    local c = comment_to_dimacs(ls[i])
+    if c == nil then stop_at(where, i, "`" .. ls[i] .. "` is not a comment (`-- TEXT`) or a name (`NAME = xN`)") end
+    push(out, c)
+  end
+  local counts = count_line(ls[at])
+  names_within(names, counts.vars, where, at, "count line")
+  push(out, "p cnf " .. counts.vars .. " " .. counts.clauses)
+  for j = at + 1, #ls do
+    local l = ls[j]
+    if not starts_with(l, "(") or not ends_with(l, ")") or #l < 2 then stop_at(where, j, "`" .. l .. "` is not a clause: (x1 OR NOT x2), or () for the empty one") end
+    local inner = sub(l, 2, #l - 1)
+    local toks = {}
+    if inner ~= "" then
+      for lit in split(inner, " OR ") do
+        local negative = starts_with(lit, "NOT ")
+        local name = lit
+        if negative then name = sub(lit, 5) end
+        local v = readable_var(name, names, where, j)
+        if v > counts.vars then stop_at(where, j, "`" .. name .. "` is variable " .. v .. ", past the " .. counts.vars .. " the count line says") end
+        if negative then push(toks, "-" .. v) else push(toks, "" .. v) end
+      end
+    end
+    push(toks, "0")
+    push(out, join(toks, " "))
+  end
+  local clauses = #ls - at
+  if clauses ~= counts.clauses then stop_at(where, at, "the count line says " .. count_phrase(counts.clauses, "clause") .. "; the text has " .. clauses) end
+  return join(out, "\n") .. "\n"
+end
+
+-- ── Models ──
+
+function model_to_readable(ls, where)
+  local names = dimacs_names(ls, where)
+  local out = {}
+  local given = {}
+  for i = 1, #ls do
+    local l = ls[i]
+    if starts_with(l, "c") then
+      push(out, comment_to_readable(l, where, i))
+    elseif l == "s SATISFIABLE" then
+      push(out, "satisfiable")
+    elseif l == "s UNSATISFIABLE" then
+      push(out, "unsatisfiable")
+    elseif starts_with(l, "v ") then
+      local parts = {}
+      for t in dimacs_tokens(sub(l, 3), where, i) do
+        local lit = dimacs_literal(t, where, i)
+        if has_key(given, "" .. lit.var) then stop_at(where, i, "variable " .. lit.var .. " is given twice") end
+        given["" .. lit.var] = true
+        local value = "true"
+        if lit.negative then value = "false" end
+        push(parts, var_text(names, lit.var) .. " = " .. value)
+      end
+      if #parts == 0 then push(out, "no variables") else push(out, join(parts, ", ")) end
+    else
+      stop_at(where, i, "`" .. l .. "` is not a model's line: `c`, `s SATISFIABLE`, `s UNSATISFIABLE` or `v ... 0` (a CNF has a `p cnf` line)")
+    end
+  end
+  return join(out, "\n") .. "\n"
+end
+
+function readable_model_to_dimacs(ls, where)
+  local names = readable_names(ls, where)
+  local out = {}
+  local given = {}
+  for i = 1, #ls do
+    local l = ls[i]
+    local c = comment_to_dimacs(l)
+    if c ~= nil then
+      push(out, c)
+    elseif l == "satisfiable" then
+      push(out, "s SATISFIABLE")
+    elseif l == "unsatisfiable" then
+      push(out, "s UNSATISFIABLE")
+    elseif l == "no variables" then
+      push(out, "v 0")
+    else
+      if starts_with(l, "(") then stop_at(where, i, "a clause, but no count line (`3 variables, 2 clauses`) before it") end
+      local toks = {"v"}
+      for part in split(l, ", ") do
+        local m = re_find(part, "^(\\S+) = (true|false)$")
+        if m == nil then stop_at(where, i, "`" .. part .. "` is not `VARIABLE = true` or `VARIABLE = false`") end
+        local v = readable_var(m.groups[1], names, where, i)
+        if has_key(given, "" .. v) then stop_at(where, i, "`" .. m.groups[1] .. "` is given twice") end
+        given["" .. v] = true
+        if m.groups[2] == "true" then push(toks, "" .. v) else push(toks, "-" .. v) end
+      end
+      push(toks, "0")
+      push(out, join(toks, " "))
+    end
+  end
+  return join(out, "\n") .. "\n"
+end
+
+-- ── The two directions ──
+
+-- DIMACS text, a CNF or a model, in the readable form. `where` names it in
+-- a stop.
+function to_readable(text, where)
+  local ls = text_lines(text, where)
+  for l in ls do
+    if starts_with(l, "p") then return cnf_to_readable(ls, where) end
+  end
+  return model_to_readable(ls, where)
+end
+
+-- Readable text, a CNF or a model, as DIMACS.
+function to_dimacs(text, where)
+  local ls = text_lines(text, where)
+  for i = 1, #ls do
+    if count_line(ls[i]) ~= nil then return readable_cnf_to_dimacs(ls, where, i) end
+    local loose = re_find(ls[i], "^(0|[1-9][0-9]*) variables?, (0|[1-9][0-9]*) clauses?$")
+    if loose ~= nil then
+      local v = tonumber(loose.groups[1])
+      local c = tonumber(loose.groups[2])
+      stop_at(where, i, "`" .. ls[i] .. "` is not a count line as the form writes it: `" .. count_phrase(v, "variable") .. ", " .. count_phrase(c, "clause") .. "`")
+    end
+  end
+  return readable_model_to_dimacs(ls, where)
+end

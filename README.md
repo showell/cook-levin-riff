@@ -287,6 +287,24 @@ the files it hands rocsat and `sat/intro/verdicts.txt` to `sat/intro/`:
 shale sat/intro.shale      # needs rocsat built at build:rocsat/src/rocsat (or rocsat=PATH)
 ```
 
+DIMACS writes (x1 OR NOT x2) as `1 -2 0`, which is cryptic to read, so
+two thin scripts convert a CNF or a model to a readable form and back:
+`(x1 OR NOT x2)` a clause, `3 variables, 2 clauses` for the `p cnf 3 2`
+line, `x1 = true, x2 = false` for a model's `v 1 -2 0`. A DIMACS comment
+`c g1 = 4`, as `roc/ClaimCnf.roc` writes its names, names variable 4, and
+the readable form writes it `g1` and the name as `g1 = x4`. The
+conversion is exact both ways, and malformed input stops naming its line.
+`sat/readable_form.shale` has the form; `sat/check_readable.shale`, which
+`build.shale` runs, round-trips every committed CNF and model under `sat/`,
+the named Tseitin example `sat/readable/circuit.txt` (out = (a AND b) OR
+(NOT c), nine clauses), and stops each planted file of `sat/readable/bad/`
+with the line `sat/readable/bad/stops.txt` holds:
+
+```sh
+shale sat/to_readable.shale file=sat/intro/example.cnf
+shale sat/to_dimacs.shale file=sat/readable/circuit.txt
+```
+
 rocsat builds with its pinned Roc nightly (`roc-version`,
 `nightly-2026-08-18-e9be50a`), via `make build`. Its `scripts/install-roc`
 installs that nightly under `~/.roc`, or under `ROC_INSTALL_DIR`.

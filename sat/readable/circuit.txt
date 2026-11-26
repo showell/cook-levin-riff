@@ -1,0 +1,18 @@
+-- out = (a AND b) OR (NOT c), by Tseitin's encoding: g1 = a AND b,
+-- g2 = NOT c, out = g1 OR g2, and the unit clause (out) asks for out = 1.
+a = x1
+b = x2
+c = x3
+g1 = x4
+g2 = x5
+out = x6
+6 variables, 9 clauses
+(NOT g1 OR a)
+(NOT g1 OR b)
+(g1 OR NOT a OR NOT b)
+(NOT g2 OR NOT c)
+(g2 OR c)
+(NOT out OR g1 OR g2)
+(out OR NOT g1)
+(out OR NOT g2)
+(out)

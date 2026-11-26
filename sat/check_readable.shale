@@ -1,0 +1,107 @@
+-- sat/check_readable.shale: the readable form's tests (sat/readable_form.shale).
+--
+--   - Every committed DIMACS file in sat/, each CNF (*.cnf) and each model
+--     (*.v, *.model), goes to the readable form and back to the same bytes,
+--     and its readable form comes back the same through DIMACS.
+--   - Every readable file, sat/readable/*.txt, goes to DIMACS and back to
+--     the same text.
+--   - The named example, out = (a AND b) OR (NOT c) by Tseitin's encoding:
+--     sat/readable/circuit.txt is sat/readable/circuit.cnf, nine clauses
+--     over a = 1, b = 2, c = 3, g1 = 4, g2 = 5, out = 6, and its model
+--     sat/readable/circuit_model.txt is sat/readable/circuit_model.v.
+--   - Every planted malformed file in sat/readable/bad/ stops, with the
+--     line sat/readable/bad/stops.txt holds for it, which names the file
+--     and the line.
+--
+-- From the repository's root:
+--
+--   shale sat/check_readable.shale
+--
+-- The proofs' models are 416 variables each, so its steps are raised.
+-- budget: steps=40000000
+
+use("./readable_form.shale")
+
+const BAD = "sat/readable/bad"
+const STOPS = "sat/readable/bad/stops.txt"
+
+-- `to_readable` or `to_dimacs`, by name, for `attempt`.
+function convert(direction, text, where)
+  if direction == "readable" then return to_readable(text, where) end
+  return to_dimacs(text, where)
+end
+
+-- A check: the run stops naming `why` unless `ok`; `tally.n` counts them.
+function expect(tally, ok, why)
+  if not ok then fail(why) end
+  tally.n = tally.n + 1
+end
+
+-- A DIMACS file to the readable form and back, both texts held.
+function dimacs_round_trip(tally, p)
+  local text = read(p)
+  local readable = to_readable(text, p)
+  local back = to_dimacs(readable, p .. " (readable)")
+  expect(tally, back == text, p .. ": DIMACS to readable and back is not the same bytes")
+  expect(tally, to_readable(back, p) == readable, p .. ": its readable form did not come back through DIMACS")
+end
+
+local tally = {n = 0}
+
+-- DIMACS, both ways.
+local dimacs = {}
+for pattern in {"sat/**/*.cnf", "sat/**/*.v", "sat/**/*.model"} do
+  for p in glob(pattern) do
+    if not starts_with(p, BAD .. "/") then push(dimacs, p) end
+  end
+end
+local cnfs = 0
+for p in dimacs do
+  dimacs_round_trip(tally, p)
+  if ends_with(p, ".cnf") then cnfs = cnfs + 1 end
+  yield()
+end
+expect(tally, cnfs >= 3, "only " .. cnfs .. " CNF files found under sat/")
+
+-- Readable, both ways.
+local readables = glob("sat/readable/*.txt")
+for p in readables do
+  local text = read(p)
+  local d = to_dimacs(text, p)
+  expect(tally, to_readable(d, p .. " (DIMACS)") == text, p .. ": readable to DIMACS and back is not the same text")
+end
+
+-- The named example.
+local circuit = read("sat/readable/circuit.cnf")
+expect(tally, to_dimacs(read("sat/readable/circuit.txt"), "sat/readable/circuit.txt") == circuit, "circuit.txt is not circuit.cnf")
+expect(tally, to_readable(circuit, "sat/readable/circuit.cnf") == read("sat/readable/circuit.txt"), "circuit.cnf is not circuit.txt")
+expect(tally, contains(circuit, "\np cnf 6 9\n"), "circuit.cnf is not 6 variables and 9 clauses")
+for n in {{"a", 1}, {"b", 2}, {"c", 3}, {"g1", 4}, {"g2", 5}, {"out", 6}} do
+  expect(tally, contains(circuit, "\nc " .. n[1] .. " = " .. n[2] .. "\n"), "circuit.cnf does not name " .. n[2] .. " " .. n[1])
+end
+expect(tally, contains(read("sat/readable/circuit.txt"), "\n(NOT g1 OR a)\n"), "circuit.txt has no (NOT g1 OR a)")
+expect(tally, to_dimacs(read("sat/readable/circuit_model.txt"), "sat/readable/circuit_model.txt") == read("sat/readable/circuit_model.v"), "circuit_model.txt is not circuit_model.v")
+
+-- The planted malformed inputs: each stops, as stops.txt says.
+local want = {}
+for l in lines(read(STOPS)) do
+  local file = between(l, BAD .. "/", ":")
+  expect(tally, file ~= nil, STOPS .. ": `" .. l .. "` names no file of " .. BAD)
+  want[file] = l
+end
+local planted = 0
+for name in ls(BAD) do
+  if name ~= "stops.txt" then
+    local direction = "readable"
+    if ends_with(name, ".txt") then direction = "dimacs" end
+    local path = BAD .. "/" .. name
+    local r = attempt(convert, direction, read(path), path)
+    expect(tally, not r.ok, path .. ": did not stop")
+    expect(tally, has_key(want, name), path .. ": stops.txt has no line for it; it said: " .. r.error)
+    expect(tally, r.error == want[name], path .. ": stopped with `" .. r.error .. "`, not `" .. want[name] .. "`")
+    planted = planted + 1
+  end
+end
+expect(tally, planted == count(want), STOPS .. " has " .. count(want) .. " lines for " .. planted .. " planted files")
+
+print("sat/check_readable.shale: " .. #dimacs .. " DIMACS files and " .. #readables .. " readable files round-trip, " .. planted .. " malformed files stop; " .. tally.n .. " checks passed")
