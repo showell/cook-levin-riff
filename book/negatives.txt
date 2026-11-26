@@ -29,9 +29,13 @@ logic: - NOT x is 1 - x;
 logic: The step is built in the ring as {{chapter Arithmetization}} builds it: NOT x is 1 − x, x AND y is x·y and x OR y is x + y − x·y.
 logic: The logic is the stepper's, gate for gate, NOT, AND and OR as in {{chapter Arithmetization}}.
 logic: Each AND and OR becomes a Tseitin variable, tied to its inputs by three clauses, and a NOT is a literal's sign:
-logic: Two NOT gates give the complements of `hb` and `lb`, and one AND gate per value lights its wire: `is_0` is `~hb` AND `~lb`.
 logic: NOT
-logic: Three kinds of gate are allowed, AND, OR and NOT, and each part below is made of them alone.
-logic: - it writes each NOT as a literal's sign, which is free in a formula: 5 gates;
 guarantee: No program of five or fewer lines decides {0, 2, 3}.
 guarantee: - the run **rejects implicitly** when it gets past the sixth instruction with neither of them having seen 00.
+logic: Three kinds of gate are allowed, AND, OR and NOT, and every part is made of them alone.
+logic: The drawings use the standard symbols: AND is a D, OR a shield, NOT a triangle with a bubble.
+logic: An OR followed by a NOT is drawn as one shield with a bubble, a NOR; it still counts as two gates.
+logic: It is (`in 0` AND NOT `s`) OR (`in 1` AND `s`), four gates.
+logic: The hold ANDs each of the line's two bits with NOT `halted`, so a halted machine selects 00, `nada`: its bits pass and its flags are 0.
+logic: It writes each NOT as a literal's sign, which is free in a formula, so it counts AND and OR alone; counted that way, this stepper has 43.
+logic: A comparator is five gates: (`accepted` AND `want`) OR (NOT `accepted` AND NOT `want`).

@@ -603,354 +603,124 @@ Every bit here was given; the check only computes. A solver that finds the bits 
 
 ## Parts for a small computer
 
-This chapter and the two after it build the machine as hardware, a plain digital circuit, from the bottom up. Three kinds of gate are allowed, AND, OR and NOT, and each part below is made of them alone. Each part is a literal transcription of one rule of the machine, as `vm_step` in `src/vm.c` states it. {{chapter The machine as a circuit}} turns the parts into named boxes and wires them into a stepper, and {{chapter The circuit, in full}} chains the steppers into the whole machine.
+This chapter and the two after it build the machine as hardware, a plain digital circuit, from the bottom up. Each part is drawn once with all its gates, and from then on it is a box with named wires in and out. {{chapter The machine as a circuit}} wires the boxes into a stepper, and {{chapter The circuit, in full}} chains the steppers into the whole machine.
 
-The parts are functions in `src/circuit.c`, which records every gate in a netlist with its name and its part's name. `src/circuit_main.c` draws each drawing here from that netlist and fills each table by running the netlist's simulator on every input the part can be given; the book's build holds both to its output, byte for byte, and `tests/test_circuit.c` checks the same answers.
+### Gates and wires
 
-### Two ways to carry a value
+Three kinds of gate are allowed, AND, OR and NOT, and every part is made of them alone. The drawings use the standard symbols: AND is a D, OR a shield, NOT a triangle with a bubble. An OR followed by a NOT is drawn as one shield with a bubble, a NOR; it still counts as two gates. A dot marks a place where a wire branches, and a `0` is a wire tied to 0.
 
-A value from 0 to 3 travels on wires in one of two ways. As *bits*, it is two wires, `hb` and `lb`, the way `AX` holds it. As *one-hot* wires, it is four wires, `is_0` to `is_3`, exactly one of them on: the wire for the value. The opcode's rules are easiest to state on one-hot wires, where each rule is a question of which wire goes where.
+`AX` travels as its two bits, `hb` and `lb`. Each part is a literal transcription of one rule of the machine. The parts are functions in `src/circuit.c`, which records every gate in a netlist; `src/circuit_main.c` draws each schematic from that netlist and fills each table by running the netlist's simulator on every input. The book's build draws the schematics and holds the tables to its output, byte for byte, and `tests/test_circuit.c` checks the same answers.
 
-### The four opcode machines
+### The four instructions
 
-Each opcode has a machine of its own. It reads `is_0` to `is_3` and gives four one-hot wires for the value `AX` becomes, `next_0` to `next_3`, and two flags, `accepts` and `halts`. A wire tied to 0 is drawn from a `0`.
+Each opcode is a small circuit from (`hb`, `lb`) to (`hb'`, `lb'`), plus a flag for `zero` and `decr`.
 
-- **`nada`** is wires alone: each value goes straight across.
-- **`zero`** is wires too: each value goes straight across, and `is_0` is tapped to accept. A circuit runs every step, so after an accept the machine keeps stepping, and the accepted latch holds the verdict.
-- **`decr`** is a *shifter*: each wire moves down one place, and `is_0` falls out as a halt.
-- **`mod2`** folds 3 onto 1 and 2 onto 0, with two OR gates.
+```schematic nada
+`nada`: both bits pass, no gates
+```
 
-`nada`, wires alone
+```schematic mod2
+`mod2`: `hb'` tied to 0, `lb` passes, no gates
+```
+
+`mod2` takes 2 from `AX` when it is 2 or 3, which is the same as clearing the high bit.
+
+```schematic zero
+`zero`: `AX` passes, and a NOR accepts at 0
+```
+
+`zero` accepts exactly when both bits are 0. A circuit runs every step, so after an accept the machine keeps stepping, and the accepted latch holds the verdict.
+
+```schematic decr
+`decr`: the two-bit decrementer, and a NOR that halts at 0
+```
+
+`decr` is the textbook decrementer: the low bit always flips, and the high bit survives only when the low bit pays for the subtraction, 3 to 2. At 0 it halts; its bits then read 0 1, and the halt keeps the machine from going on.
+
+Each cell is `hb'` and `lb'`, with the flag when it is on:
+
+| AX | hb lb | `nada` | `zero` | `decr` | `mod2` |
+|---|---|---|---|---|---|
+| 0 | 0 0 | 0 0 | 0 0, accepts | 0 1, halts | 0 0 |
+| 1 | 0 1 | 0 1 | 0 1 | 0 0 | 0 1 |
+| 2 | 1 0 | 1 0 | 1 0 | 0 1 | 0 0 |
+| 3 | 1 1 | 1 1 | 1 1 | 1 0 | 0 1 |
+
+### The multiplexer
+
+A 2-way multiplexer, a *mux2*, passes one of two inputs: `in 0` when its select `s` is 0, `in 1` when it is 1. It is (`in 0` AND NOT `s`) OR (`in 1` AND `s`), four gates.
+
+```schematic mux2
+A mux2: four gates
+```
+
+| s | in 0 | in 1 | out |
+|---|---|---|---|
+| 0 | 0 | 0 | 0 |
+| 0 | 0 | 1 | 0 |
+| 0 | 1 | 0 | 1 |
+| 0 | 1 | 1 | 1 |
+| 1 | 0 | 0 | 0 |
+| 1 | 0 | 1 | 1 |
+| 1 | 1 | 0 | 0 |
+| 1 | 1 | 1 | 1 |
+
+From here on a mux2 is a box. Three of them make a 4-way multiplexer, a *mux4*: two choose within the pairs by the low select bit, and the third chooses between those by the high one. It passes input `k` when the select bits spell `k`, and it is 12 gates.
+
+A mux4, three mux2 boxes
 ```dot
 digraph {
   rankdir=LR;
+  nodesep=0.15;
   node [shape=box, style=rounded];
-  { rank=source; w0; w2; w3; w4; w5; }
-  w0 [shape=plaintext, label="0"];
-  w2 [shape=plaintext, label="is_0"];
-  w3 [shape=plaintext, label="is_1"];
-  w4 [shape=plaintext, label="is_2"];
-  w5 [shape=plaintext, label="is_3"];
-  { rank=sink; p0; p1; p2; p3; p4; p5; }
-  p0 [shape=plaintext, label="next_0"];
-  p1 [shape=plaintext, label="next_1"];
-  p2 [shape=plaintext, label="next_2"];
-  p3 [shape=plaintext, label="next_3"];
-  p4 [shape=plaintext, label="accepts"];
-  p5 [shape=plaintext, label="halts"];
-  w2 -> p0;
-  w3 -> p1;
-  w4 -> p2;
-  w5 -> p3;
-  w0 -> p4;
-  w0 -> p5;
+  i0 [shape=plaintext, label="s_lb"];
+  i1 [shape=plaintext, label="in 0"];
+  i2 [shape=plaintext, label="in 1"];
+  i3 [shape=plaintext, label="in 2"];
+  i4 [shape=plaintext, label="in 3"];
+  i5 [shape=plaintext, label="s_hb"];
+  b0 [label="low"];
+  b1 [label="high"];
+  b2 [label="top"];
+  o0 [shape=plaintext, label="out"];
+  i0 -> b0;
+  i1 -> b0;
+  i2 -> b0;
+  i0 -> b1;
+  i3 -> b1;
+  i4 -> b1;
+  i5 -> b2;
+  b0 -> b2;
+  b1 -> b2;
+  b2 -> o0;
 }
 ```
-
-`zero`, wires and a tap
-```dot
-digraph {
-  rankdir=LR;
-  node [shape=box, style=rounded];
-  { rank=source; w0; w2; w3; w4; w5; }
-  w0 [shape=plaintext, label="0"];
-  w2 [shape=plaintext, label="is_0"];
-  w3 [shape=plaintext, label="is_1"];
-  w4 [shape=plaintext, label="is_2"];
-  w5 [shape=plaintext, label="is_3"];
-  { rank=sink; p0; p1; p2; p3; p4; p5; }
-  p0 [shape=plaintext, label="next_0"];
-  p1 [shape=plaintext, label="next_1"];
-  p2 [shape=plaintext, label="next_2"];
-  p3 [shape=plaintext, label="next_3"];
-  p4 [shape=plaintext, label="accepts"];
-  p5 [shape=plaintext, label="halts"];
-  w2 -> p0;
-  w3 -> p1;
-  w4 -> p2;
-  w5 -> p3;
-  w2 -> p4;
-  w0 -> p5;
-}
-```
-
-`decr`, a shifter
-```dot
-digraph {
-  rankdir=LR;
-  node [shape=box, style=rounded];
-  { rank=source; w0; w2; w3; w4; w5; }
-  w0 [shape=plaintext, label="0"];
-  w2 [shape=plaintext, label="is_0"];
-  w3 [shape=plaintext, label="is_1"];
-  w4 [shape=plaintext, label="is_2"];
-  w5 [shape=plaintext, label="is_3"];
-  { rank=sink; p0; p1; p2; p3; p4; p5; }
-  p0 [shape=plaintext, label="next_0"];
-  p1 [shape=plaintext, label="next_1"];
-  p2 [shape=plaintext, label="next_2"];
-  p3 [shape=plaintext, label="next_3"];
-  p4 [shape=plaintext, label="accepts"];
-  p5 [shape=plaintext, label="halts"];
-  w3 -> p0;
-  w4 -> p1;
-  w5 -> p2;
-  w0 -> p3;
-  w0 -> p4;
-  w2 -> p5;
-}
-```
-
-`mod2`, two folds
-```dot
-digraph {
-  rankdir=LR;
-  node [shape=box, style=rounded];
-  { rank=source; w0; w2; w3; w4; w5; }
-  w0 [shape=plaintext, label="0"];
-  w2 [shape=plaintext, label="is_0"];
-  w3 [shape=plaintext, label="is_1"];
-  w4 [shape=plaintext, label="is_2"];
-  w5 [shape=plaintext, label="is_3"];
-  w6 [label="OR\nfold_0"];
-  w7 [label="OR\nfold_1"];
-  { rank=sink; p0; p1; p2; p3; p4; p5; }
-  p0 [shape=plaintext, label="next_0"];
-  p1 [shape=plaintext, label="next_1"];
-  p2 [shape=plaintext, label="next_2"];
-  p3 [shape=plaintext, label="next_3"];
-  p4 [shape=plaintext, label="accepts"];
-  p5 [shape=plaintext, label="halts"];
-  w2 -> w6;
-  w4 -> w6;
-  w3 -> w7;
-  w5 -> w7;
-  w6 -> p0;
-  w7 -> p1;
-  w0 -> p2;
-  w0 -> p3;
-  w0 -> p4;
-  w0 -> p5;
-}
-```
-
-Each cell names the wires on for that value of `AX`. `decr` at 0 lights only `halts`, and `AX` stays at 0.
-
-| AX | `nada` | `zero` | `decr` | `mod2` |
-|---|---|---|---|---|
-| 0 | next_0 | next_0, accepts | halts | next_0 |
-| 1 | next_1 | next_1 | next_0 | next_1 |
-| 2 | next_2 | next_2 | next_1 | next_0 |
-| 3 | next_3 | next_3 | next_2 | next_1 |
-
-### The decoder
-
-The decoder turns two bits into the four one-hot wires the machines read. Two NOT gates give the complements of `hb` and `lb`, and one AND gate per value lights its wire: `is_0` is `~hb` AND `~lb`.
-
-The decoder, 6 gates
-```dot
-digraph {
-  rankdir=LR;
-  node [shape=box, style=rounded];
-  { rank=source; w2; w3; }
-  w2 [shape=plaintext, label="hb"];
-  w3 [shape=plaintext, label="lb"];
-  w4 [label="NOT\n~hb"];
-  w5 [label="NOT\n~lb"];
-  w6 [label="AND\nis_0"];
-  w7 [label="AND\nis_1"];
-  w8 [label="AND\nis_2"];
-  w9 [label="AND\nis_3"];
-  { rank=sink; p0; p1; p2; p3; }
-  p0 [shape=plaintext, label="is_0"];
-  p1 [shape=plaintext, label="is_1"];
-  p2 [shape=plaintext, label="is_2"];
-  p3 [shape=plaintext, label="is_3"];
-  w2 -> w4;
-  w3 -> w5;
-  w4 -> w6;
-  w5 -> w6;
-  w4 -> w7;
-  w3 -> w7;
-  w2 -> w8;
-  w5 -> w8;
-  w2 -> w9;
-  w3 -> w9;
-  w6 -> p0;
-  w7 -> p1;
-  w8 -> p2;
-  w9 -> p3;
-}
-```
-
-| AX | hb | lb | is_0 | is_1 | is_2 | is_3 |
-|---|---|---|---|---|---|---|
-| 0 | 0 | 0 | 1 | 0 | 0 | 0 |
-| 1 | 0 | 1 | 0 | 1 | 0 | 0 |
-| 2 | 1 | 0 | 0 | 0 | 1 | 0 |
-| 3 | 1 | 1 | 0 | 0 | 0 | 1 |
-
-The same part, with its outputs named `op_nada` to `op_mod2`, decodes a program line's two bits.
-
-### The encoder
-
-The encoder turns one-hot wires back into bits: `hb'` is `next_2` OR `next_3`, and `lb'` is `next_1` OR `next_3`. Value 0 has both bits 0, and it is what remains when wires 1 to 3 are all off, so the encoder reads only those three.
-
-The encoder, 2 gates
-```dot
-digraph {
-  rankdir=LR;
-  node [shape=box, style=rounded];
-  { rank=source; w3; w4; w5; }
-  w3 [shape=plaintext, label="next_1"];
-  w4 [shape=plaintext, label="next_2"];
-  w5 [shape=plaintext, label="next_3"];
-  w6 [label="OR\nhb'"];
-  w7 [label="OR\nlb'"];
-  { rank=sink; p0; p1; }
-  p0 [shape=plaintext, label="hb'"];
-  p1 [shape=plaintext, label="lb'"];
-  w4 -> w6;
-  w5 -> w6;
-  w3 -> w7;
-  w5 -> w7;
-  w6 -> p0;
-  w7 -> p1;
-}
-```
-
-| lit wire | hb' | lb' |
-|---|---|---|
-| next_0 | 0 | 0 |
-| next_1 | 0 | 1 |
-| next_2 | 1 | 0 |
-| next_3 | 1 | 1 |
 
 ### The hold
 
-A halted machine stays as it is. The op decoder gives `op_nada` to `op_mod2`, and the hold turns them into four enables: `en_nada` is `op_nada` OR `halted`, and each other enable is its op wire AND `~halted`. A halted machine runs `nada`, whatever its line says.
+A halted machine stays as it is. The hold ANDs each of the line's two bits with NOT `halted`, so a halted machine selects 00, `nada`: its bits pass and its flags are 0. That costs three gates and reuses `nada`.
 
-The hold, 5 gates
-```dot
-digraph {
-  rankdir=LR;
-  node [shape=box, style=rounded];
-  { rank=source; w2; w3; w4; w5; w6; }
-  w2 [shape=plaintext, label="op_nada"];
-  w3 [shape=plaintext, label="op_zero"];
-  w4 [shape=plaintext, label="op_decr"];
-  w5 [shape=plaintext, label="op_mod2"];
-  w6 [shape=plaintext, label="halted"];
-  w7 [label="NOT\n~halted"];
-  w8 [label="OR\nen_nada"];
-  w9 [label="AND\nen_zero"];
-  w10 [label="AND\nen_decr"];
-  w11 [label="AND\nen_mod2"];
-  { rank=sink; p0; p1; p2; p3; }
-  p0 [shape=plaintext, label="en_nada"];
-  p1 [shape=plaintext, label="en_zero"];
-  p2 [shape=plaintext, label="en_decr"];
-  p3 [shape=plaintext, label="en_mod2"];
-  w6 -> w7;
-  w2 -> w8;
-  w6 -> w8;
-  w3 -> w9;
-  w7 -> w9;
-  w4 -> w10;
-  w7 -> w10;
-  w5 -> w11;
-  w7 -> w11;
-  w8 -> p0;
-  w9 -> p1;
-  w10 -> p2;
-  w11 -> p3;
-}
+```schematic hold
+The hold: three gates
 ```
 
-| halted | op | en_nada | en_zero | en_decr | en_mod2 |
-|---|---|---|---|---|---|
-| 0 | `nada` | 1 | 0 | 0 | 0 |
-| 0 | `zero` | 0 | 1 | 0 | 0 |
-| 0 | `decr` | 0 | 0 | 1 | 0 |
-| 0 | `mod2` | 0 | 0 | 0 | 1 |
-| 1 | `nada` | 1 | 0 | 0 | 0 |
-| 1 | `zero` | 1 | 0 | 0 | 0 |
-| 1 | `decr` | 1 | 0 | 0 | 0 |
-| 1 | `mod2` | 1 | 0 | 0 | 0 |
-
-### The selector
-
-Exactly one enable is on. The selector builds each output wire of the step as an OR, over the four machines, of that machine's wire AND its enable, so the OR passes the enabled machine's wire. Only the wires a machine drives get gates, and the ORs pair up. Here is the selector for one wire, `next_1`:
-
-The selector for `next_1`, 7 gates
-```dot
-digraph {
-  rankdir=LR;
-  node [shape=box, style=rounded];
-  { rank=source; w2; w3; w4; w5; w6; w7; w8; w9; }
-  w2 [shape=plaintext, label="en_nada"];
-  w3 [shape=plaintext, label="en_zero"];
-  w4 [shape=plaintext, label="en_decr"];
-  w5 [shape=plaintext, label="en_mod2"];
-  w6 [shape=plaintext, label="nada's"];
-  w7 [shape=plaintext, label="zero's"];
-  w8 [shape=plaintext, label="decr's"];
-  w9 [shape=plaintext, label="mod2's"];
-  w10 [label="AND\nnada"];
-  w11 [label="AND\nzero"];
-  w12 [label="AND\ndecr"];
-  w13 [label="AND\nmod2"];
-  w14 [label="OR\nnext_1"];
-  w15 [label="OR\nnext_1"];
-  w16 [label="OR\nnext_1"];
-  { rank=sink; p0; }
-  p0 [shape=plaintext, label="next_1"];
-  w6 -> w10;
-  w2 -> w10;
-  w7 -> w11;
-  w3 -> w11;
-  w8 -> w12;
-  w4 -> w12;
-  w9 -> w13;
-  w5 -> w13;
-  w10 -> w14;
-  w11 -> w14;
-  w12 -> w15;
-  w13 -> w15;
-  w14 -> w16;
-  w15 -> w16;
-  w16 -> p0;
-}
-```
-
-The whole selector does the same for `next_0` to `next_3`, `accepts` and `halts`: 24 gates. `tests/test_circuit.c` checks each wire on all four enables and all 16 settings of its drivers.
+| halted | op_hb op_lb | sel_hb sel_lb |
+|---|---|---|
+| 0 | 0 0 | 0 0 |
+| 0 | 0 1 | 0 1 |
+| 0 | 1 0 | 1 0 |
+| 0 | 1 1 | 1 1 |
+| 1 | 0 0 | 0 0 |
+| 1 | 0 1 | 0 0 |
+| 1 | 1 0 | 0 0 |
+| 1 | 1 1 | 0 0 |
 
 ### The latches
 
 A flag, once on, stays on: `accepted'` is `accepted` OR `accepts`, and `halted'` is `halted` OR `halts`.
 
-The latches, 2 gates
-```dot
-digraph {
-  rankdir=LR;
-  node [shape=box, style=rounded];
-  { rank=source; w2; w3; w4; w5; }
-  w2 [shape=plaintext, label="halted"];
-  w3 [shape=plaintext, label="halts"];
-  w4 [shape=plaintext, label="accepted"];
-  w5 [shape=plaintext, label="accepts"];
-  w6 [label="OR\nhalted'"];
-  w7 [label="OR\naccepted'"];
-  { rank=sink; p0; p1; }
-  p0 [shape=plaintext, label="halted'"];
-  p1 [shape=plaintext, label="accepted'"];
-  w2 -> w6;
-  w3 -> w6;
-  w4 -> w7;
-  w5 -> w7;
-  w6 -> p0;
-  w7 -> p1;
-}
+```schematic latches
+The latches: two ORs
 ```
 
 | accepted | accepts | accepted' |
@@ -962,108 +732,108 @@ digraph {
 
 ## The machine as a circuit
 
-{{chapter Parts for a small computer}} built ten parts from gates. This chapter gives each part a name and draws it from here on as a box, its gates inside, and wires the boxes into a *stepper*: one step of the machine. The circuit is combinational: the whole run is laid out in space, and every wire settles at once. {{chapter The Cook-Levin machine}}, in the second part, turns the same circuit around.
+{{chapter Parts for a small computer}} drew every part with its gates. From here on each part is a box, known by its name and its wires, and this chapter wires the boxes into a *stepper*: one step of the machine. The circuit is combinational: the whole run is laid out in space, and every wire settles at once. {{chapter The Cook-Levin machine}}, in the second part, turns the same circuit around.
 
 ### The parts as boxes
 
-Each box is known by its wires. The table counts them from the netlist, with the gates inside each box:
+A stepper has ten boxes: the four instructions, the hold, one mux4 for each of `hb'`, `lb'`, `accepts` and `halts`, and the latches. The table counts each box's wires from the netlist, with the gates inside:
 
 | box | wires in | wires out | gates |
 |---|---|---|---|
-| decoder | 2 | 4 | 6 |
-| op decoder | 2 | 4 | 6 |
-| hold | 5 | 4 | 5 |
-| nada | 4 | 6 | 0 |
-| zero | 4 | 6 | 0 |
-| decr | 4 | 6 | 0 |
-| mod2 | 4 | 6 | 2 |
-| selector | 19 | 6 | 24 |
-| encoder | 3 | 2 | 2 |
+| nada | 2 | 2 | 0 |
+| zero | 2 | 3 | 2 |
+| decr | 2 | 3 | 4 |
+| mod2 | 2 | 2 | 0 |
+| hold | 3 | 2 | 3 |
+| hb mux | 6 | 1 | 12 |
+| lb mux | 6 | 1 | 12 |
+| accepts mux | 6 | 1 | 12 |
+| halts mux | 6 | 1 | 12 |
 | latches | 4 | 2 | 2 |
-
-The op decoder is the decoder again, on the program line's two bits. The selector reads 20 wires: four enables from the hold, and every wire the four machines drive.
 
 ### A stepper, from its boxes
 
-A stepper has six wires in, `hb` and `lb` for `AX`, the flags `halted` and `accepted`, and `op_hb` and `op_lb` for its program line, and four wires out, the same state for the next step. Inside, it decodes, computes every opcode at once, and selects: the decoder feeds all four machines side by side, the op decoder and the hold pick one, the selector passes that machine's wires, and the encoder turns the chosen value back into bits. The latches sit beside them. A number on a line is how many wires it carries.
+A stepper has six wires in, `AX`'s two bits, the flags `halted` and `accepted`, and the line's two bits, and four wires out, the same state for the next step. All four instructions work on `AX` at once. The hold turns the line into the select bits, and each mux4 passes the chosen instruction's wire; the accepts mux takes `zero`'s flag and a 0 for each other instruction, and the halts mux takes `decr`'s flag and a 0 for the others, so only the chosen instruction's flag counts. The latches keep the flags. A number on a line is how many wires it carries.
 
 A stepper, ten boxes
 ```dot
 digraph {
   rankdir=TB;
+  nodesep=0.15;
   node [shape=box, style=rounded];
-  i0 [shape=plaintext, label="hb"];
-  i1 [shape=plaintext, label="lb"];
-  i2 [shape=plaintext, label="op_hb"];
-  i3 [shape=plaintext, label="op_lb"];
-  i4 [shape=plaintext, label="halted"];
-  i5 [shape=plaintext, label="accepted"];
-  b0 [label="decoder"];
-  b1 [label="op decoder"];
-  b2 [label="hold"];
-  b3 [label="nada"];
-  b4 [label="zero"];
-  b5 [label="decr"];
-  b6 [label="mod2"];
-  b7 [label="selector"];
-  b8 [label="encoder"];
+  i0 [shape=plaintext, label="AX"];
+  i1 [shape=plaintext, label="line"];
+  i2 [shape=plaintext, label="halted"];
+  i3 [shape=plaintext, label="0"];
+  i4 [shape=plaintext, label="accepted"];
+  b0 [label="nada"];
+  b1 [label="zero"];
+  b2 [label="decr"];
+  b3 [label="mod2"];
+  b4 [label="hold"];
+  b5 [label="hb mux"];
+  b6 [label="lb mux"];
+  b7 [label="accepts mux"];
+  b8 [label="halts mux"];
   b9 [label="latches"];
   o0 [shape=plaintext, label="hb'"];
   o1 [shape=plaintext, label="lb'"];
   o2 [shape=plaintext, label="halted'"];
   o3 [shape=plaintext, label="accepted'"];
-  i0 -> b0;
-  i1 -> b0;
-  i2 -> b1;
-  i3 -> b1;
-  b1 -> b2 [label="4"];
-  i4 -> b2;
-  b0 -> b3 [label="4"];
-  b0 -> b4 [label="4"];
-  b0 -> b5 [label="4"];
-  b0 -> b6 [label="4"];
-  b2 -> b7 [label="4"];
-  b3 -> b7 [label="4"];
-  b4 -> b7 [label="5"];
-  b5 -> b7 [label="4"];
-  b6 -> b7 [label="2"];
-  b7 -> b8 [label="3"];
+  i0 -> b0 [label="2"];
+  i0 -> b1 [label="2"];
+  i0 -> b2 [label="2"];
+  i0 -> b3 [label="2"];
+  i1 -> b4 [label="2"];
+  i2 -> b4;
+  b4 -> b5 [label="2"];
+  b0 -> b5;
+  b1 -> b5;
+  b2 -> b5;
+  b3 -> b5;
+  b4 -> b6 [label="2"];
+  b0 -> b6;
+  b1 -> b6;
+  b2 -> b6;
+  b3 -> b6;
+  b4 -> b7 [label="2"];
+  i3 -> b7 [label="3"];
+  b1 -> b7;
+  b4 -> b8 [label="2"];
+  i3 -> b8 [label="3"];
+  b2 -> b8;
+  i2 -> b9;
+  b8 -> b9;
   i4 -> b9;
-  b7 -> b9 [label="2"];
-  i5 -> b9;
-  b8 -> o0;
-  b8 -> o1;
+  b7 -> b9;
+  b5 -> o0;
+  b6 -> o1;
   b9 -> o2;
   b9 -> o3;
 }
 ```
 
-`tests/test_circuit.c` holds the stepper to `sat_step` on all 64 settings of its six inputs. Its gates, box by box:
+`tests/test_circuit.c` holds the stepper to `sat_step` on all 64 settings of its six inputs. The flags agree on every setting, and `AX` on every setting but `decr` at 0, where the decrementer reads 1 and `sat_step` keeps 0; the machine has halted there, and its verdict is settled. Its gates, box by box:
 
 | part | NOT | AND | OR | gates |
 |---|---|---|---|---|
-| decoder | 2 | 4 | 0 | 6 |
-| op decoder | 2 | 4 | 0 | 6 |
-| hold | 1 | 3 | 1 | 5 |
 | nada | 0 | 0 | 0 | 0 |
-| zero | 0 | 0 | 0 | 0 |
-| decr | 0 | 0 | 0 | 0 |
-| mod2 | 0 | 0 | 2 | 2 |
-| selector | 0 | 15 | 9 | 24 |
-| encoder | 0 | 0 | 2 | 2 |
+| zero | 1 | 0 | 1 | 2 |
+| decr | 2 | 1 | 1 | 4 |
+| mod2 | 0 | 0 | 0 | 0 |
+| hold | 1 | 2 | 0 | 3 |
+| hb mux | 3 | 6 | 3 | 12 |
+| lb mux | 3 | 6 | 3 | 12 |
+| accepts mux | 3 | 6 | 3 | 12 |
+| halts mux | 3 | 6 | 3 | 12 |
 | latches | 0 | 0 | 2 | 2 |
-| **the stepper** | 5 | 26 | 16 | 47 |
-| **a core**, six steppers | 30 | 156 | 96 | 282 |
-| **the decider**, four cores and the comparators | 128 | 635 | 388 | 1,151 |
-
-The three machines `nada`, `zero` and `decr` are wires alone, at 0 gates. The selector is more than half the stepper: one AND for each wire a machine drives, and the ORs that join them. One wire ends at the selector: it builds `next_0`, and the encoder reads only wires 1 to 3. It stays, because each part does its whole job as its rule says.
+| **the stepper** | 16 | 27 | 16 | 59 |
+| **a core**, six steppers | 96 | 162 | 96 | 354 |
+| **the decider**, four cores and the comparators | 392 | 659 | 388 | 1,439 |
 
 ### The stepper of the second part
 
-`sat_step` in `src/sat.c`, the stepper of {{chapter The Cook-Levin machine}}, is the same design in 34 gates, and `tests/test_circuit.c` holds this stepper to it on all 64 settings. It folds and merges where this stepper is literal; the 13 gates between them are these:
-
-- it writes each NOT as a literal's sign, which is free in a formula: 5 gates;
-- it leaves out wire 0, since value 0 is what remains when wires 1 to 3 are off: `fold_0` and `next_0`'s 4 AND and 3 OR gates, 8 in all.
+`sat_step` in `src/sat.c`, the stepper of {{chapter The Cook-Levin machine}}, computes the same flags in 34 gates. It writes each NOT as a literal's sign, which is free in a formula, so it counts AND and OR alone; counted that way, this stepper has 43. The two differ in kind. `sat_step` decodes `AX` and the line into one-hot wires, gates each opcode's wires with an enable, and folds away every constant. This stepper keeps `AX` as two bits, chooses with multiplexers, and feeds the flag muxes their constant 0s: those two muxes alone are 18 AND and OR gates, where `sat_step` spends one AND on each flag.
 
 ## The circuit, in full
 
@@ -1073,10 +843,11 @@ The three machines `nada`, `zero` and `decr` are wires alone, at 0 gates. The se
 
 A *core* is the machine unrolled. Its input arrives as `AX`'s two bits, both flags start at the constant 0, and the program's twelve bits split into six lines of two. Each stepper takes the four state wires the one before it left and its own line's two bits, and the sixth stepper's `accepted'` is the core's answer.
 
-One core: six steppers, 282 gates
+One core: six steppers, 354 gates
 ```dot
 digraph {
   rankdir=TB;
+  nodesep=0.15;
   node [shape=box, style=rounded];
   i0 [shape=plaintext, label="AX"];
   i1 [shape=plaintext, label="0"];
@@ -1110,16 +881,17 @@ digraph {
 }
 ```
 
-`tests/test_circuit.c` runs the core on all 16,384 runs, 4,096 programs by four inputs, holds every stepper's state, step by step, to `sat_step`'s, and holds the core's answer to the interpreter's.
+`tests/test_circuit.c` runs the core on all 16,384 runs, 4,096 programs by four inputs, holds every stepper's flags, step by step, to `sat_step`'s, and holds the core's answer to the interpreter's.
 
 ### Four cores decide a problem
 
 Whether a program decides a problem takes four cores, one per input. The *want* register holds four bits, one per input, saying which inputs the problem holds: {1, 2, 3} is `0111`, input 0's bit first. The program's twelve bits go to all four cores, and each core has its input wired in as constants. A comparator, `same`, checks each core's answer against its want bit, and an AND of the four lights "decides".
 
-The decider: four cores, 1,151 gates
+The decider: four cores, 1,439 gates
 ```dot
 digraph {
   rankdir=LR;
+  nodesep=0.15;
   node [shape=box, style=rounded];
   i0 [shape=plaintext, label="program"];
   i1 [shape=plaintext, label="AX = 0"];
@@ -1164,7 +936,7 @@ digraph {
 }
 ```
 
-A comparator is five gates: (`accepted` AND `want`) OR (`~accepted` AND `~want`). `tests/test_circuit.c` runs the decider on all 4,096 programs and all 16 want registers: it lights "decides" exactly where the program decides the problem the register holds, 4,096 times in all.
+A comparator is five gates: (`accepted` AND `want`) OR (NOT `accepted` AND NOT `want`). `tests/test_circuit.c` runs the decider on all 4,096 programs and all 16 want registers: it lights "decides" exactly where the program decides the problem the register holds, 4,096 times in all.
 
 ### A program through it
 
@@ -1599,7 +1371,7 @@ For a general checker the grid is as wide as its tape and as tall as its running
 
 ### The gates, counted
 
-The stepper's gates as the SAT encoding builds them, in `sat_step` (`src/sat.c`): 34, where the stepper of {{chapter The machine as a circuit}} has 47, and that chapter accounts for the 13 between them.
+The stepper's gates as the SAT encoding builds them, in `sat_step` (`src/sat.c`): 34, where the stepper of {{chapter The machine as a circuit}} has 59, or 43 counting AND and OR alone, and that chapter says how the two differ.
 
 {{lines src/sat.c from "    Lit is_3 = AND(hb, lb);" to "    Lit lb_set = OR(becomes_3, becomes_1);"}}
 

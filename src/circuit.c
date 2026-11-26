@@ -740,7 +740,8 @@ void net_boxes_dot(const Net *net, const char *scope, const char *rankdir, FILE 
         }
         edges[e].wires++;
     }
-    fprintf(f, "digraph {\n  rankdir=%s;\n  node [shape=box, style=rounded];\n", rankdir);
+    // Boxes close together side by side, so a stepper's ten fit the page.
+    fprintf(f, "digraph {\n  rankdir=%s;\n  nodesep=0.15;\n  node [shape=box, style=rounded];\n", rankdir);
     for (int i = 0; i < inputs.count; i++) {
         fprintf(f, "  i%d [shape=plaintext, label=\"", i);
         dot_text(f, inputs.names[i]);
