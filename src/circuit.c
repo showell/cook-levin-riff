@@ -114,115 +114,90 @@ void net_eval(const Net *net, const int *inputs, int *values) {
 // ── The parts ───────────────────────────────────────────────────────────
 
 static const char *const MACHINES[4] = {"nada", "zero", "decr", "mod2"};
-static const char *const NEXT[4] = {"next_0", "next_1", "next_2", "next_3"};
-static const char *const IS[4] = {"is_0", "is_1", "is_2", "is_3"};
-static const char *const OPS[4] = {"op_nada", "op_zero", "op_decr", "op_mod2"};
-static const char *const EN[4] = {"en_nada", "en_zero", "en_decr", "en_mod2"};
-
-static void port_one_hot(Net *net, const char *part, OneHot v) {
-    for (int k = 0; k < 4; k++) net_port(net, part, NEXT[k], v.w[k]);
-}
 
 static void port_machine(Net *net, const char *part, MachineOut m) {
-    port_one_hot(net, part, m.next);
-    net_port(net, part, "accepts", m.accepts);
-    net_port(net, part, "halts", m.halts);
+    net_port(net, part, "hb'", m.hb);
+    net_port(net, part, "lb'", m.lb);
+    if (m.accepts != WIRE_0) net_port(net, part, "accepts", m.accepts);
+    if (m.halts != WIRE_0) net_port(net, part, "halts", m.halts);
 }
 
-OneHot part_decoder(Net *net, const char *part, int hb, int lb, const char *const names[4]) {
-    char name[2 * CIRCUIT_NAME];
-    snprintf(name, sizeof name, "~%s", net->wires[hb].name);
-    int not_hb = net_not(net, part, name, hb);
-    snprintf(name, sizeof name, "~%s", net->wires[lb].name);
-    int not_lb = net_not(net, part, name, lb);
-    OneHot v;
-    v.w[0] = net_and(net, part, names[0], not_hb, not_lb);
-    v.w[1] = net_and(net, part, names[1], not_hb, lb);
-    v.w[2] = net_and(net, part, names[2], hb, not_lb);
-    v.w[3] = net_and(net, part, names[3], hb, lb);
-    for (int k = 0; k < 4; k++) net_port(net, part, names[k], v.w[k]);
-    return v;
-}
-
-void part_encoder(Net *net, const char *part, OneHot v, int bits[2]) {
-    bits[0] = net_or(net, part, "hb'", v.w[2], v.w[3]);
-    bits[1] = net_or(net, part, "lb'", v.w[1], v.w[3]);
-    net_port(net, part, "hb'", bits[0]);
-    net_port(net, part, "lb'", bits[1]);
-}
-
-// nada: every wire stays where it is.
-MachineOut part_nada(Net *net, const char *part, OneHot is) {
-    MachineOut m = {is, WIRE_0, WIRE_0};
+// nada: both bits pass.
+MachineOut part_nada(Net *net, const char *part, int hb, int lb) {
+    MachineOut m = {hb, lb, WIRE_0, WIRE_0};
     port_machine(net, part, m);
     return m;
 }
 
-// zero: every wire stays, and is_0 is tapped to accept. The run goes on
-// after an accept, as every step of a circuit runs: the accepted latch
-// holds the verdict, and halted stays off, as Steve's stepper has it.
-MachineOut part_zero(Net *net, const char *part, OneHot is) {
-    MachineOut m = {is, is.w[0], WIRE_0};
+// zero: both bits pass, and NOR(hb, lb), AX = 0, accepts. The run goes on
+// after an accept, as every step of a circuit runs: the accepted latch holds
+// the verdict, and halted stays off, as Steve's stepper has it.
+MachineOut part_zero(Net *net, const char *part, int hb, int lb) {
+    int either = net_or(net, part, "hb OR lb", hb, lb);
+    MachineOut m = {hb, lb, net_not(net, part, "accepts", either), WIRE_0};
     port_machine(net, part, m);
     return m;
 }
 
-// decr, a shifter: each wire moves down a place, and is_0 falls out as a
-// halt.
-MachineOut part_decr(Net *net, const char *part, OneHot is) {
-    MachineOut m = {{{is.w[1], is.w[2], is.w[3], WIRE_0}}, WIRE_0, is.w[0]};
+// decr, the two-bit decrementer: the high bit survives only when the low
+// bit pays (3 to 2), the low bit always flips, and NOR(hb, lb), AX = 0,
+// halts. At AX = 0 the bits come out 0 1.
+MachineOut part_decr(Net *net, const char *part, int hb, int lb) {
+    int high = net_and(net, part, "hb'", hb, lb);
+    int low = net_not(net, part, "lb'", lb);
+    int either = net_or(net, part, "hb OR lb", hb, lb);
+    MachineOut m = {high, low, WIRE_0, net_not(net, part, "halts", either)};
     port_machine(net, part, m);
     return m;
 }
 
-// mod2: 3 folds onto 1 and 2 onto 0.
-MachineOut part_mod2(Net *net, const char *part, OneHot is) {
-    int fold_0 = net_or(net, part, "fold_0", is.w[0], is.w[2]);
-    int fold_1 = net_or(net, part, "fold_1", is.w[1], is.w[3]);
-    MachineOut m = {{{fold_0, fold_1, WIRE_0, WIRE_0}}, WIRE_0, WIRE_0};
+// mod2: taking 2 when AX is 2 or 3 clears the high bit; lb passes.
+MachineOut part_mod2(Net *net, const char *part, int hb, int lb) {
+    (void)hb;
+    MachineOut m = {WIRE_0, lb, WIRE_0, WIRE_0};
     port_machine(net, part, m);
     return m;
 }
 
-OneHot part_hold(Net *net, const char *part, OneHot op, int halted) {
-    int running = net_not(net, part, "~halted", halted);
-    OneHot en;
-    en.w[0] = net_or(net, part, EN[0], op.w[0], halted);
-    for (int k = 1; k < 4; k++) en.w[k] = net_and(net, part, EN[k], op.w[k], running);
-    for (int k = 0; k < 4; k++) net_port(net, part, EN[k], en.w[k]);
-    return en;
-}
-
-int part_select_wire(Net *net, const char *part, const char *name, OneHot enable, const int driver[4]) {
-    int picked[4];
-    int n = 0;
-    for (int m = 0; m < 4; m++) {
-        if (driver[m] != WIRE_0) picked[n++] = net_and(net, part, MACHINES[m], driver[m], enable.w[m]);
-    }
-    // The ORs in pairs, a tree as shallow as the count allows.
-    while (n > 1) {
-        int kept = 0;
-        for (int i = 0; i + 1 < n; i += 2) picked[kept++] = net_or(net, part, name, picked[i], picked[i + 1]);
-        if (n % 2 == 1) picked[kept++] = picked[n - 1];
-        n = kept;
-    }
-    int out = n == 1 ? picked[0] : WIRE_0;
-    net_port(net, part, name, out);
+int part_mux2(Net *net, const char *part, int s, int in0, int in1) {
+    int not_s = net_not(net, part, "NOT s", s);
+    int pick0 = net_and(net, part, "in 0 AND NOT s", in0, not_s);
+    int pick1 = net_and(net, part, "in 1 AND s", in1, s);
+    int out = net_or(net, part, "out", pick0, pick1);
+    net_port(net, part, "out", out);
     return out;
 }
 
-MachineOut part_selector(Net *net, const char *part, OneHot enable, const MachineOut m[4]) {
-    MachineOut out;
-    int driver[4];
-    for (int k = 0; k < 4; k++) {
-        for (int i = 0; i < 4; i++) driver[i] = m[i].next.w[k];
-        out.next.w[k] = part_select_wire(net, part, NEXT[k], enable, driver);
-    }
-    for (int i = 0; i < 4; i++) driver[i] = m[i].accepts;
-    out.accepts = part_select_wire(net, part, "accepts", enable, driver);
-    for (int i = 0; i < 4; i++) driver[i] = m[i].halts;
-    out.halts = part_select_wire(net, part, "halts", enable, driver);
+static void part_name(char *to, const char *prefix, const char *name);
+
+int part_mux4(Net *net, const char *part, int s_hb, int s_lb, const int in[4]) {
+    char p[CIRCUIT_NAME];
+    part_name(p, part, " low");
+    int low = part_mux2(net, p, s_lb, in[0], in[1]);
+    part_name(p, part, " high");
+    int high = part_mux2(net, p, s_lb, in[2], in[3]);
+    part_name(p, part, " top");
+    int out = part_mux2(net, p, s_hb, low, high);
+    net_port(net, part, "out", out);
+    net_link(net, part, "low", "s", "", "s_lb");
+    net_link(net, part, "low", "in 0", "", "in 0");
+    net_link(net, part, "low", "in 1", "", "in 1");
+    net_link(net, part, "high", "s", "", "s_lb");
+    net_link(net, part, "high", "in 0", "", "in 2");
+    net_link(net, part, "high", "in 1", "", "in 3");
+    net_link(net, part, "top", "s", "", "s_hb");
+    net_link(net, part, "top", "in 0", "low", "out");
+    net_link(net, part, "top", "in 1", "high", "out");
+    net_link(net, part, "", "out", "top", "out");
     return out;
+}
+
+void part_hold(Net *net, const char *part, int op_hb, int op_lb, int halted, int sel[2]) {
+    int running = net_not(net, part, "NOT halted", halted);
+    sel[0] = net_and(net, part, "sel_hb", op_hb, running);
+    sel[1] = net_and(net, part, "sel_lb", op_lb, running);
+    net_port(net, part, "sel_hb", sel[0]);
+    net_port(net, part, "sel_lb", sel[1]);
 }
 
 int part_latch(Net *net, const char *part, const char *name, int flag, int news) {
@@ -237,32 +212,35 @@ static void part_name(char *to, const char *prefix, const char *name) {
     copy_name(to, buf);
 }
 
+static const char *const MUXES[4] = {"hb mux", "lb mux", "accepts mux", "halts mux"};
+static const char *const OUTS[4] = {"hb'", "lb'", "accepts", "halts"};
+
 // How a stepper's boxes are wired, as part_stepper wires them.
 static void stepper_links(Net *net, const char *own, const MachineOut m[4]) {
-    net_link(net, own, "decoder", "hb", "", "hb");
-    net_link(net, own, "decoder", "lb", "", "lb");
-    net_link(net, own, "op decoder", "op_hb", "", "op_hb");
-    net_link(net, own, "op decoder", "op_lb", "", "op_lb");
-    for (int k = 0; k < 4; k++) net_link(net, own, "hold", OPS[k], "op decoder", OPS[k]);
+    for (int i = 0; i < 4; i++) {
+        net_link(net, own, MACHINES[i], "hb", "", "AX");
+        net_link(net, own, MACHINES[i], "lb", "", "AX");
+    }
+    net_link(net, own, "hold", "op_hb", "", "line");
+    net_link(net, own, "hold", "op_lb", "", "line");
     net_link(net, own, "hold", "halted", "", "halted");
-    for (int i = 0; i < 4; i++) {
-        for (int k = 0; k < 4; k++) net_link(net, own, MACHINES[i], IS[k], "decoder", IS[k]);
-    }
-    for (int k = 0; k < 4; k++) net_link(net, own, "selector", EN[k], "hold", EN[k]);
-    for (int i = 0; i < 4; i++) {
-        for (int k = 0; k < 4; k++) {
-            if (m[i].next.w[k] != WIRE_0) net_link(net, own, "selector", NEXT[k], MACHINES[i], NEXT[k]);
+    for (int k = 0; k < 4; k++) {
+        net_link(net, own, MUXES[k], "s_hb", "hold", "sel_hb");
+        net_link(net, own, MUXES[k], "s_lb", "hold", "sel_lb");
+        for (int i = 0; i < 4; i++) {
+            int w = k == 0 ? m[i].hb : k == 1 ? m[i].lb : k == 2 ? m[i].accepts : m[i].halts;
+            // A machine's bit tied to 0 is its own port (mod2's hb'); a flag
+            // the machine lacks is the mux's input tied to 0.
+            if (k < 2 || w != WIRE_0) net_link(net, own, MUXES[k], "in", MACHINES[i], OUTS[k]);
+            else net_link(net, own, MUXES[k], "in", "", "0");
         }
-        if (m[i].accepts != WIRE_0) net_link(net, own, "selector", "accepts", MACHINES[i], "accepts");
-        if (m[i].halts != WIRE_0) net_link(net, own, "selector", "halts", MACHINES[i], "halts");
     }
-    for (int k = 1; k < 4; k++) net_link(net, own, "encoder", NEXT[k], "selector", NEXT[k]);
     net_link(net, own, "latches", "halted", "", "halted");
-    net_link(net, own, "latches", "halts", "selector", "halts");
+    net_link(net, own, "latches", "halts", "halts mux", "out");
     net_link(net, own, "latches", "accepted", "", "accepted");
-    net_link(net, own, "latches", "accepts", "selector", "accepts");
-    net_link(net, own, "", "hb'", "encoder", "hb'");
-    net_link(net, own, "", "lb'", "encoder", "lb'");
+    net_link(net, own, "latches", "accepts", "accepts mux", "out");
+    net_link(net, own, "", "hb'", "hb mux", "out");
+    net_link(net, own, "", "lb'", "lb mux", "out");
     net_link(net, own, "", "halted'", "latches", "halted'");
     net_link(net, own, "", "accepted'", "latches", "accepted'");
 }
@@ -281,38 +259,37 @@ CircuitState part_stepper(Net *net, const char *prefix, int k, CircuitState s, i
     copy_name(own, step);
     size_t n = strlen(own);
     if (n > 0) own[n - 1] = '\0';
-    part_name(p, step, "decoder");
-    OneHot is = part_decoder(net, p, s.hb, s.lb, IS);
-    part_name(p, step, "op decoder");
-    OneHot op = part_decoder(net, p, op_hb, op_lb, OPS);
-    part_name(p, step, "hold");
-    OneHot en = part_hold(net, p, op, s.halted);
     MachineOut m[4];
     part_name(p, step, "nada");
-    m[0] = part_nada(net, p, is);
+    m[0] = part_nada(net, p, s.hb, s.lb);
     part_name(p, step, "zero");
-    m[1] = part_zero(net, p, is);
+    m[1] = part_zero(net, p, s.hb, s.lb);
     part_name(p, step, "decr");
-    m[2] = part_decr(net, p, is);
+    m[2] = part_decr(net, p, s.hb, s.lb);
     part_name(p, step, "mod2");
-    m[3] = part_mod2(net, p, is);
-    part_name(p, step, "selector");
-    MachineOut picked = part_selector(net, p, en, m);
-    part_name(p, step, "encoder");
-    int bits[2];
-    part_encoder(net, p, picked.next, bits);
+    m[3] = part_mod2(net, p, s.hb, s.lb);
+    part_name(p, step, "hold");
+    int sel[2];
+    part_hold(net, p, op_hb, op_lb, s.halted, sel);
+    int out[4];
+    for (int j = 0; j < 4; j++) {
+        int in[4];
+        for (int i = 0; i < 4; i++) in[i] = j == 0 ? m[i].hb : j == 1 ? m[i].lb : j == 2 ? m[i].accepts : m[i].halts;
+        part_name(p, step, MUXES[j]);
+        out[j] = part_mux4(net, p, sel[0], sel[1], in);
+    }
     part_name(p, step, "latches");
-    CircuitState out;
-    out.hb = bits[0];
-    out.lb = bits[1];
-    out.halted = part_latch(net, p, "halted'", s.halted, picked.halts);
-    out.accepted = part_latch(net, p, "accepted'", s.accepted, picked.accepts);
+    CircuitState next;
+    next.hb = out[0];
+    next.lb = out[1];
+    next.halted = part_latch(net, p, "halted'", s.halted, out[3]);
+    next.accepted = part_latch(net, p, "accepted'", s.accepted, out[2]);
     stepper_links(net, own, m);
-    net_port(net, own, "hb'", out.hb);
-    net_port(net, own, "lb'", out.lb);
-    net_port(net, own, "halted'", out.halted);
-    net_port(net, own, "accepted'", out.accepted);
-    return out;
+    net_port(net, own, "hb'", next.hb);
+    net_port(net, own, "lb'", next.lb);
+    net_port(net, own, "halted'", next.halted);
+    net_port(net, own, "accepted'", next.accepted);
+    return next;
 }
 
 // How a core's six stepper boxes are wired: the first from the input and
@@ -433,16 +410,8 @@ void circuit_decides(Net *net) {
 
 // ── Drawing ─────────────────────────────────────────────────────────────
 
-static const char *kind_word(WireKind k) {
-    switch (k) {
-    case W_NOT: return "NOT";
-    case W_AND: return "AND";
-    case W_OR: return "OR";
-    default: return "";
-    }
-}
-
-// A name as a Graphviz label: a quote or a backslash escaped.
+// A name as Graphviz or SVG text: a quote, a backslash, `<`, `>` and `&`
+// escaped for the one that reads it.
 static void dot_text(FILE *f, const char *s) {
     for (; *s; s++) {
         if (*s == '"' || *s == '\\') fputc('\\', f);
@@ -450,109 +419,272 @@ static void dot_text(FILE *f, const char *s) {
     }
 }
 
-// The first `words` words of a gate's part past the scope, into `to`.
-static void cluster_of(const char *part, const char *scope, int words, char *to) {
-    size_t n = strlen(scope);
-    const char *s = part + n;
-    if (n > 0 && *s == ' ') s++;
-    size_t len = 0;
-    int seen = 0;
-    while (s[len] != '\0') {
-        if (s[len] == ' ' && ++seen == words) break;
-        len++;
+static void svg_text(FILE *f, const char *s) {
+    for (; *s; s++) {
+        if (*s == '<') fputs("&lt;", f);
+        else if (*s == '>') fputs("&gt;", f);
+        else if (*s == '&') fputs("&amp;", f);
+        else if (*s == '\'') fputs("&#8242;", f); // a prime, as hb' is read
+        else fputc(*s, f);
     }
-    memcpy(to, s, len);
-    to[len] = '\0';
 }
 
-static void dot_gate(const Net *net, int i, const char *indent, FILE *f) {
-    fprintf(f, "%sw%d [label=\"%s\\n", indent, i, kind_word(net->wires[i].kind));
-    dot_text(f, net->wires[i].name);
-    fprintf(f, "\"];\n");
+// The schematic's grid, in pixels.
+enum { SVG_LEFT = 70, SVG_PITCH = 110, SVG_ROW = 64, SVG_TOP = 30, SVG_GATE_W = 56 };
+
+typedef struct {
+    int drawn;   // drawn as a symbol of its own
+    int fused;   // an OR drawn inside the NOR of the NOT that reads it
+    int nor;     // a NOT drawn as a NOR, its inputs the fused OR's
+    int column;  // 0 for an input, else its depth
+    int row;
+    int x, y;    // the output pin
+} SvgNode;
+
+static SvgNode SVG[CIRCUIT_MAX_WIRES];
+
+// The wires a drawn gate reads: one for a NOT, the OR's two for a NOR.
+static int svg_inputs(const Net *net, int i, int in[2]) {
+    const Wire *w = &net->wires[i];
+    if (SVG[i].nor) {
+        in[0] = net->wires[w->a].a;
+        in[1] = net->wires[w->a].b;
+        return 2;
+    }
+    in[0] = w->a;
+    in[1] = w->b;
+    return w->kind == W_NOT ? 1 : 2;
 }
 
-void net_dot(const Net *net, const char *part, DotStyle style, FILE *f) {
-    static char drawn[CIRCUIT_MAX_WIRES];
-    static char outside[CIRCUIT_MAX_WIRES];
-    memset(drawn, 0, sizeof drawn);
-    memset(outside, 0, sizeof outside);
-    for (int i = 0; i < net->num_wires; i++) {
-        const Wire *w = &net->wires[i];
-        if (is_gate(w->kind) && in_scope(w->part, part)) drawn[i] = 1;
-    }
-    for (int i = 0; i < net->num_wires; i++) {
-        if (!drawn[i]) continue;
-        const Wire *w = &net->wires[i];
-        if (!drawn[w->a]) outside[w->a] = 1;
-        if (w->kind != W_NOT && !drawn[w->b]) outside[w->b] = 1;
-    }
-    for (int i = 0; i < net->num_ports; i++) {
-        const Port *p = &net->ports[i];
-        if (strcmp(p->part, part) == 0 && !drawn[p->wire]) outside[p->wire] = 1;
-    }
-    fprintf(f, "digraph {\n  rankdir=%s;\n", style.rankdir);
-    fprintf(f, "  node [shape=box, style=rounded];\n");
-    if (style.pin_ends) {
-        fprintf(f, "  { rank=source;");
-        for (int i = 0; i < net->num_wires; i++) {
-            if (outside[i]) fprintf(f, " w%d;", i);
-        }
-        fprintf(f, " }\n");
-    }
-    for (int i = 0; i < net->num_wires; i++) {
-        if (!outside[i]) continue;
-        fprintf(f, "  w%d [shape=plaintext, label=\"", i);
-        dot_text(f, net->wires[i].name);
-        fprintf(f, "\"];\n");
-    }
-    if (style.cluster_words > 0) {
-        static char done[CIRCUIT_MAX_WIRES];
-        memset(done, 0, sizeof done);
-        int clusters = 0;
-        char key[CIRCUIT_NAME], other[CIRCUIT_NAME];
-        for (int i = 0; i < net->num_wires; i++) {
-            if (!drawn[i] || done[i]) continue;
-            cluster_of(net->wires[i].part, part, style.cluster_words, key);
-            fprintf(f, "  subgraph cluster_%d {\n    label=\"", ++clusters);
-            dot_text(f, key);
-            fprintf(f, "\";\n");
-            for (int j = i; j < net->num_wires; j++) {
-                if (!drawn[j] || done[j]) continue;
-                cluster_of(net->wires[j].part, part, style.cluster_words, other);
-                if (strcmp(key, other) != 0) continue;
-                dot_gate(net, j, "    ", f);
-                done[j] = 1;
-            }
-            fprintf(f, "  }\n");
-        }
+// The pin of input `k` of `n` of a gate whose top is (x, top).
+static int svg_pin_y(int top, int k, int n) { return n == 1 ? top + 20 : top + (k == 0 ? 10 : 30); }
+
+static void svg_gate(const Net *net, int i, int x, int top, FILE *f) {
+    WireKind k = net->wires[i].kind;
+    if (SVG[i].nor || k == W_OR) {
+        fprintf(f, "  <path d=\"M%d,%d Q%d,%d %d,%d Q%d,%d %d,%d Q%d,%d %d,%d Z\"/>\n", x, top, x + 12, top + 20, x,
+                top + 40, x + 28, top + 40, x + 44, top + 20, x + 28, top, x, top);
+        if (SVG[i].nor) fprintf(f, "  <circle cx=\"%d\" cy=\"%d\" r=\"5\"/>\n", x + 49, top + 20);
+    } else if (k == W_AND) {
+        fprintf(f, "  <path d=\"M%d,%d H%d A20,20 0 0 1 %d,%d H%d Z\"/>\n", x, top, x + 24, x + 24, top + 40, x);
     } else {
+        fprintf(f, "  <path d=\"M%d,%d L%d,%d L%d,%d Z\"/>\n", x, top + 6, x + 30, top + 20, x, top + 34);
+        fprintf(f, "  <circle cx=\"%d\" cy=\"%d\" r=\"5\"/>\n", x + 35, top + 20);
+    }
+}
+
+static const char *svg_kind(const Net *net, int i) {
+    if (SVG[i].nor) return "NOR";
+    if (net->wires[i].kind == W_AND) return "AND";
+    if (net->wires[i].kind == W_OR) return "OR";
+    return "";
+}
+
+// One wire from (sx, sy) to (tx, ty), bending at x = bend.
+static void svg_wire(int sx, int sy, int tx, int ty, int bend, FILE *f) {
+    if (sy == ty) fprintf(f, "  <polyline points=\"%d,%d %d,%d\"/>\n", sx, sy, tx, ty);
+    else fprintf(f, "  <polyline points=\"%d,%d %d,%d %d,%d %d,%d\"/>\n", sx, sy, bend, sy, bend, ty, tx, ty);
+}
+
+typedef struct {
+    int source;
+    int tx, ty;
+    int bend;
+} SvgWire;
+
+// Places items at their wanted heights, in order of them, each at least
+// `gap` below the one above it.
+static void svg_spread(int *ys, const int *wanted, int n, int first, int gap) {
+    int order[64];
+    for (int i = 0; i < n; i++) order[i] = i;
+    for (int i = 1; i < n; i++) {
+        for (int j = i; j > 0 && wanted[order[j]] < wanted[order[j - 1]]; j--) {
+            int t = order[j];
+            order[j] = order[j - 1];
+            order[j - 1] = t;
+        }
+    }
+    int at = first;
+    for (int i = 0; i < n; i++) {
+        int y = wanted[order[i]] > at ? wanted[order[i]] : at;
+        ys[order[i]] = y;
+        at = y + gap;
+    }
+}
+
+void net_svg(const Net *net, const char *part, FILE *f) {
+    static SvgWire wires[256];
+    int num_wires = 0;
+    memset(SVG, 0, sizeof SVG);
+    for (int i = 0; i < net->num_wires; i++) {
+        const Wire *w = &net->wires[i];
+        SVG[i].drawn = is_gate(w->kind) && in_scope(w->part, part);
+    }
+    // An OR read by one NOT alone, and by no port, is drawn inside a NOR.
+    for (int i = 0; i < net->num_wires; i++) {
+        if (!SVG[i].drawn || net->wires[i].kind != W_OR) continue;
+        int readers = 0, reader = -1;
+        for (int j = i + 1; j < net->num_wires; j++) {
+            const Wire *w = &net->wires[j];
+            if (!is_gate(w->kind)) continue;
+            if (w->a == i || (w->kind != W_NOT && w->b == i)) {
+                readers++;
+                reader = j;
+            }
+        }
+        for (int p = 0; p < net->num_ports; p++) {
+            if (net->ports[p].wire == i) readers++;
+        }
+        if (readers == 1 && reader >= 0 && net->wires[reader].kind == W_NOT && SVG[reader].drawn) {
+            SVG[i].drawn = 0;
+            SVG[i].fused = 1;
+            SVG[reader].nor = 1;
+        }
+    }
+    // The inputs down the left, a row apart.
+    int inputs = 0;
+    for (int i = 0; i < net->num_wires; i++) {
+        if (net->wires[i].kind != W_INPUT) continue;
+        SVG[i].x = SVG_LEFT;
+        SVG[i].y = SVG_TOP + inputs * SVG_ROW;
+        inputs++;
+    }
+    int bottom = SVG_TOP + (inputs - 1) * SVG_ROW;
+    // Columns: each gate one past the deepest wire it reads, at the mean
+    // height of what it reads, in the order the gates were made, each at
+    // least a gate's height and a margin below the one above it.
+    int columns = 0;
+    for (int i = 0; i < net->num_wires; i++) {
+        if (!SVG[i].drawn) continue;
+        int in[2];
+        int n = svg_inputs(net, i, in);
+        int depth = 0;
+        for (int k = 0; k < n; k++) {
+            if (SVG[in[k]].column > depth) depth = SVG[in[k]].column;
+        }
+        SVG[i].column = depth + 1;
+        if (SVG[i].column > columns) columns = SVG[i].column;
+    }
+    for (int c = 1; c <= columns; c++) {
+        int ids[64], wanted[64], ys[64];
+        int n = 0;
         for (int i = 0; i < net->num_wires; i++) {
-            if (drawn[i]) dot_gate(net, i, "  ", f);
+            if (!SVG[i].drawn || SVG[i].column != c) continue;
+            int in[2];
+            int k = svg_inputs(net, i, in);
+            int sum = 0;
+            for (int j = 0; j < k; j++) sum += SVG[in[j]].y;
+            ids[n] = i;
+            wanted[n] = sum / k;
+            n++;
+        }
+        int at = SVG_TOP;
+        for (int j = 0; j < n; j++) {
+            ys[j] = wanted[j] > at ? wanted[j] : at;
+            at = ys[j] + 56;
+        }
+        for (int j = 0; j < n; j++) {
+            int i = ids[j];
+            WireKind k = net->wires[i].kind;
+            int right = SVG[i].nor ? 54 : k == W_NOT ? 40 : 44;
+            SVG[i].y = ys[j];
+            SVG[i].x = SVG_LEFT + c * SVG_PITCH - SVG_GATE_W + right;
+            if (ys[j] > bottom) bottom = ys[j];
         }
     }
-    if (style.pin_ends) {
-        fprintf(f, "  { rank=sink;");
-        for (int i = 0; i < net->num_ports; i++) {
-            if (strcmp(net->ports[i].part, part) == 0) fprintf(f, " p%d;", i);
-        }
-        fprintf(f, " }\n");
+    // The outputs down the right, each at its source's height where it can
+    // be; a constant output takes the height of the input in its row.
+    int out_x = SVG_LEFT + (columns + 1) * SVG_PITCH - SVG_PITCH / 2;
+    if (columns == 0) out_x = SVG_LEFT + SVG_PITCH + 20;
+    int outs[64], wanted[64], ys[64];
+    int outputs = 0;
+    for (int p = 0; p < net->num_ports; p++) {
+        if (strcmp(net->ports[p].part, part) != 0) continue;
+        int source = net->ports[p].wire;
+        outs[outputs] = p;
+        wanted[outputs] = source == WIRE_0 ? SVG_TOP + outputs * SVG_ROW : SVG[source].y;
+        outputs++;
     }
-    for (int i = 0; i < net->num_ports; i++) {
-        if (strcmp(net->ports[i].part, part) != 0) continue;
-        fprintf(f, "  p%d [shape=plaintext, label=\"", i);
-        dot_text(f, net->ports[i].name);
-        fprintf(f, "\"];\n");
+    svg_spread(ys, wanted, outputs, SVG_TOP, 32);
+    for (int j = 0; j < outputs; j++) {
+        if (ys[j] > bottom) bottom = ys[j];
+    }
+    int width = out_x + 80;
+    int height = bottom + SVG_TOP;
+    fprintf(f, "<svg xmlns=\"http://www.w3.org/2000/svg\" class=\"schematic\" width=\"%d\" height=\"%d\" viewBox=\"0 0 %d %d\" "
+               "style=\"max-width:100%%;height:auto\" font-family=\"Helvetica, Arial, sans-serif\" font-size=\"14\">\n",
+            width, height, width, height);
+    // The wires into each drawn gate, bending in its column's channel, the
+    // higher source to the higher pin.
+    int channel[64] = {0};
+    for (int i = 0; i < net->num_wires; i++) {
+        if (!SVG[i].drawn) continue;
+        int in[2];
+        int n = svg_inputs(net, i, in);
+        if (n == 2 && SVG[in[1]].y < SVG[in[0]].y) {
+            int t = in[0];
+            in[0] = in[1];
+            in[1] = t;
+        }
+        int gx = SVG_LEFT + SVG[i].column * SVG_PITCH - SVG_GATE_W;
+        int top = SVG[i].y - 20;
+        for (int k = 0; k < n; k++) {
+            int indent = net->wires[i].kind == W_OR || SVG[i].nor ? 6 : 0;
+            int bend = gx - 14 - 10 * channel[SVG[i].column]++;
+            int pin = svg_pin_y(top, k, n);
+            // A source within a few pixels of its pin runs straight in.
+            if (SVG[in[k]].y - pin <= 6 && pin - SVG[in[k]].y <= 6) pin = SVG[in[k]].y;
+            wires[num_wires++] = (SvgWire){in[k], gx + indent, pin, bend};
+        }
+    }
+    fprintf(f, "<g fill=\"currentColor\">\n");
+    for (int j = 0; j < outputs; j++) {
+        const Port *p = &net->ports[outs[j]];
+        if (p->wire == WIRE_0) {
+            // A constant 0: a short wire from a 0 beside its output.
+            fprintf(f, "<text x=\"%d\" y=\"%d\" text-anchor=\"end\">0</text>\n", out_x - 40, ys[j] + 5);
+        } else {
+            wires[num_wires++] = (SvgWire){p->wire, out_x, ys[j], out_x - 16 - 10 * j};
+        }
+        fprintf(f, "<text x=\"%d\" y=\"%d\">", out_x + 8, ys[j] + 5);
+        svg_text(f, p->name);
+        fprintf(f, "</text>\n");
     }
     for (int i = 0; i < net->num_wires; i++) {
-        if (!drawn[i]) continue;
-        const Wire *w = &net->wires[i];
-        fprintf(f, "  w%d -> w%d;\n", w->a, i);
-        if (w->kind != W_NOT) fprintf(f, "  w%d -> w%d;\n", w->b, i);
+        if (SVG[i].drawn && svg_kind(net, i)[0] != '\0') {
+            fprintf(f, "<text x=\"%d\" y=\"%d\" font-size=\"10\" text-anchor=\"middle\">%s</text>\n",
+                    SVG_LEFT + SVG[i].column * SVG_PITCH - SVG_GATE_W + 19, SVG[i].y + 4, svg_kind(net, i));
+        }
+        if (net->wires[i].kind == W_INPUT) {
+            fprintf(f, "<text x=\"%d\" y=\"%d\" text-anchor=\"end\">", SVG_LEFT - 8, SVG[i].y + 5);
+            svg_text(f, net->wires[i].name);
+            fprintf(f, "</text>\n");
+        }
     }
-    for (int i = 0; i < net->num_ports; i++) {
-        if (strcmp(net->ports[i].part, part) == 0) fprintf(f, "  w%d -> p%d;\n", net->ports[i].wire, i);
+    // A dot where a wire branches: at each bend short of the wire's farthest.
+    for (int k = 0; k < num_wires; k++) {
+        const SvgNode *s = &SVG[wires[k].source];
+        if (s->y == wires[k].ty) continue;
+        int further = 0;
+        for (int j = 0; j < num_wires; j++) {
+            if (j == k || wires[j].source != wires[k].source) continue;
+            int reach = SVG[wires[j].source].y == wires[j].ty ? wires[j].tx : wires[j].bend;
+            if (reach > wires[k].bend) further = 1;
+        }
+        if (further) fprintf(f, "<circle cx=\"%d\" cy=\"%d\" r=\"3.5\"/>\n", wires[k].bend, s->y);
     }
-    fprintf(f, "}\n");
+    fprintf(f, "</g>\n<g stroke=\"currentColor\" stroke-width=\"2\" fill=\"none\">\n");
+    for (int k = 0; k < num_wires; k++) {
+        const SvgNode *s = &SVG[wires[k].source];
+        svg_wire(s->x, s->y, wires[k].tx, wires[k].ty, wires[k].bend, f);
+    }
+    for (int j = 0; j < outputs; j++) {
+        if (net->ports[outs[j]].wire == WIRE_0) fprintf(f, "  <polyline points=\"%d,%d %d,%d\"/>\n", out_x - 34, ys[j], out_x, ys[j]);
+    }
+    for (int i = 0; i < net->num_wires; i++) {
+        if (SVG[i].drawn) svg_gate(net, i, SVG_LEFT + SVG[i].column * SVG_PITCH - SVG_GATE_W, SVG[i].y - 20, f);
+    }
+    fprintf(f, "</g>\n</svg>\n");
 }
 
 // ── Drawing boxes ───────────────────────────────────────────────────────

@@ -3,33 +3,38 @@
 //
 // A netlist is a list of wires in the order they were made, so every gate's
 // inputs come before it and one pass in order evaluates it. A wire is an
-// input, a constant, or a gate's output. Each gate carries a name (`is_0`)
-// and the name of the part that made it (`step 3 decoder`), and each part's
-// outputs are named ports, so a printer can draw any part alone or the
-// whole circuit from the same list.
+// input, a constant, or a gate's output. Each gate carries a name and the
+// name of the part that made it (`step 3 hb mux low`), each part's outputs
+// are named ports, and each composed part records how its boxes are wired,
+// so a printer can draw any part alone, at gate level or as boxes.
 //
-// The parts are built bottom-up, each a literal transcription of its rule:
+// AX travels as its two bits, hb and lb. The parts, each a literal
+// transcription of its rule:
 //
-//   decoder    2 bits to four one-hot wires, is_0 to is_3.
-//   encoder    one-hot wires 1 to 3 back to 2 bits.
-//   machines   one per opcode, on the one-hot wires: what AX becomes, as
-//              four one-hot wires, and whether the step accepts or halts.
-//              nada, zero and decr are wires alone; mod2 folds with ORs.
-//   hold       the op decoder's four wires and `halted` to four enables: a
-//              halted machine acts as nada.
-//   selector   each output wire is the OR over the machines of that
-//              machine's wire AND its enable.
+//   machines   one per opcode, from (hb, lb) to (hb', lb') and a flag:
+//              nada passes both bits; mod2 ties hb' to 0 and passes lb;
+//              zero passes both and accepts on NOR(hb, lb); decr is the
+//              two-bit decrementer, hb' = hb AND lb, lb' = NOT lb, and
+//              halts on NOR(hb, lb). A NOR is an OR and then a NOT.
+//   mux2       a 2-way multiplexer: (in 0 AND NOT s) OR (in 1 AND s).
+//   mux4       a 4-way multiplexer of three mux2s: s_lb picks within the
+//              pairs (in 0, in 1) and (in 2, in 3), s_hb between them.
+//   hold       a halted machine runs nada: the select bits AND NOT halted.
 //   latch      a flag OR the step's new flag, so a flag once on stays on.
-//   stepper    decoder, op decoder, hold, the four machines, selector,
-//              encoder and two latches.
+//   stepper    the four machines on AX, the hold on the line's bits, one
+//              mux4 for each of hb', lb', accepts and halts, selected by
+//              the held line, and the two latches.
 //   core       six steppers in a chain from AX = the input, flags 0.
 //   decides    four cores, one per input, each compared with a want bit,
 //              and an AND of the four comparisons.
 //
 // The stepper follows Steve's stepper (stepper.py, and sat_step in sat.c):
 // `zero` at AX = 0 accepts and the run goes on, since a circuit runs every
-// step; `decr` at AX = 0 halts; a halted machine stays as it is. The final
-// accepted is the interpreter's on every run.
+// step; `decr` at AX = 0 halts; a halted machine stays as it is. The one
+// difference is AX after `decr` halts at 0: the decrementer leaves 1 there,
+// where sat_step leaves 0, and the halted machine keeps it. The flags are
+// sat_step's on every setting, and the final accepted is the interpreter's
+// on every run.
 
 #ifndef COOK_LEVIN_CIRCUIT_H
 #define COOK_LEVIN_CIRCUIT_H
@@ -105,29 +110,21 @@ void net_eval(const Net *net, const int *inputs, int *values);
 
 // ── The parts ───────────────────────────────────────────────────────────
 
-// Four one-hot wires, a value 0 to 3.
+// What an opcode machine gives: AX's next two bits, and the two flags, the
+// constant 0 where the machine has none.
 typedef struct {
-    int w[4];
-} OneHot;
-
-// What an opcode machine gives: the next value one-hot, and the two flags.
-typedef struct {
-    OneHot next;
-    int accepts, halts;
+    int hb, lb, accepts, halts;
 } MachineOut;
 
-OneHot part_decoder(Net *net, const char *part, int hb, int lb, const char *const names[4]);
-// Gives the two bits; `bits[0]` is hb, `bits[1]` lb.
-void part_encoder(Net *net, const char *part, OneHot v, int bits[2]);
-MachineOut part_nada(Net *net, const char *part, OneHot is);
-MachineOut part_zero(Net *net, const char *part, OneHot is);
-MachineOut part_decr(Net *net, const char *part, OneHot is);
-MachineOut part_mod2(Net *net, const char *part, OneHot is);
-OneHot part_hold(Net *net, const char *part, OneHot op, int halted);
-// One output wire of the selector: the OR over the machines of driver[m]
-// AND enable[m], a driver that is the constant 0 left out.
-int part_select_wire(Net *net, const char *part, const char *name, OneHot enable, const int driver[4]);
-MachineOut part_selector(Net *net, const char *part, OneHot enable, const MachineOut m[4]);
+MachineOut part_nada(Net *net, const char *part, int hb, int lb);
+MachineOut part_zero(Net *net, const char *part, int hb, int lb);
+MachineOut part_decr(Net *net, const char *part, int hb, int lb);
+MachineOut part_mod2(Net *net, const char *part, int hb, int lb);
+int part_mux2(Net *net, const char *part, int s, int in0, int in1);
+// in[k] is chosen when the select bits s_hb, s_lb spell k.
+int part_mux4(Net *net, const char *part, int s_hb, int s_lb, const int in[4]);
+// Gives the held select bits, sel[0] hb's and sel[1] lb's.
+void part_hold(Net *net, const char *part, int op_hb, int op_lb, int halted, int sel[2]);
 int part_latch(Net *net, const char *part, const char *name, int flag, int news);
 
 // A state between steps: AX's two bits and the two flags.
@@ -154,19 +151,14 @@ void circuit_decides(Net *net);
 // The wire of the port named `name` of part `part`.
 int net_port_wire(const Net *net, const char *part, const char *name);
 
-// A Graphviz drawing of the gates of `part` (as net_count reads it), with
-// the wires they read from outside as inputs and the part's own ports as
-// outputs. `rankdir` is "LR" or "TB". With `cluster_words` above 0, the
-// gates are boxed by the first that many words of their part's name past
-// `part` ("step 3" of "step 3 decoder" at 2); at 0 they are drawn unboxed.
-// `pin_ends` puts the inputs in the first rank and the outputs in the last;
-// without it, Graphviz places each input beside the gates that read it.
-typedef struct {
-    const char *rankdir;
-    int cluster_words;
-    int pin_ends;
-} DotStyle;
-void net_dot(const Net *net, const char *part, DotStyle style, FILE *f);
+// A schematic of the gates of `part`, as SVG: AND as a D, OR as a shield,
+// NOT as a triangle with a bubble, and an OR read only by a NOT drawn as one
+// NOR. The net's inputs, in the order they were made, stand on the left
+// with the constant 0 when a gate or port reads it, and the part's ports on
+// the right; a dot marks each place a wire branches. Columns are the gates'
+// depths, so every wire runs left to right. The strokes and text take the
+// page's colour (currentColor).
+void net_svg(const Net *net, const char *part, FILE *f);
 
 // A Graphviz drawing of a composed part as its boxes, from the links whose
 // scope is `scope`: each box a node named for its part, each input and

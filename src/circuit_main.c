@@ -1,19 +1,21 @@
 // circuit_main.c: the circuit chapters' drawings and tables, from the
 // netlist of circuit.c.
 //
-//   circuit_main
+//   circuit_main            the blocks of "Parts for a small computer",
+//                           "The machine as a circuit" and "The circuit, in
+//                           full", a blank line apart, each a ```dot fence or
+//                           a Markdown table
+//   circuit_main svg DIR    the schematics of the parts drawn at gate level,
+//                           one SVG file each in DIR: nada, zero, decr,
+//                           mod2, mux2, hold and latches
 //
-// It prints, in order, the blocks of "Parts for a small computer", "The
-// machine as a circuit" and "The circuit, in full": each part's drawing at
-// gate level and its table on every input, the parts as boxes, a stepper
-// drawn as its boxes, the gate counts, a core drawn as six stepper boxes,
-// and the decider drawn as four core boxes, its comparators and its AND.
-// The box drawings come from the links the netlist's composers record, so
-// they show the wiring the simulator runs.
-//
-// Blocks are a blank line apart, each a ```dot fence or a Markdown table,
-// and book/book.shale holds the book's source to each, byte for byte. Every
-// table is the simulator's answer on every input it lists.
+// The tables are the simulator's answers on every input they list. Each
+// part's innards are drawn once, as a schematic; above that, a part is a
+// box, and the box drawings (a mux4 of three mux2s, a stepper, a core, the
+// decider) come from the links the netlist's composers record, so they show
+// the wiring the simulator runs. book/book.shale holds the book's source to
+// every block byte for byte, and the book embeds the schematics as this
+// writes them.
 // A unity build, as main.c is.
 
 #include "vm.c"
@@ -24,86 +26,75 @@
 static Net NET;
 static int VALUES[CIRCUIT_MAX_WIRES];
 
-static const char *const NEXT_NAMES[4] = {"next_0", "next_1", "next_2", "next_3"};
-
 static int port(const char *part, const char *name) { return VALUES[net_port_wire(&NET, part, name)]; }
 
-// A part's drawing: its inputs on the left, its outputs on the right.
-static const DotStyle PART = {"LR", 0, 1};
-
-static void dot_block(const char *part, DotStyle style) {
-    printf("```dot\n");
-    net_dot(&NET, part, style, stdout);
-    printf("```\n\n");
-}
-
-static OneHot four_inputs(const char *const names[4]) {
-    net_init(&NET);
-    OneHot v;
-    for (int k = 0; k < 4; k++) v.w[k] = net_input(&NET, names[k]);
-    return v;
-}
-
-static void decoder(void) {
-    net_init(&NET);
-    int hb = net_input(&NET, "hb"), lb = net_input(&NET, "lb");
-    part_decoder(&NET, "decoder", hb, lb, IS);
-    dot_block("decoder", PART);
-    printf("| AX | hb | lb | is_0 | is_1 | is_2 | is_3 |\n|---|---|---|---|---|---|---|\n");
-    for (int x = 0; x < 4; x++) {
-        int in[2] = {x / 2, x % 2};
-        net_eval(&NET, in, VALUES);
-        printf("| %d | %d | %d |", x, x / 2, x % 2);
-        for (int k = 0; k < 4; k++) printf(" %d |", port("decoder", IS[k]));
-        printf("\n");
+static int has_port(const char *part, const char *name) {
+    for (int i = 0; i < NET.num_ports; i++) {
+        if (strcmp(NET.ports[i].part, part) == 0 && strcmp(NET.ports[i].name, name) == 0) return 1;
     }
-    printf("\n");
+    return 0;
 }
 
-static void encoder(void) {
-    OneHot v = four_inputs(NEXT_NAMES);
-    int bits[2];
-    part_encoder(&NET, "encoder", v, bits);
-    dot_block("encoder", PART);
-    printf("| lit wire | hb' | lb' |\n|---|---|---|\n");
-    for (int x = 0; x < 4; x++) {
-        int in[4] = {x == 0, x == 1, x == 2, x == 3};
-        net_eval(&NET, in, VALUES);
-        printf("| next_%d | %d | %d |\n", x, port("encoder", "hb'"), port("encoder", "lb'"));
-    }
-    printf("\n");
-}
-
-typedef MachineOut (*Build)(Net *, const char *, OneHot);
+typedef MachineOut (*Build)(Net *, const char *, int, int);
 static const Build BUILD[4] = {part_nada, part_zero, part_decr, part_mod2};
 
-static void machines(void) {
-    for (int op = 0; op < NUM_OPS; op++) {
-        OneHot is = four_inputs(IS);
-        BUILD[op](&NET, op_name((Op)op), is);
-        dot_block(op_name((Op)op), PART);
+static void machine_net(int op) {
+    net_init(&NET);
+    int hb = net_input(&NET, "hb"), lb = net_input(&NET, "lb");
+    BUILD[op](&NET, MACHINES[op], hb, lb);
+}
+
+// The inputs made in the order in 0, s, in 1, so the drawing's wires
+// cross least.
+static void mux2_net(void) {
+    net_init(&NET);
+    int a = net_input(&NET, "in 0"), s = net_input(&NET, "s"), b = net_input(&NET, "in 1");
+    part_mux2(&NET, "mux2", s, a, b);
+}
+
+static void mux4_net(void) {
+    net_init(&NET);
+    int s_hb = net_input(&NET, "s_hb"), s_lb = net_input(&NET, "s_lb");
+    int d[4];
+    char name[8];
+    for (int k = 0; k < 4; k++) {
+        snprintf(name, sizeof name, "in %d", k);
+        d[k] = net_input(&NET, name);
     }
-    printf("| AX | `nada` | `zero` | `decr` | `mod2` |\n|---|---|---|---|---|\n");
+    part_mux4(&NET, "mux4", s_hb, s_lb, d);
+}
+
+// The inputs made in the order op_hb, halted, op_lb, so the drawing's
+// wires cross least.
+static void hold_net(void) {
+    net_init(&NET);
+    int op_hb = net_input(&NET, "op_hb"), h = net_input(&NET, "halted"), op_lb = net_input(&NET, "op_lb");
+    int sel[2];
+    part_hold(&NET, "hold", op_hb, op_lb, h, sel);
+}
+
+static void latches_net(void) {
+    net_init(&NET);
+    int halted = net_input(&NET, "halted"), halts = net_input(&NET, "halts");
+    int accepted = net_input(&NET, "accepted"), accepts = net_input(&NET, "accepts");
+    part_latch(&NET, "latches", "halted'", halted, halts);
+    part_latch(&NET, "latches", "accepted'", accepted, accepts);
+}
+
+// The four machines on every value of AX: each cell is hb' and lb', and a
+// flag when it is on.
+static void machines_table(void) {
+    printf("| AX | hb lb | `nada` | `zero` | `decr` | `mod2` |\n|---|---|---|---|---|---|\n");
     for (int x = 0; x < 4; x++) {
-        printf("| %d |", x);
+        printf("| %d | %d %d |", x, x / 2, x % 2);
         for (int op = 0; op < NUM_OPS; op++) {
-            OneHot is = four_inputs(IS);
-            const char *part = op_name((Op)op);
-            BUILD[op](&NET, part, is);
-            int in[4] = {x == 0, x == 1, x == 2, x == 3};
+            machine_net(op);
+            int in[2] = {x / 2, x % 2};
             net_eval(&NET, in, VALUES);
-            const char *sep = " ";
-            for (int k = 0; k < 4; k++) {
-                if (port(part, NEXT_NAMES[k])) {
-                    printf("%snext_%d", sep, k);
-                    sep = ", ";
-                }
-            }
-            if (port(part, "accepts")) {
-                printf("%saccepts", sep);
-                sep = ", ";
-            }
-            if (port(part, "halts")) printf("%shalts", sep);
+            const char *m = MACHINES[op];
+            printf(" %d %d", port(m, "hb'"), port(m, "lb'"));
+            if (has_port(m, "accepts") && port(m, "accepts")) printf(", accepts");
+            if (has_port(m, "halts") && port(m, "halts")) printf(", halts");
             printf(" |");
         }
         printf("\n");
@@ -111,47 +102,66 @@ static void machines(void) {
     printf("\n");
 }
 
-static void hold(void) {
-    OneHot op = four_inputs(OPS);
-    int h = net_input(&NET, "halted");
-    part_hold(&NET, "hold", op, h);
-    dot_block("hold", PART);
-    printf("| halted | op | en_nada | en_zero | en_decr | en_mod2 |\n|---|---|---|---|---|---|\n");
-    for (int halted = 0; halted < 2; halted++) {
-        for (int x = 0; x < 4; x++) {
-            int in[5] = {x == 0, x == 1, x == 2, x == 3, halted};
-            net_eval(&NET, in, VALUES);
-            printf("| %d | `%s` |", halted, op_name((Op)x));
-            for (int k = 0; k < 4; k++) printf(" %d |", port("hold", EN[k]));
-            printf("\n");
-        }
+static void mux2_table(void) {
+    mux2_net();
+    printf("| s | in 0 | in 1 | out |\n|---|---|---|---|\n");
+    for (int v = 0; v < 8; v++) {
+        int s = v >> 2 & 1, a = v >> 1 & 1, b = v & 1;
+        int in[3] = {a, s, b};
+        net_eval(&NET, in, VALUES);
+        printf("| %d | %d | %d | %d |\n", s, a, b, port("mux2", "out"));
     }
     printf("\n");
 }
 
-static void selector(void) {
-    static const char *const D[4] = {"nada's", "zero's", "decr's", "mod2's"};
-    net_init(&NET);
-    OneHot en;
-    int driver[4];
-    for (int k = 0; k < 4; k++) en.w[k] = net_input(&NET, EN[k]);
-    for (int k = 0; k < 4; k++) driver[k] = net_input(&NET, D[k]);
-    part_select_wire(&NET, "selector", "next_1", en, driver);
-    dot_block("selector", PART);
+static void hold_table(void) {
+    hold_net();
+    printf("| halted | op_hb op_lb | sel_hb sel_lb |\n|---|---|---|\n");
+    for (int v = 0; v < 8; v++) {
+        int op_hb = v >> 1 & 1, op_lb = v & 1, halted = v >> 2 & 1;
+        int in[3] = {op_hb, halted, op_lb};
+        net_eval(&NET, in, VALUES);
+        printf("| %d | %d %d | %d %d |\n", halted, op_hb, op_lb, port("hold", "sel_hb"), port("hold", "sel_lb"));
+    }
+    printf("\n");
 }
 
-static void latches(void) {
-    net_init(&NET);
-    int halted = net_input(&NET, "halted"), halts = net_input(&NET, "halts");
-    int accepted = net_input(&NET, "accepted"), accepts = net_input(&NET, "accepts");
-    part_latch(&NET, "latches", "halted'", halted, halts);
-    part_latch(&NET, "latches", "accepted'", accepted, accepts);
-    dot_block("latches", PART);
+static void latch_table(void) {
+    latches_net();
     printf("| accepted | accepts | accepted' |\n|---|---|---|\n");
     for (int v = 0; v < 4; v++) {
         int in[4] = {0, 0, v >> 1, v & 1};
         net_eval(&NET, in, VALUES);
         printf("| %d | %d | %d |\n", v >> 1, v & 1, port("latches", "accepted'"));
+    }
+    printf("\n");
+}
+
+static void boxes_block(const char *scope, const char *rankdir) {
+    printf("```dot\n");
+    net_boxes_dot(&NET, scope, rankdir, stdout);
+    printf("```\n\n");
+}
+
+static const char *const STEPPER_PARTS[] = {"nada", "zero", "decr", "mod2", "hold", "hb mux", "lb mux",
+                                            "accepts mux", "halts mux", "latches"};
+enum { NUM_STEPPER_PARTS = 10 };
+
+// Each box of a stepper: how many wires go in and come out, and how many
+// gates are inside, read from the stepper's links and ports.
+static void vocabulary(void) {
+    circuit_stepper(&NET);
+    printf("| box | wires in | wires out | gates |\n|---|---|---|---|\n");
+    for (int i = 0; i < NUM_STEPPER_PARTS; i++) {
+        int in = 0, out = 0;
+        for (int k = 0; k < NET.num_links; k++) {
+            if (strcmp(NET.links[k].scope, "") == 0 && strcmp(NET.links[k].to, STEPPER_PARTS[i]) == 0) in++;
+        }
+        for (int k = 0; k < NET.num_ports; k++) {
+            if (strcmp(NET.ports[k].part, STEPPER_PARTS[i]) == 0) out++;
+        }
+        GateCount c = net_count(&NET, STEPPER_PARTS[i]);
+        printf("| %s | %d | %d | %d |\n", STEPPER_PARTS[i], in, out, c.nots + c.ands + c.ors);
     }
     printf("\n");
 }
@@ -174,11 +184,9 @@ static void count_row(const char *label, GateCount c) {
 }
 
 static void counts(void) {
-    static const char *const PARTS[] = {"decoder", "op decoder", "hold", "nada", "zero", "decr", "mod2", "selector",
-                                        "encoder", "latches"};
     circuit_stepper(&NET);
     printf("| part | NOT | AND | OR | gates |\n|---|---|---|---|---|\n");
-    for (size_t i = 0; i < sizeof PARTS / sizeof PARTS[0]; i++) count_row(PARTS[i], net_count(&NET, PARTS[i]));
+    for (int i = 0; i < NUM_STEPPER_PARTS; i++) count_row(STEPPER_PARTS[i], net_count(&NET, STEPPER_PARTS[i]));
     count_row("**the stepper**", net_count(&NET, ""));
     circuit_core(&NET);
     count_row("**a core**, six steppers", net_count(&NET, ""));
@@ -187,45 +195,13 @@ static void counts(void) {
     printf("\n");
 }
 
-static void boxes_block(const char *scope, const char *rankdir) {
-    printf("```dot\n");
-    net_boxes_dot(&NET, scope, rankdir, stdout);
-    printf("```\n\n");
-}
-
-// Each part of a stepper as a box: how many wires go in and come out, and
-// how many gates are inside, read from the stepper's links and ports.
-static void vocabulary(void) {
-    static const char *const PARTS[] = {"decoder", "op decoder", "hold", "nada", "zero", "decr", "mod2", "selector",
-                                        "encoder", "latches"};
-    circuit_stepper(&NET);
-    printf("| box | wires in | wires out | gates |\n|---|---|---|---|\n");
-    for (size_t i = 0; i < sizeof PARTS / sizeof PARTS[0]; i++) {
-        int in = 0, out = 0;
-        for (int k = 0; k < NET.num_links; k++) {
-            if (strcmp(NET.links[k].scope, "") == 0 && strcmp(NET.links[k].to, PARTS[i]) == 0) in++;
-        }
-        for (int k = 0; k < NET.num_ports; k++) {
-            if (strcmp(NET.ports[k].part, PARTS[i]) == 0) out++;
-        }
-        GateCount c = net_count(&NET, PARTS[i]);
-        printf("| %s | %d | %d | %d |\n", PARTS[i], in, out, c.nots + c.ands + c.ors);
-    }
-    printf("\n");
-}
-
-int main(int argc, char **argv) {
-    (void)argv;
-    if (argc != 1) {
-        fprintf(stderr, "usage: circuit_main\n");
-        return 2;
-    }
-    decoder();
-    encoder();
-    machines();
-    hold();
-    selector();
-    latches();
+static void blocks(void) {
+    machines_table();
+    mux2_table();
+    mux4_net();
+    boxes_block("mux4", "LR");
+    hold_table();
+    latch_table();
     vocabulary();
     circuit_stepper(&NET);
     boxes_block("", "TB");
@@ -234,5 +210,44 @@ int main(int argc, char **argv) {
     boxes_block("", "TB");
     circuit_decides(&NET);
     boxes_block("", "LR");
+}
+
+static void write_svg(const char *dir, const char *name, const char *part) {
+    char path[512];
+    snprintf(path, sizeof path, "%s/%s.svg", dir, name);
+    FILE *f = fopen(path, "w");
+    if (f == NULL) {
+        fprintf(stderr, "circuit_main: can't write %s\n", path);
+        exit(1);
+    }
+    net_svg(&NET, part, f);
+    if (fclose(f) != 0) {
+        fprintf(stderr, "circuit_main: can't write %s\n", path);
+        exit(1);
+    }
+}
+
+static void schematics(const char *dir) {
+    for (int op = 0; op < NUM_OPS; op++) {
+        machine_net(op);
+        write_svg(dir, MACHINES[op], MACHINES[op]);
+    }
+    mux2_net();
+    write_svg(dir, "mux2", "mux2");
+    hold_net();
+    write_svg(dir, "hold", "hold");
+    latches_net();
+    write_svg(dir, "latches", "latches");
+}
+
+int main(int argc, char **argv) {
+    if (argc == 1) {
+        blocks();
+    } else if (argc == 3 && strcmp(argv[1], "svg") == 0) {
+        schematics(argv[2]);
+    } else {
+        fprintf(stderr, "usage: circuit_main [svg DIR]\n");
+        return 2;
+    }
     return fflush(stdout) == 0 ? 0 : 1;
 }
