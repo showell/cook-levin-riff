@@ -61,7 +61,7 @@ html_of = |{ words, body }, sources| {
 			} else {
 				match BookText.inline_html(body.trim()) {
 					Err(why) => Refused(why)
-					Ok(caption) => Html("<figure class=\"diagram\">${source.text.trim()}<figcaption>${caption}</figcaption></figure>")
+					Ok(caption) => Html("<figure class=\"schematic\">${source.text.trim()}<figcaption>${caption}</figcaption></figure>")
 				}
 			}
 	}
@@ -70,7 +70,7 @@ html_of = |{ words, body }, sources| {
 expect Schematics.paths_wanted("a\n```schematic decr\nx\n```\n```schematic mux2\n```\n```schematic decr\n```\n") == ["book/build/schematics/decr.svg", "book/build/schematics/mux2.svg"]
 expect
 	[
-		({ words: "decr", body: "The decrementer\n" }, Html("<figure class=\"diagram\"><svg/><figcaption>The decrementer</figcaption></figure>")),
+		({ words: "decr", body: "The decrementer\n" }, Html("<figure class=\"schematic\"><svg/><figcaption>The decrementer</figcaption></figure>")),
 		({ words: "mod2", body: "x\n" }, Refused("the build read no drawing book/build/schematics/mod2.svg")),
 		({ words: "nada", body: "x\n" }, Refused("the drawing book/build/schematics/nada.svg holds an HTML comment")),
 	].all(
