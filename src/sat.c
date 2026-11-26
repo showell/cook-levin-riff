@@ -37,9 +37,11 @@ Cnf sat_new(void) {
 void sat_free(Cnf *c) {
     free(c->lits);
     free(c->gates);
+    free(c->index);
     c->lits = NULL;
     c->gates = NULL;
-    c->len = c->cap = c->num_clauses = c->num_gates = c->gates_cap = 0;
+    c->index = NULL;
+    c->len = c->cap = c->num_clauses = c->num_gates = c->gates_cap = c->index_cap = 0;
 }
 
 static void push_lit(Cnf *c, int lit) {
@@ -77,13 +79,31 @@ void sat_unit(Cnf *c, Lit x) { sat_clause(c, &x, 1); }
 
 Lit sat_not(Lit x) { return -x; }
 
+// The index's first slot for a gate's inputs; probing goes on from there.
+static size_t gate_slot(const Cnf *c, GateKind kind, Lit a, Lit b) {
+    uint64_t h = (uint64_t)(uint32_t)a * 0x9e3779b97f4a7c15u;
+    h ^= (uint64_t)(uint32_t)b * 0xc2b2ae3d27d4eb4fu;
+    h ^= (uint64_t)kind * 0x165667b19e3779f9u;
+    h ^= h >> 29;
+    return (size_t)h & (c->index_cap - 1);
+}
+
 // A gate already made from these inputs, or 0.
 static int find_gate(const Cnf *c, GateKind kind, Lit a, Lit b) {
-    for (size_t i = 0; i < c->num_gates; i++) {
-        const SatGate *g = &c->gates[i];
+    if (c->index_cap == 0) return 0;
+    for (size_t s = gate_slot(c, kind, a, b);; s = (s + 1) & (c->index_cap - 1)) {
+        int at = c->index[s];
+        if (at == 0) return 0;
+        const SatGate *g = &c->gates[at - 1];
         if (g->kind == kind && g->a == a && g->b == b) return g->out;
     }
-    return 0;
+}
+
+static void index_gate(Cnf *c, size_t i) {
+    const SatGate *g = &c->gates[i];
+    size_t s = gate_slot(c, g->kind, g->a, g->b);
+    while (c->index[s] != 0) s = (s + 1) & (c->index_cap - 1);
+    c->index[s] = (int)i + 1;
 }
 
 static int new_gate(Cnf *c, GateKind kind, Lit a, Lit b) {
@@ -94,6 +114,15 @@ static int new_gate(Cnf *c, GateKind kind, Lit a, Lit b) {
     }
     int out = ++c->num_vars;
     c->gates[c->num_gates++] = (SatGate){kind, a, b, out};
+    if (2 * c->num_gates > c->index_cap) {
+        free(c->index);
+        c->index_cap = c->index_cap ? 2 * c->index_cap : 512;
+        c->index = calloc(c->index_cap, sizeof *c->index);
+        if (c->index == NULL) sat_die("out of memory", (long)c->index_cap);
+        for (size_t i = 0; i < c->num_gates; i++) index_gate(c, i);
+    } else {
+        index_gate(c, c->num_gates - 1);
+    }
     return out;
 }
 

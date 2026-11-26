@@ -102,6 +102,11 @@ typedef struct {
     SatGate *gates;
     size_t num_gates;
     size_t gates_cap;
+    // The gates by (kind, a, b), open addressing: a gate's index + 1, 0
+    // empty, `index_cap` a power of 2 kept at least twice num_gates. It
+    // only finds a gate faster; which gate is found is the same.
+    int *index;
+    size_t index_cap;
     // trace[n][k]: input n's state after step k (k = 0 the start).
     SatState trace[NUM_INPUTS][MAX_STEPS + 1];
 } Cnf;
