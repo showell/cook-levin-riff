@@ -36,7 +36,7 @@ variables, and composing six steps gives the whole program as polynomials.
 - `src/sat.c`: each puzzle as DIMACS CNF, the Cook-Levin construction;
   `src/sat_main.c` is its command line, and `sat/oracle.shale` checks it
   against rocsat (below, "SAT").
-- `src/plus.c`, `src/census.c`: Nibble++ (below, "Nibble++").
+- `src/plus.c`, `src/census.c`, `src/plus_sat.c`: Nibble++ (below, "Nibble++").
 - `web/`: the playground (below).
 - `js/`: the machine, the search and the composition in JavaScript, run by
   node, roc-js-interpreter's VM and its x86-64 compiler (below,
@@ -79,6 +79,25 @@ interpreter, enumerates every program of up to 9 lines, and checks three
 theorems: `decr` pads any witness to 32 lines (64 bits) safely, {zero,
 decr} needs max(S) + |S| lines, and the Fibonacci counts hold where the
 census says they do.
+
+Nibble++ meets rocsat in `src/plus_sat.c`, a second machine on `sat.c`'s
+gates (the same folding and structural hashing): the Nibble++ step on a
+4-bit AX, unrolled for a k-line program. One run's circuit has the 2k
+program bits and AX's four as inputs and accept as its output; at k = 28
+it is 1,340 gates, so 1,400 variables and 4,020 clauses. The search CNF for
+a language W at k lines shares the program bits among 16 runs, one per
+input, each held to W's want bit, so a model is a k-line program that
+decides W. `src/plus_sat_main.c` is the command line, and
+`tests/test_plus_sat.c` holds the CNF to the interpreter by unit
+propagation (every program of up to 4 lines, random ones up to 28, and
+sampled census witnesses). `sat/plus.shale`, which `build.shale` runs,
+hands rocsat evaluation claims (a member SAT and its model checked; a
+non-member's wrong model refused and its forced accept UNSAT, the proof
+checked by `src/drat.c`) and the cheap search cases, and writes
+`sat/plus/verdicts.txt`. `sat/plus_search.shale` runs the expensive search
+cases, SAT at the census length and UNSAT one line shorter with a checked
+DRAT proof, and writes their times to `sat/plus/search.txt`; the build
+doesn't run it. The two share `sat/plus_rocsat.shale`.
 
 ## Playground
 The machine's assembly language is called **Nibble**. `web/` is a puzzle
