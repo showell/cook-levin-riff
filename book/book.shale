@@ -107,6 +107,26 @@ function check_tableau()
   return nil
 end
 
+-- The worked examples in "Cook-Levin as SAT" and "Solved by hand" are
+-- src/sat_hand_main.c's output, which the book's source must hold byte for
+-- byte: each of its blocks, a blank line between them.
+function check_hand()
+  mkdir(SAT_DIR)
+  must(run({"gcc", "-O2", "-std=c11", "-Wall", "-Wextra", "-Werror", "-o", real(SAT_DIR) .. "/sat_hand", "src/sat_hand_main.c"}, {timeout_ms = 120000, tail = 20}))
+  local r = must(run({real(SAT_DIR .. "/sat_hand"), real(PROOFS .. "/13-len5.drat")}, {timeout_ms = 60000, whole = 40000, want = "book: sat_hand, just built from src/ for the book"}))
+  local blocks = split(trim(r.out), "\n\n")
+  if #blocks ~= 8 then fail("book: sat_hand printed " .. #blocks .. " blocks, not 8") end
+  local source = read(SOURCE)
+  for b in blocks do
+    if find(source, b) == nil then
+      print(b)
+      fail("book: book/book.md lacks sat_hand's block above, so /" .. DEST_NAME .. "/ is left as it was")
+    end
+  end
+  print("book: the " .. #blocks .. " worked SAT examples in book/book.md are sat_hand's output")
+  return nil
+end
+
 -- A count with a comma before each group of three digits.
 function commas(n)
   local s = "" .. n
@@ -277,6 +297,7 @@ function main()
   end
   compose_polynomials()
   check_tableau()
+  check_hand()
   check_solver_files()
 
   local app = relative_path(real(ROC_APPS .. "/book_builder"), real(APP_DIR .. "/app/main.roc"))
