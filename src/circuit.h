@@ -26,15 +26,17 @@
 //   decides    four cores, one per input, each compared with a want bit,
 //              and an AND of the four comparisons.
 //
-// The stepper follows vm_step (vm.c): `zero` at AX = 0 accepts and halts,
-// `decr` at AX = 0 halts, and a halted machine stays as it is.
+// The stepper follows Steve's stepper (stepper.py, and sat_step in sat.c):
+// `zero` at AX = 0 accepts and the run goes on, since a circuit runs every
+// step; `decr` at AX = 0 halts; a halted machine stays as it is. The final
+// accepted is the interpreter's on every run.
 
 #ifndef COOK_LEVIN_CIRCUIT_H
 #define COOK_LEVIN_CIRCUIT_H
 
 #include <stdio.h>
 
-enum { CIRCUIT_MAX_WIRES = 1600, CIRCUIT_MAX_PORTS = 1400, CIRCUIT_NAME = 40 };
+enum { CIRCUIT_MAX_WIRES = 1600, CIRCUIT_MAX_PORTS = 1400, CIRCUIT_MAX_LINKS = 2400, CIRCUIT_NAME = 40 };
 
 typedef enum { W_ZERO, W_ONE, W_INPUT, W_NOT, W_AND, W_OR } WireKind;
 
@@ -53,11 +55,27 @@ typedef struct {
     int wire;
 } Port;
 
+// One wire from one box to another inside a composed part, `scope`: the
+// part a composer (part_stepper, part_core, circuit_decides) builds from
+// boxes. `to` and `from` are the boxes' names within the scope ("decoder",
+// "step 3"); "" is the scope itself, so a link from "" is one of the scope's
+// inputs, named `from_name`, and a link to "" is one of its outputs, named
+// `to_name`. The drawing of a scope's boxes reads these alone.
+typedef struct {
+    char scope[CIRCUIT_NAME];
+    char to[CIRCUIT_NAME];
+    char to_name[CIRCUIT_NAME];
+    char from[CIRCUIT_NAME];
+    char from_name[CIRCUIT_NAME];
+} Link;
+
 typedef struct {
     Wire wires[CIRCUIT_MAX_WIRES];
     int num_wires;
     Port ports[CIRCUIT_MAX_PORTS];
     int num_ports;
+    Link links[CIRCUIT_MAX_LINKS];
+    int num_links;
 } Net;
 
 // The wires 0 and 1 of every net are the constants 0 and 1.
@@ -70,6 +88,7 @@ int net_not(Net *net, const char *part, const char *name, int a);
 int net_and(Net *net, const char *part, const char *name, int a, int b);
 int net_or(Net *net, const char *part, const char *name, int a, int b);
 void net_port(Net *net, const char *part, const char *name, int wire);
+void net_link(Net *net, const char *scope, const char *to, const char *to_name, const char *from, const char *from_name);
 
 // How many gates of each kind a part made: every part whose name is `part`
 // or starts with `part` and a space ("step 1" holds "step 1 decoder");
@@ -140,16 +159,20 @@ int net_port_wire(const Net *net, const char *part, const char *name);
 // outputs. `rankdir` is "LR" or "TB". With `cluster_words` above 0, the
 // gates are boxed by the first that many words of their part's name past
 // `part` ("step 3" of "step 3 decoder" at 2); at 0 they are drawn unboxed.
-// `full_size` gives the drawing the class `fullsize`, which the book's
-// stylesheet shows at its own size in a box that scrolls. `pin_ends` puts
-// the inputs in the first rank and the outputs in the last; without it,
-// Graphviz places each input beside the gates that read it.
+// `pin_ends` puts the inputs in the first rank and the outputs in the last;
+// without it, Graphviz places each input beside the gates that read it.
 typedef struct {
     const char *rankdir;
     int cluster_words;
-    int full_size;
     int pin_ends;
 } DotStyle;
 void net_dot(const Net *net, const char *part, DotStyle style, FILE *f);
+
+// A Graphviz drawing of a composed part as its boxes, from the links whose
+// scope is `scope`: each box a node named for its part, each input and
+// output of the scope a named end, and one line for each pair of ends that
+// wires join, marked with how many wires it carries when that is more
+// than one.
+void net_boxes_dot(const Net *net, const char *scope, const char *rankdir, FILE *f);
 
 #endif

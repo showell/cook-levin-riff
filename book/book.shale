@@ -61,7 +61,7 @@ const SAT_DIR = "book/build/sat"
 const PROOFS = "sat/proofs"
 const SAT_WANT = "book: sat_main and drat_main, just built from src/ for the book"
 const OPS = {"nada", "zero", "decr", "mod2"}
-const CIRCUIT_BLOCKS = 17
+const CIRCUIT_BLOCKS = 19
 
 -- The four final polynomials, composed by the C into COMPOSED/out/. What
 -- compose_main prints is held to the golden's lines: each step's term counts
@@ -153,14 +153,13 @@ end
 
 -- The circuit chapters' drawings and tables, src/circuit_main.c's: each
 -- block it prints, a blank line apart, is in the book's source byte for byte
--- ("Parts for a small computer" and "The machine as a circuit"), and so is
--- the whole of what `circuit_main core` prints ("The circuit, in full").
+-- ("Parts for a small computer", "The machine as a circuit" and "The
+-- circuit, in full").
 function check_circuit()
   must(run({"gcc", "-O2", "-std=c11", "-Wall", "-Wextra", "-Werror", "-o", real(COMPOSED) .. "/circuit_main", "src/circuit_main.c"}, {timeout_ms = 120000, tail = 20}))
   local exe = real(COMPOSED .. "/circuit_main")
   local want = "book: circuit_main, just built from src/ for the book"
   local blocks = split(trim(must(run({exe}, {timeout_ms = 60000, whole = 100000, want = want})).out), "\n\n")
-  push(blocks, trim(must(run({exe, "core"}, {timeout_ms = 60000, whole = 100000, want = want})).out))
   if #blocks ~= CIRCUIT_BLOCKS then fail("book: circuit_main printed " .. #blocks .. " blocks, not " .. CIRCUIT_BLOCKS) end
   local source = read(SOURCE)
   for b in blocks do

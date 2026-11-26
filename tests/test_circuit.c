@@ -1,14 +1,36 @@
 // test_circuit.c: the netlist of circuit.h, held to the machine. Each part
-// is checked on every input it can be given, the stepper on all 64
-// settings of its six inputs against vm_step, a core on all 16,384 runs
-// (4,096 programs by four inputs) against run_progam, step by step, and the
-// decider on every program and every one of the 16 want registers against
-// the language the machine says the program decides.
+// is checked on every input it can be given; the stepper on all 64
+// settings of its six inputs against sat_step (sat.c), Steve's stepper as
+// gates, which keeps running after an accept; a core on all 16,384 runs
+// (4,096 programs by four inputs), step by step against sat_step and at the
+// end against run_progam; and the decider on every program and every one
+// of the 16 want registers against the language the machine says the
+// program decides.
 
 #include "test.h"
 
 #include "../src/vm.c"
+#include "../src/sat.c"
 #include "../src/circuit.c"
+
+// sat_step on constant wires: the step as Steve's stepper takes it, with no
+// gate made.
+static SatState reference_step(SatState s, int op) {
+    Cnf c = sat_new();
+    SatState out = sat_step(&c, s, op / 2 ? SAT_TRUE : SAT_FALSE, op % 2 ? SAT_TRUE : SAT_FALSE);
+    sat_free(&c);
+    return out;
+}
+
+static Lit lit(int bit) { return bit ? SAT_TRUE : SAT_FALSE; }
+
+static int bit(Lit x) {
+    if (x != SAT_TRUE && x != SAT_FALSE) {
+        fprintf(stderr, "  literal %d is no constant\n", x);
+        abort();
+    }
+    return x == SAT_TRUE;
+}
 
 static Net NET;
 static int VALUES[CIRCUIT_MAX_WIRES];
@@ -25,7 +47,6 @@ static OneHot four_inputs(const char *const names[4]) {
     return v;
 }
 
-static const char *const IS[4] = {"is_0", "is_1", "is_2", "is_3"};
 static const char *const NEXT_NAMES[4] = {"next_0", "next_1", "next_2", "next_3"};
 
 TEST(the_decoder_lights_one_wire_for_each_value) {
@@ -54,7 +75,9 @@ TEST(the_encoder_gives_the_bits_of_the_lit_wire) {
     EXPECT_EQ(port("encoder", "hb'") + port("encoder", "lb'"), 0);
 }
 
-// Each machine on each value, held to vm_step of a running machine.
+// Each machine on each value, held to vm_step of a running machine, but
+// for `zero`'s halt: Steve's stepper, and so this circuit, leaves halted off
+// after an accept.
 TEST(each_machine_is_its_opcode_on_every_value) {
     typedef MachineOut (*Build)(Net *, const char *, OneHot);
     static const Build BUILD[4] = {part_nada, part_zero, part_decr, part_mod2};
@@ -77,7 +100,7 @@ TEST(each_machine_is_its_opcode_on_every_value) {
                 EXPECT_EQ(port(NAMES[op], NEXT_NAMES[m.ax]), 1);
             }
             EXPECT_EQ(port(NAMES[op], "accepts"), m.status == STATUS_ACCEPTED);
-            EXPECT_EQ(port(NAMES[op], "halts"), m.halted);
+            EXPECT_EQ(port(NAMES[op], "halts"), m.halted && op != OP_ZERO);
         }
     }
 }
@@ -131,30 +154,34 @@ TEST(a_latch_stays_on) {
     }
 }
 
-TEST(the_stepper_is_vm_step_on_all_64_settings) {
+TEST(the_stepper_is_sat_step_on_all_64_settings) {
     circuit_stepper(&NET);
+    int accepts_without_halting = 0;
     for (int v = 0; v < 64; v++) {
         int ax = v & 3, halted = v >> 2 & 1, accepted = v >> 3 & 1, op = v >> 4;
         int in[6] = {ax / 2, ax % 2, halted, accepted, op / 2, op % 2};
         eval(in);
-        Machine m = {ax, halted, accepted ? STATUS_ACCEPTED : STATUS_NONE, 0};
-        Machine next = vm_step(m, (Op)op);
-        EXPECT_EQ(2 * port("", "hb'") + port("", "lb'"), next.ax);
-        EXPECT_EQ(port("", "halted'"), next.halted);
-        // A flag once on stays on: the latch keeps accepted.
-        EXPECT_EQ(port("", "accepted'"), accepted || next.status == STATUS_ACCEPTED);
+        SatState next = reference_step((SatState){lit(ax / 2), lit(ax % 2), lit(halted), lit(accepted)}, op);
+        EXPECT_EQ(port("", "hb'"), bit(next.hb));
+        EXPECT_EQ(port("", "lb'"), bit(next.lb));
+        EXPECT_EQ(port("", "halted'"), bit(next.halted));
+        EXPECT_EQ(port("", "accepted'"), bit(next.accepted));
+        if (!accepted && port("", "accepted'") && !port("", "halted'")) accepts_without_halting++;
     }
+    // zero at AX = 0 on a running machine, its accepted flag off: the one
+    // setting where vm_step would halt and this stepper runs on.
+    EXPECT_EQ(accepts_without_halting, 1);
 }
 
-TEST(the_stepper_has_49_gates) {
+TEST(the_stepper_has_47_gates) {
     circuit_stepper(&NET);
     GateCount all = net_count(&NET, "");
     EXPECT_EQ(all.nots, 5);
-    EXPECT_EQ(all.ands, 27);
-    EXPECT_EQ(all.ors, 17);
+    EXPECT_EQ(all.ands, 26);
+    EXPECT_EQ(all.ors, 16);
     GateCount sel = net_count(&NET, "selector");
-    EXPECT_EQ(sel.ands, 16);
-    EXPECT_EQ(sel.ors, 10);
+    EXPECT_EQ(sel.ands, 15);
+    EXPECT_EQ(sel.ors, 9);
     EXPECT_EQ(net_count(&NET, "nada").ors + net_count(&NET, "zero").ors + net_count(&NET, "decr").ors, 0);
     EXPECT_EQ(net_count(&NET, "mod2").ors, 2);
 }
@@ -170,7 +197,7 @@ static void program_bits(uint32_t code, int *in) {
 TEST(a_core_is_the_machine_on_all_16384_runs_step_by_step) {
     circuit_core(&NET);
     GateCount all = net_count(&NET, "");
-    EXPECT_EQ(all.nots + all.ands + all.ors, 6 * 49);
+    EXPECT_EQ(all.nots + all.ands + all.ors, 6 * 47);
     char part[16];
     int hb[MAX_STEPS + 1], lb[MAX_STEPS + 1], halted[MAX_STEPS + 1], acc[MAX_STEPS + 1];
     for (int k = 1; k <= MAX_STEPS; k++) {
@@ -189,14 +216,13 @@ TEST(a_core_is_the_machine_on_all_16384_runs_step_by_step) {
             in[1] = n % 2;
             program_bits(code, in + 2);
             eval(in);
-            Machine m = vm_start(n);
-            int accepted = 0;
+            SatState s = {lit(n / 2), lit(n % 2), SAT_FALSE, SAT_FALSE};
             for (int k = 1; k <= MAX_STEPS; k++) {
-                m = vm_step(m, p.ops[k - 1]);
-                accepted = accepted || m.status == STATUS_ACCEPTED;
-                EXPECT_EQ(2 * VALUES[hb[k]] + VALUES[lb[k]], m.ax);
-                EXPECT_EQ(VALUES[halted[k]], m.halted);
-                EXPECT_EQ(VALUES[acc[k]], accepted);
+                s = reference_step(s, (int)p.ops[k - 1]);
+                EXPECT_EQ(VALUES[hb[k]], bit(s.hb));
+                EXPECT_EQ(VALUES[lb[k]], bit(s.lb));
+                EXPECT_EQ(VALUES[halted[k]], bit(s.halted));
+                EXPECT_EQ(VALUES[acc[k]], bit(s.accepted));
             }
             EXPECT_EQ(VALUES[out], run_progam(n, p) == STATUS_ACCEPTED);
         }
@@ -206,7 +232,7 @@ TEST(a_core_is_the_machine_on_all_16384_runs_step_by_step) {
 TEST(the_decider_says_which_problem_each_program_decides) {
     circuit_decides(&NET);
     GateCount all = net_count(&NET, "");
-    EXPECT_EQ(all.nots + all.ands + all.ors, 4 * 6 * 49 + 4 * 5 + 3);
+    EXPECT_EQ(all.nots + all.ands + all.ors, 4 * 6 * 47 + 4 * 5 + 3);
     int lit = 0;
     int decides = net_port_wire(&NET, "", "decides");
     for (uint32_t code = 0; code < NUM_PROGRAMS; code++) {
@@ -226,6 +252,6 @@ TEST(the_decider_says_which_problem_each_program_decides) {
 TEST_MAIN(TEST_CASE(the_decoder_lights_one_wire_for_each_value), TEST_CASE(the_encoder_gives_the_bits_of_the_lit_wire),
           TEST_CASE(each_machine_is_its_opcode_on_every_value), TEST_CASE(the_hold_makes_a_halted_machine_nada),
           TEST_CASE(the_selector_passes_the_enabled_machines_wire), TEST_CASE(a_latch_stays_on),
-          TEST_CASE(the_stepper_is_vm_step_on_all_64_settings), TEST_CASE(the_stepper_has_49_gates),
+          TEST_CASE(the_stepper_is_sat_step_on_all_64_settings), TEST_CASE(the_stepper_has_47_gates),
           TEST_CASE(a_core_is_the_machine_on_all_16384_runs_step_by_step),
           TEST_CASE(the_decider_says_which_problem_each_program_decides))

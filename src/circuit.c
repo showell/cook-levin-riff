@@ -31,6 +31,7 @@ static int new_wire(Net *net, WireKind kind, const char *part, const char *name,
 void net_init(Net *net) {
     net->num_wires = 0;
     net->num_ports = 0;
+    net->num_links = 0;
     new_wire(net, W_ZERO, "", "0", -1, -1);
     new_wire(net, W_ONE, "", "1", -1, -1);
 }
@@ -53,6 +54,16 @@ void net_port(Net *net, const char *part, const char *name, int wire) {
     copy_name(p->part, part);
     copy_name(p->name, name);
     p->wire = wire;
+}
+
+void net_link(Net *net, const char *scope, const char *to, const char *to_name, const char *from, const char *from_name) {
+    if (net->num_links == CIRCUIT_MAX_LINKS) circuit_die("too many links", net->num_links);
+    Link *l = &net->links[net->num_links++];
+    copy_name(l->scope, scope);
+    copy_name(l->to, to);
+    copy_name(l->to_name, to_name);
+    copy_name(l->from, from);
+    copy_name(l->from_name, from_name);
 }
 
 int net_port_wire(const Net *net, const char *part, const char *name) {
@@ -104,6 +115,9 @@ void net_eval(const Net *net, const int *inputs, int *values) {
 
 static const char *const MACHINES[4] = {"nada", "zero", "decr", "mod2"};
 static const char *const NEXT[4] = {"next_0", "next_1", "next_2", "next_3"};
+static const char *const IS[4] = {"is_0", "is_1", "is_2", "is_3"};
+static const char *const OPS[4] = {"op_nada", "op_zero", "op_decr", "op_mod2"};
+static const char *const EN[4] = {"en_nada", "en_zero", "en_decr", "en_mod2"};
 
 static void port_one_hot(Net *net, const char *part, OneHot v) {
     for (int k = 0; k < 4; k++) net_port(net, part, NEXT[k], v.w[k]);
@@ -144,9 +158,11 @@ MachineOut part_nada(Net *net, const char *part, OneHot is) {
     return m;
 }
 
-// zero: every wire stays, and is_0 is tapped to accept and to halt.
+// zero: every wire stays, and is_0 is tapped to accept. The run goes on
+// after an accept, as every step of a circuit runs: the accepted latch
+// holds the verdict, and halted stays off, as Steve's stepper has it.
 MachineOut part_zero(Net *net, const char *part, OneHot is) {
-    MachineOut m = {is, is.w[0], is.w[0]};
+    MachineOut m = {is, is.w[0], WIRE_0};
     port_machine(net, part, m);
     return m;
 }
@@ -169,7 +185,6 @@ MachineOut part_mod2(Net *net, const char *part, OneHot is) {
 }
 
 OneHot part_hold(Net *net, const char *part, OneHot op, int halted) {
-    static const char *const EN[4] = {"en_nada", "en_zero", "en_decr", "en_mod2"};
     int running = net_not(net, part, "~halted", halted);
     OneHot en;
     en.w[0] = net_or(net, part, EN[0], op.w[0], halted);
@@ -179,15 +194,19 @@ OneHot part_hold(Net *net, const char *part, OneHot op, int halted) {
 }
 
 int part_select_wire(Net *net, const char *part, const char *name, OneHot enable, const int driver[4]) {
-    int out = -1;
-    char gate[CIRCUIT_NAME];
+    int picked[4];
+    int n = 0;
     for (int m = 0; m < 4; m++) {
-        if (driver[m] == WIRE_0) continue;
-        snprintf(gate, sizeof gate, "%s %s", MACHINES[m], name);
-        int picked = net_and(net, part, gate, driver[m], enable.w[m]);
-        out = out < 0 ? picked : net_or(net, part, name, out, picked);
+        if (driver[m] != WIRE_0) picked[n++] = net_and(net, part, MACHINES[m], driver[m], enable.w[m]);
     }
-    if (out < 0) out = WIRE_0;
+    // The ORs in pairs, a tree as shallow as the count allows.
+    while (n > 1) {
+        int kept = 0;
+        for (int i = 0; i + 1 < n; i += 2) picked[kept++] = net_or(net, part, name, picked[i], picked[i + 1]);
+        if (n % 2 == 1) picked[kept++] = picked[n - 1];
+        n = kept;
+    }
+    int out = n == 1 ? picked[0] : WIRE_0;
     net_port(net, part, name, out);
     return out;
 }
@@ -218,9 +237,37 @@ static void part_name(char *to, const char *prefix, const char *name) {
     copy_name(to, buf);
 }
 
+// How a stepper's boxes are wired, as part_stepper wires them.
+static void stepper_links(Net *net, const char *own, const MachineOut m[4]) {
+    net_link(net, own, "decoder", "hb", "", "hb");
+    net_link(net, own, "decoder", "lb", "", "lb");
+    net_link(net, own, "op decoder", "op_hb", "", "op_hb");
+    net_link(net, own, "op decoder", "op_lb", "", "op_lb");
+    for (int k = 0; k < 4; k++) net_link(net, own, "hold", OPS[k], "op decoder", OPS[k]);
+    net_link(net, own, "hold", "halted", "", "halted");
+    for (int i = 0; i < 4; i++) {
+        for (int k = 0; k < 4; k++) net_link(net, own, MACHINES[i], IS[k], "decoder", IS[k]);
+    }
+    for (int k = 0; k < 4; k++) net_link(net, own, "selector", EN[k], "hold", EN[k]);
+    for (int i = 0; i < 4; i++) {
+        for (int k = 0; k < 4; k++) {
+            if (m[i].next.w[k] != WIRE_0) net_link(net, own, "selector", NEXT[k], MACHINES[i], NEXT[k]);
+        }
+        if (m[i].accepts != WIRE_0) net_link(net, own, "selector", "accepts", MACHINES[i], "accepts");
+        if (m[i].halts != WIRE_0) net_link(net, own, "selector", "halts", MACHINES[i], "halts");
+    }
+    for (int k = 1; k < 4; k++) net_link(net, own, "encoder", NEXT[k], "selector", NEXT[k]);
+    net_link(net, own, "latches", "halted", "", "halted");
+    net_link(net, own, "latches", "halts", "selector", "halts");
+    net_link(net, own, "latches", "accepted", "", "accepted");
+    net_link(net, own, "latches", "accepts", "selector", "accepts");
+    net_link(net, own, "", "hb'", "encoder", "hb'");
+    net_link(net, own, "", "lb'", "encoder", "lb'");
+    net_link(net, own, "", "halted'", "latches", "halted'");
+    net_link(net, own, "", "accepted'", "latches", "accepted'");
+}
+
 CircuitState part_stepper(Net *net, const char *prefix, int k, CircuitState s, int op_hb, int op_lb) {
-    static const char *const IS[4] = {"is_0", "is_1", "is_2", "is_3"};
-    static const char *const OPS[4] = {"op_nada", "op_zero", "op_decr", "op_mod2"};
     char step[CIRCUIT_NAME], p[CIRCUIT_NAME];
     if (k > 0) {
         char buf[CIRCUIT_NAME];
@@ -229,6 +276,11 @@ CircuitState part_stepper(Net *net, const char *prefix, int k, CircuitState s, i
     } else {
         part_name(step, prefix, "");
     }
+    // The stepper's own name, without the trailing space: the scope of its links.
+    char own[CIRCUIT_NAME];
+    copy_name(own, step);
+    size_t n = strlen(own);
+    if (n > 0) own[n - 1] = '\0';
     part_name(p, step, "decoder");
     OneHot is = part_decoder(net, p, s.hb, s.lb, IS);
     part_name(p, step, "op decoder");
@@ -255,11 +307,7 @@ CircuitState part_stepper(Net *net, const char *prefix, int k, CircuitState s, i
     out.lb = bits[1];
     out.halted = part_latch(net, p, "halted'", s.halted, picked.halts);
     out.accepted = part_latch(net, p, "accepted'", s.accepted, picked.accepts);
-    // The stepper's own ports, under its name without the trailing space.
-    char own[CIRCUIT_NAME];
-    copy_name(own, step);
-    size_t n = strlen(own);
-    if (n > 0) own[n - 1] = '\0';
+    stepper_links(net, own, m);
     net_port(net, own, "hb'", out.hb);
     net_port(net, own, "lb'", out.lb);
     net_port(net, own, "halted'", out.halted);
@@ -267,9 +315,35 @@ CircuitState part_stepper(Net *net, const char *prefix, int k, CircuitState s, i
     return out;
 }
 
+// How a core's six stepper boxes are wired: the first from the input and
+// the flags' constant 0, each later one from the one before it, and each
+// from its line's two bits.
+static void core_links(Net *net, const char *own) {
+    static const char *const STATE[4] = {"hb", "lb", "halted", "accepted"};
+    static const char *const LEFT[4] = {"hb'", "lb'", "halted'", "accepted'"};
+    char step[CIRCUIT_NAME], before[CIRCUIT_NAME], line[CIRCUIT_NAME];
+    for (int k = 1; k <= 6; k++) {
+        snprintf(step, sizeof step, "step %d", k);
+        snprintf(before, sizeof before, "step %d", k - 1);
+        snprintf(line, sizeof line, "line %d", k);
+        for (int i = 0; i < 4; i++) {
+            if (k > 1) net_link(net, own, step, STATE[i], before, LEFT[i]);
+            else net_link(net, own, step, STATE[i], "", i < 2 ? "AX" : "0");
+        }
+        net_link(net, own, step, "op_hb", "", line);
+        net_link(net, own, step, "op_lb", "", line);
+    }
+    net_link(net, own, "", "accepted", "step 6", "accepted'");
+}
+
 CircuitState part_core(Net *net, const char *prefix, CircuitState start, const int prog[12]) {
     CircuitState s = start;
     for (int k = 1; k <= 6; k++) s = part_stepper(net, prefix, k, s, prog[2 * (k - 1)], prog[2 * (k - 1) + 1]);
+    char own[CIRCUIT_NAME];
+    copy_name(own, prefix);
+    size_t n = strlen(own);
+    if (n > 0) own[n - 1] = '\0';
+    core_links(net, own);
     return s;
 }
 
@@ -308,6 +382,23 @@ void circuit_core(Net *net) {
     net_port(net, "", "accepted", end.accepted);
 }
 
+// How the decider's boxes for input n are wired: core n from the program
+// and its input's constants, its comparator from it and the want bit, and
+// the AND from the comparator.
+static void decider_links(Net *net, int n) {
+    char core[CIRCUIT_NAME], same[CIRCUIT_NAME], ax[CIRCUIT_NAME], want[CIRCUIT_NAME];
+    snprintf(core, sizeof core, "core %d", n);
+    snprintf(same, sizeof same, "same %d", n);
+    snprintf(ax, sizeof ax, "AX = %d", n);
+    snprintf(want, sizeof want, "want_%d", n);
+    for (int i = 0; i < 12; i++) net_link(net, "", core, "program", "", "program");
+    net_link(net, "", core, "in_hb", "", ax);
+    net_link(net, "", core, "in_lb", "", ax);
+    net_link(net, "", same, "accepted", core, "accepted");
+    net_link(net, "", same, "want", "", want);
+    net_link(net, "", "all", same, same, "same?");
+}
+
 void circuit_decides(Net *net) {
     net_init(net);
     int want[4];
@@ -334,7 +425,9 @@ void circuit_decides(Net *net) {
         int neither = net_and(net, part, "both 0", not_a, not_w);
         int same = net_or(net, part, "same?", both, neither);
         all = all < 0 ? same : net_and(net, "all", "decides", all, same);
+        decider_links(net, n);
     }
+    net_link(net, "", "", "decides", "all", "decides");
     net_port(net, "", "decides", all);
 }
 
@@ -398,7 +491,6 @@ void net_dot(const Net *net, const char *part, DotStyle style, FILE *f) {
         if (strcmp(p->part, part) == 0 && !drawn[p->wire]) outside[p->wire] = 1;
     }
     fprintf(f, "digraph {\n  rankdir=%s;\n", style.rankdir);
-    if (style.full_size) fprintf(f, "  class=\"fullsize\";\n");
     fprintf(f, "  node [shape=box, style=rounded];\n");
     if (style.pin_ends) {
         fprintf(f, "  { rank=source;");
@@ -459,6 +551,83 @@ void net_dot(const Net *net, const char *part, DotStyle style, FILE *f) {
     }
     for (int i = 0; i < net->num_ports; i++) {
         if (strcmp(net->ports[i].part, part) == 0) fprintf(f, "  w%d -> p%d;\n", net->ports[i].wire, i);
+    }
+    fprintf(f, "}\n");
+}
+
+// ── Drawing boxes ───────────────────────────────────────────────────────
+
+enum { BOX_MAX_NODES = 64, BOX_MAX_EDGES = 128 };
+
+typedef struct {
+    char names[BOX_MAX_NODES][CIRCUIT_NAME];
+    int count;
+} NameSet;
+
+static int name_index(NameSet *s, const char *name) {
+    for (int i = 0; i < s->count; i++) {
+        if (strcmp(s->names[i], name) == 0) return i;
+    }
+    if (s->count == BOX_MAX_NODES) circuit_die("too many ends in one drawing", s->count);
+    copy_name(s->names[s->count], name);
+    return s->count++;
+}
+
+// An end of a line: a box, an input of the scope or an output of it.
+typedef struct {
+    char kind;
+    int index;
+} End;
+
+typedef struct {
+    End from, to;
+    int wires;
+} BoxEdge;
+
+void net_boxes_dot(const Net *net, const char *scope, const char *rankdir, FILE *f) {
+    static NameSet boxes, inputs, outputs;
+    static BoxEdge edges[BOX_MAX_EDGES];
+    boxes.count = inputs.count = outputs.count = 0;
+    int num_edges = 0;
+    for (int i = 0; i < net->num_links; i++) {
+        const Link *l = &net->links[i];
+        if (strcmp(l->scope, scope) != 0) continue;
+        End from, to;
+        if (l->from[0] == '\0') from = (End){'i', name_index(&inputs, l->from_name)};
+        else from = (End){'b', name_index(&boxes, l->from)};
+        if (l->to[0] == '\0') to = (End){'o', name_index(&outputs, l->to_name)};
+        else to = (End){'b', name_index(&boxes, l->to)};
+        int e = 0;
+        while (e < num_edges && !(edges[e].from.kind == from.kind && edges[e].from.index == from.index &&
+                                  edges[e].to.kind == to.kind && edges[e].to.index == to.index)) {
+            e++;
+        }
+        if (e == num_edges) {
+            if (num_edges == BOX_MAX_EDGES) circuit_die("too many lines in one drawing", num_edges);
+            edges[num_edges++] = (BoxEdge){from, to, 0};
+        }
+        edges[e].wires++;
+    }
+    fprintf(f, "digraph {\n  rankdir=%s;\n  node [shape=box, style=rounded];\n", rankdir);
+    for (int i = 0; i < inputs.count; i++) {
+        fprintf(f, "  i%d [shape=plaintext, label=\"", i);
+        dot_text(f, inputs.names[i]);
+        fprintf(f, "\"];\n");
+    }
+    for (int i = 0; i < boxes.count; i++) {
+        fprintf(f, "  b%d [label=\"", i);
+        dot_text(f, boxes.names[i]);
+        fprintf(f, "\"];\n");
+    }
+    for (int i = 0; i < outputs.count; i++) {
+        fprintf(f, "  o%d [shape=plaintext, label=\"", i);
+        dot_text(f, outputs.names[i]);
+        fprintf(f, "\"];\n");
+    }
+    for (int e = 0; e < num_edges; e++) {
+        fprintf(f, "  %c%d -> %c%d", edges[e].from.kind, edges[e].from.index, edges[e].to.kind, edges[e].to.index);
+        if (edges[e].wires > 1) fprintf(f, " [label=\"%d\"]", edges[e].wires);
+        fprintf(f, ";\n");
     }
     fprintf(f, "}\n");
 }
