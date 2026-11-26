@@ -77,7 +77,7 @@ The Cook-Levin theorem says that satisfiability of Boolean formulas is NP-comple
 
 ### Where the numbers come from
 
-Each number here comes from the repository: a commit, cited by its short hash, the `README.md`, a golden file, or a program run while the book was written, named where it is used. Code is quoted from the repository as it stands when the book is built. The Python repository's history is cited by links to its commits.
+Each number here comes from the repository, a commit, a golden file or a program run, named where it is used. Code is quoted from the repository as it stands when the book is built.
 
 ## The machine
 
