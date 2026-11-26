@@ -130,6 +130,55 @@ function check_steps()
   return nil
 end
 
+-- A program's number, as "Program numbers" in "The machine" defines it: its
+-- lines as base-4 digits, line 1 first, nada 0, zero 1, decr 2 and mod2 3,
+-- a program of fewer than six lines padded with nada.
+function program_number(names)
+  local digit = {nada = 0, zero = 1, decr = 2, mod2 = 3}
+  if #names > 6 then return nil end
+  local n = 0
+  for k = 1, 6 do
+    local name = "nada"
+    if k <= #names then name = trim(names[k]) end
+    if not has_key(digit, name) then return nil end
+    n = n * 4 + digit[name]
+  end
+  return n
+end
+
+-- Every "program N" in the book's source names its program: either it is
+-- followed by the program in backticks, "program 2916 (`decr, mod2, ...`)",
+-- or by a colon and the program as a text block, one line an opcode; or it is
+-- a number some such mention has already shown. The build holds each number
+-- to its program.
+function check_program_numbers()
+  local text = read(SOURCE)
+  local shown = {}
+  local wrong = {}
+  local named = 0
+  for m in re_find_all(text, "[Pp]rogram ([0-9]+) \\(`([a-z0-9, ]+)`\\)") do
+    local n = program_number(split(m.groups[2], ","))
+    if n ~= tonumber(m.groups[1]) then push(wrong, "program " .. m.groups[1] .. " is shown as `" .. m.groups[2] .. "`, which is program " .. tostring(n)) end
+    shown[m.groups[1]] = true
+    named = named + 1
+  end
+  for m in re_find_all(text, "[Pp]rogram ([0-9]+):\n\n```text\n([a-z0-9\n]+)```") do
+    local n = program_number(split(trim(m.groups[2]), "\n"))
+    if n ~= tonumber(m.groups[1]) then push(wrong, "program " .. m.groups[1] .. "'s block is program " .. tostring(n)) end
+    shown[m.groups[1]] = true
+    named = named + 1
+  end
+  for m in re_find_all(text, "[Pp]rogram ([0-9]+)") do
+    if not has_key(shown, m.group) then push(wrong, "program " .. m.group .. " is named with no program beside it anywhere") end
+  end
+  if #wrong > 0 then
+    for w in wrong do print("  " .. w) end
+    fail("book: the book's program numbers differ from their programs, so /" .. DEST_NAME .. "/ is left as it was")
+  end
+  print("book: " .. named .. " programs named by number, each its number")
+  return nil
+end
+
 -- The worked examples in "Cook-Levin as SAT" and "Solved by hand" are
 -- src/sat_hand_main.c's output, which the book's source must hold byte for
 -- byte: each of its blocks, a blank line between them.
@@ -322,6 +371,7 @@ function main()
   check_tables("tableau_main", 2)
   check_tables("boolean_main", 4)
   check_steps()
+  check_program_numbers()
   check_hand()
   check_solver_files()
 

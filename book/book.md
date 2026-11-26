@@ -133,7 +133,7 @@ A run that reaches the end of its six instructions rejects. So a program accepts
 
 ### One program, input by input
 
-Here is a program that decides {3}, the problem the puzzle page calls `is_huge`. In an ordinary programming language it is `n == 3`.
+Here is a program that decides {3}, the problem the puzzle page calls `is_huge`. In an ordinary programming language it is `n == 3`. In Nibble it is program 2704:
 
 ```text
 decr
@@ -158,6 +158,10 @@ Steve's own view of `nada` and of the design, in his words: "nada is kinda not a
 ### Counting
 
 Each instruction is one of 4 opcodes, so there are 4^6 = 4,096 programs. Each problem is a subset of {0, 1, 2, 3}, so there are 2^4 = 16 problems. Each program is a 12-bit number, two bits an instruction, and `assemble` and `disassemble` in `src/vm.c` convert between the two forms.
+
+### Program numbers
+
+This book names a program by its number. Read the six lines as the digits of a base-4 number, line 1 first, with `nada` 0, `zero` 1, `decr` 2 and `mod2` 3: the number is op₁·4⁵ + op₂·4⁴ + op₃·4³ + op₄·4² + op₅·4 + op₆. So program 0 (`nada, nada, nada, nada, nada, nada`) is the first, program 4095 (`mod2, mod2, mod2, mod2, mod2, mod2`) is the last, and the number's twelve bits, line 1's two first, are the program's machine code as the puzzle page shows it. A program of fewer than six lines ends in `nada`, so its number ends in base-4 zeros. Steve's Python, and the C that matches it byte for byte, count through the programs in the other order, line 1 as the lowest digit. That order only decides which program the search finds first; the numbers in this book are all of the kind defined here, and the build checks each against the program it names.
 
 ## Languages and machines
 
@@ -301,7 +305,7 @@ In the table, a problem's code is its inputs as bits: input i accepted sets bit 
 
 ### The rare one
 
-**Theorem 5.** {0, 2, 3} is decided by exactly one program, and that program uses all six lines:
+**Theorem 5.** {0, 2, 3} is decided by exactly one program, and that program uses all six lines. It is program 1689:
 
 ```text
 zero
@@ -414,7 +418,7 @@ These are the machine's rules, one bit at a time. `nada` and `zero` leave `AX` a
 
 ### Six steps, everything fixed
 
-Now fix the input and the program. With `AX` = 2 and the program `decr, mod2, zero, decr, zero, nada`, each of the six bits a step reads is a known 0 or 1, and so is each bit it writes. Composing the six steps is running the machine, one row a step:
+Now fix the input and the program. With `AX` = 2 and program 2916 (`decr, mod2, zero, decr, zero, nada`), each of the six bits a step reads is a known 0 or 1, and so is each bit it writes. Composing the six steps is running the machine, one row a step:
 
 ```text
                 hb lb halted accepted
@@ -569,7 +573,7 @@ digraph {
 
 ### A program through it
 
-Load the want register with `0111` and the program register with `decr, mod2, zero, decr, zero, nada`, the five-line answer to `is_not_tiny`, whose bits are `10 11 01 10 01 00`. The four cores settle like this:
+Load the want register with `0111` and the program register with program 2916 (`decr, mod2, zero, decr, zero, nada`), the five-line answer to `is_not_tiny`, whose bits are `10 11 01 10 01 00`. The four cores settle like this:
 
 | core | the run | accepted | want | same? |
 |---|---|---|---|---|
@@ -1014,7 +1018,7 @@ The step unit's gates as the repository builds them, in `sat_step` (`src/sat.c`)
 
 ### The tableau of one program
 
-Here is the tableau filled in for `is_not_tiny`'s answer, `decr, mod2, zero, decr, zero, nada`: each cell is the state after that row's line, from the stepper's compiled step (`src/tableau_main.c`, which the book's build runs and holds these tables to).
+Here is the tableau filled in for `is_not_tiny`'s answer, program 2916 (`decr, mod2, zero, decr, zero, nada`): each cell is the state after that row's line, from the stepper's compiled step (`src/tableau_main.c`, which the book's build runs and holds these tables to).
 
 | step | line | core 0 | core 1 | core 2 | core 3 |
 |---|---|---|---|---|---|
@@ -1204,7 +1208,7 @@ rocsat's answer to that CNF, as sat/oracle.shale kept it
 416
 ```
 
-Instruction i is 2·v[2i − 1] + v[2i], so the first 12 values read as `zero, decr, decr, zero, decr, zero`. The build decodes the program from the answer and holds this sentence to it, and `sat solves 13` confirms on the machine that the program accepts exactly {0, 2, 3}.
+Instruction i is 2·v[2i − 1] + v[2i], so the first 12 values read as program 1689 (`zero, decr, decr, zero, decr, zero`). The build decodes the program from the answer and holds this sentence to it, and `sat solves 13` confirms on the machine that the program accepts exactly {0, 2, 3}.
 
 ### Five lines are too few
 

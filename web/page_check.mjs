@@ -434,9 +434,9 @@ try {
   expect(clipped === 0, `${clipped} of the outcome row's cells are clipped at ${WIDTH}px`);
   // The machine code follows every pick: is_two's zero on line 1 and its
   // fixed zero on line 3, two bits a line, line 1 first, and its number.
-  expect((await text("machine-code")) === "01 00 01 00 00 00  (#17)", `is_two's machine code reads \`${await text("machine-code")}\``);
+  expect((await text("machine-code")) === "01 00 01 00 00 00  (#1088)", `is_two's machine code reads \`${await text("machine-code")}\``);
   await click('[data-slot="0"][data-op="decr"]');
-  expect((await text("machine-code")) === "10 00 01 00 00 00  (#18)", `after decr on line 1 the machine code reads \`${await text("machine-code")}\``);
+  expect((await text("machine-code")) === "10 00 01 00 00 00  (#2112)", `after decr on line 1 the machine code reads \`${await text("machine-code")}\``);
   // Its "?" opens a line about the bits, and closes it again.
   expect(await evaluate("document.getElementById('code-explain').hidden"), "the machine code's explanation shows before its ? is pressed");
   await click("#code-help");
