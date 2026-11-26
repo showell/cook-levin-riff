@@ -1,0 +1,130 @@
+-- sat/plus.shale: rocsat on Nibble++'s CNF (src/plus_sat.c), the cheap part,
+-- which build.shale runs. Two kinds of question:
+--
+--   - evaluation claims, "program P accepts input n": one run's circuit
+--     with P's bits and n's fixed by unit clauses, and a unit asking accept.
+--     A member is SAT, its model passes `rocsat check`, and accept is 1 in
+--     it. A non-member's honest run (no unit on accept) is SAT with accept
+--     0; that model with accept set to 1 is refused by `rocsat check`; and
+--     with accept asked, the CNF is UNSAT, with a DRAT proof src/drat.c
+--     checks.
+--   - the search cases that take rocsat well under a second: a language W
+--     at its census length is SAT, the program found deciding W on the
+--     interpreter, and one line shorter is UNSAT, its proof checked.
+--     sat/plus_search.shale runs the expensive ones.
+--
+-- It writes rocsat's verdicts to sat/plus/verdicts.txt, one line a claim
+-- or a search case, with no times, so `git status` after a run says whether
+-- rocsat answered as before. It fails unless each answer is the expected
+-- one. From the repository's root:
+--
+--   shale sat/plus.shale
+--
+-- rocsat is the one sat/oracle.shale runs, built in build:rocsat.
+-- budget: steps=50000000 read_bytes=400000000 arena_bytes=400000000
+
+use("./plus_rocsat.shale")
+
+const VERDICTS = "sat/plus/verdicts.txt"
+-- The census witness of {15}, 8 lines, and of {2, 3, 6, 7, 10, 11, 14, 15}.
+const FIFTEEN = "decr,half,decr,half,decr,half,decr,zero"
+const BIT_ONE = "half,decr,mod2,zero"
+-- Search cases, {W, census length}, each settled in well under a second.
+const CHEAP = {{1, 1}, {3, 2}, {52428, 4}, {65280, 5}, {32768, 8}}
+
+local t = plus_tools(arg("rocsat", "build:rocsat/src/rocsat"), "out/sat/plus")
+mkdir("sat/plus")
+local said = {}
+
+-- A claim's CNF, written; gives {path, accept}, accept its literal.
+function claim_cnf(t, ops, n, accept)
+  local args = {"claim", ops, "" .. n}
+  local name = "claim-" .. #split(ops, ",") .. "-" .. n
+  if accept then
+    push(args, "accept")
+    name = name .. "-accept"
+  end
+  local text = plus_says(t, args)
+  local path = t.out .. "/" .. name .. ".cnf"
+  replace(path, text)
+  local lit = re_find(text, "\nc accept = (-?[0-9]+)\n")
+  if lit == nil then fail(path .. " names no accept literal") end
+  return {path = path, accept = tonumber(lit.group)}
+end
+
+-- Literal `lit`'s value in a model's bits.
+function value_of(bits, lit)
+  local b = bits[abs(lit)]
+  if lit < 0 then return 1 - b end
+  return b
+end
+
+function program_text(ops)
+  return "program " .. ops .. " (" .. #split(ops, ",") .. " lines)"
+end
+
+-- The members first.
+for c in {{ops = FIFTEEN, n = 15}, {ops = BIT_ONE, n = 6}} do
+  local cnf = claim_cnf(t, c.ops, c.n, true)
+  local s = plus_solve(t, cnf.path, nil, 60000)
+  if s.verdict ~= "SAT" then fail(cnf.path .. ": " .. s.verdict .. ", and input " .. c.n .. " is a member") end
+  local model = cnf.path .. ".model"
+  replace(model, s.out)
+  local checked = run({real(t.rocsat), "check", real(cnf.path), real(model)}, {timeout_ms = 60000, whole = 4000, want = PLUS_WANT_ROCSAT})
+  if get(checked, "code", -1) ~= 0 or trim(checked.out) ~= "c model ok" then fail("rocsat check refused the model of " .. cnf.path .. ": " .. trim(checked.out)) end
+  local bits = plus_model_bits(s.out, abs(cnf.accept))
+  if value_of(bits, cnf.accept) ~= 1 then fail("the model of " .. cnf.path .. " has accept 0") end
+  push(said, program_text(c.ops) .. " accepts input " .. c.n .. ": SAT, " .. s.stats .. "; rocsat check: c model ok; accept (" .. cnf.accept .. ") = 1")
+end
+
+-- A non-member: {15}'s program on input 14.
+local honest = claim_cnf(t, FIFTEEN, 14, false)
+local run_14 = plus_solve(t, honest.path, nil, 60000)
+if run_14.verdict ~= "SAT" then fail(honest.path .. ": " .. run_14.verdict .. ", and the honest run always has a model") end
+local bits = plus_model_bits(run_14.out, abs(honest.accept))
+if value_of(bits, honest.accept) ~= 0 then fail("the honest run of " .. honest.path .. " accepts input 14") end
+push(said, program_text(FIFTEEN) .. " on input 14, accept left free: SAT, accept (" .. honest.accept .. ") = 0")
+
+local forced = claim_cnf(t, FIFTEEN, 14, true)
+-- The honest model, its accept turned to 1: a wrong model.
+local lits = {}
+for v = 1, #bits do
+  local b = bits[v]
+  if v == abs(forced.accept) then b = (forced.accept > 0) and 1 or 0 end
+  if b == 1 then push(lits, "" .. v) else push(lits, "-" .. v) end
+end
+local wrong = t.out .. "/wrong-14.v"
+replace(wrong, "v " .. join(lits, " ") .. " 0\n")
+local refused = run({real(t.rocsat), "check", real(forced.path), real(wrong)}, {timeout_ms = 60000, whole = 4000, want = PLUS_WANT_ROCSAT})
+if get(refused, "code", -1) ~= 1 or find(refused.out, "c model falsifies clause ") == nil then fail("rocsat check on the wrong model: exit " .. get(refused, "code", -1) .. ", " .. trim(refused.out)) end
+push(said, program_text(FIFTEEN) .. " accepts input 14, the honest model with accept set to 1: rocsat check: exit 1, " .. trim(refused.out))
+
+local proof = forced.path .. ".drat"
+if exists(proof) then remove(proof) end
+local no = plus_solve(t, forced.path, proof, 60000)
+if no.verdict ~= "UNSAT" then fail(forced.path .. ": " .. no.verdict .. ", and input 14 is no member") end
+local by_drat = plus_drat(t, "check", forced.path, proof)
+if not by_drat.ok then fail("drat refused the proof of " .. forced.path .. ": " .. by_drat.line) end
+push(said, program_text(FIFTEEN) .. " accepts input 14: UNSAT, " .. no.stats .. "; drat check: " .. by_drat.line)
+
+-- The cheap search cases.
+local cheap_langs = {}
+for c in CHEAP do push(cheap_langs, c[1]) end
+local census = plus_census(t, cheap_langs)
+for c in CHEAP do
+  local w = c[1]
+  local k = c[2]
+  if census["" .. w].length ~= k then fail("the census puts " .. w .. " at " .. census["" .. w].length .. " lines, not " .. k) end
+  local at = plus_search(t, w, k, 60000)
+  if at.verdict ~= "SAT" or not at.checked then fail("search " .. w .. " at " .. k .. " lines: " .. at.verdict .. ", " .. at.line) end
+  local line = "search W=" .. w .. ", census length " .. k .. ": " .. k .. " lines SAT, " .. at.program .. "; " .. at.line
+  local below = plus_search(t, w, k - 1, 60000)
+  if below.verdict ~= "UNSAT" or not below.checked then fail("search " .. w .. " at " .. (k - 1) .. " lines: " .. below.verdict .. ", " .. below.line) end
+  line = line .. "; " .. (k - 1) .. " lines UNSAT, proof " .. below.proof_bytes .. " bytes, " .. below.line
+  push(said, line)
+  yield()
+end
+
+replace(VERDICTS, join(said, "\n") .. "\n")
+print(read(VERDICTS))
+print("plus: rocsat answered all " .. #said .. " as expected; " .. VERDICTS .. " written")

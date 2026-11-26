@@ -102,7 +102,9 @@ Cnf plus_sat_search(uint32_t lang, int k) {
     if (k < 0) plus_sat_die("a program of fewer than 0 lines", k);
     if (lang >= PLUS_LANGUAGES) plus_sat_die("language not in 0..65535", (long)lang);
     Cnf c = sat_new();
-    c.num_vars = 2 * k;
+    // At k = 0 there are no program bits, and every output is a constant;
+    // sat.c writes a FALSE unit as (1) and (-1), so variable 1 is kept.
+    c.num_vars = k > 0 ? 2 * k : 1;
     Lit outs[PLUS_INPUTS];
     for (int n = 0; n < PLUS_INPUTS; n++) {
         PlusSatState s;

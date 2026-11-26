@@ -19,6 +19,8 @@
 //   plus_sat census W...              each W's shortest length and its
 //                                     witness from the four-op census:
 //                                     `W LENGTH OPS` a line (OPS `-` for none)
+//   plus_sat census-at L              the same line for every language whose
+//                                     shortest length is L
 
 #include "vm.c"
 #include "sat.c"
@@ -29,7 +31,7 @@
 #include <string.h>
 
 static int usage(void) {
-    fprintf(stderr, "usage: plus_sat size K | claim OPS N [accept] | search W K | decides W OPS | census W...\n");
+    fprintf(stderr, "usage: plus_sat size K | claim OPS N [accept] | search W K | decides W OPS | census W... | census-at L\n");
     return 2;
 }
 
@@ -129,6 +131,16 @@ static int search(uint32_t lang, int k) {
 // Static: a census holds two 64 Ki tables beside its state arrays.
 static Census census;
 
+static void census_line(uint32_t w) {
+    PlusOp ops[CENSUS_MAX_LENGTH];
+    int len = census_witness(&census, w, ops);
+    printf("%u %d ", w, len);
+    print_ops(stdout, ops, len);
+    printf("\n");
+}
+
+static const unsigned ALL_OPS = CENSUS_OP(PLUS_HALF) | CENSUS_OP(PLUS_ZERO) | CENSUS_OP(PLUS_DECR) | CENSUS_OP(PLUS_MOD2);
+
 int main(int argc, char **argv) {
     if (argc < 2) return usage();
     const char *cmd = argv[1];
@@ -145,7 +157,7 @@ int main(int argc, char **argv) {
         ok = claim(ops, k, (int)n, argc == 5) == 0;
     } else if (strcmp(cmd, "search") == 0 && argc == 4) {
         long w = number(argv[2], 0, PLUS_LANGUAGES - 1);
-        long k = number(argv[3], 1, CENSUS_MAX_LENGTH);
+        long k = number(argv[3], 0, CENSUS_MAX_LENGTH);
         if (w < 0 || k < 0) return usage();
         ok = search((uint32_t)w, (int)k) == 0;
     } else if (strcmp(cmd, "decides") == 0 && argc == 4) {
@@ -157,15 +169,19 @@ int main(int argc, char **argv) {
         printf("%s\n", yes ? "yes" : "no");
         return yes && fflush(stdout) == 0 ? 0 : 1;
     } else if (strcmp(cmd, "census") == 0 && argc >= 3) {
-        census_run(&census, CENSUS_OP(PLUS_HALF) | CENSUS_OP(PLUS_ZERO) | CENSUS_OP(PLUS_DECR) | CENSUS_OP(PLUS_MOD2));
         for (int a = 2; a < argc; a++) {
-            long w = number(argv[a], 0, PLUS_LANGUAGES - 1);
-            if (w < 0) return usage();
-            PlusOp ops[CENSUS_MAX_LENGTH];
-            int len = census_witness(&census, (uint32_t)w, ops);
-            printf("%ld %d ", w, len);
-            print_ops(stdout, ops, len);
-            printf("\n");
+            if (number(argv[a], 0, PLUS_LANGUAGES - 1) < 0) return usage();
+        }
+        census_run(&census, ALL_OPS);
+        for (int a = 2; a < argc; a++) census_line((uint32_t)number(argv[a], 0, PLUS_LANGUAGES - 1));
+        census_free(&census);
+        ok = 1;
+    } else if (strcmp(cmd, "census-at") == 0 && argc == 3) {
+        long len = number(argv[2], 0, CENSUS_MAX_LENGTH);
+        if (len < 0) return usage();
+        census_run(&census, ALL_OPS);
+        for (uint32_t w = 0; w < PLUS_LANGUAGES; w++) {
+            if (census.shortest[w] == len) census_line(w);
         }
         census_free(&census);
         ok = 1;

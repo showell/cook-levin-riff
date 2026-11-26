@@ -17,7 +17,11 @@
 --                              The Nibble++ census, src/census_main.c, is
 --                              held to tests/golden/census.txt, and so is
 --                              python/census4.py's output, an oracle that
---                              shares no code with the C.
+--                              shares no code with the C. sat/plus.shale
+--                              runs rocsat on Nibble++'s CNF, its claims
+--                              and cheap search cases, and its verdicts
+--                              are held to sat/plus/verdicts.txt; it needs
+--                              rocsat built at build:rocsat/src/rocsat.
 --   shale build.shale full=1   the fast tier, then gcc twice: -std=c11 -O2
 --                              -Wall -Wextra -Werror, and -O0 with
 --                              -fsanitize=address,undefined; each builds and
@@ -180,6 +184,14 @@ if exited_0(eq) then
 else
   failures = failures + check(false, "circuit_main equations: " .. how_it_ended(eq))
 end
+
+-- rocsat on Nibble++'s CNF: the claims and the cheap search cases, each
+-- answer checked by the script, its verdicts held to the committed file.
+local plus_held = read("sat/plus/verdicts.txt")
+local plus = run({"shale", "sat/plus.shale"}, {timeout_ms = 120000, tail = 20, nice = 10})
+local plus_now = read("sat/plus/verdicts.txt")
+failures = failures + check(exited_0(plus) and plus_now == plus_held, "sat/plus.shale: rocsat's verdicts are sat/plus/verdicts.txt: " .. #plus_now .. " bytes of " .. #plus_held .. ", " .. plus.ms .. " ms, " .. how_it_ended(plus))
+if not exited_0(plus) then print(plus.out) end
 
 if failures > 0 then fail(failures .. " check(s) failed") end
 print("all checks passed: " .. join(builds, ", "))
