@@ -1549,6 +1549,30 @@ After the second `half`, input 15 holds 3 in both. The census brings it to 0 wit
 
 Three methods agree on every case: the census, a breadth-first search over states in `src/census.c`; rocsat's search over assignments, in Roc; and `src/drat.c`'s replay of each refutation. Each is its own code, so each shortest length in the table is confirmed three separate ways.
 
+## is_not_14 needs 28 lines
+
+Steve asked the Roc Zulip, on 2026-11-26: "How do we prove that no 27-line Nibble++ programs can recognize the language is_not_14?" This chapter answers that question in full. The parts are in {{chapter Nibble++}} and {{chapter Nibble++ meets rocsat}}.
+
+### The claim
+
+is_not_14 is the formal language {0, ..., 13, 15}, every input but 14, one of the three in {{chapter Nibble++}}'s section "The hardest". A 28-line program decides it. The claim at 27 lines covers every program of that length, 4^27 = 2^54 of them, about 1.8 × 10^16, past running each one on 16 inputs. Two proofs settle it, in separate code.
+
+### rocsat's proof
+
+`plus_sat search 49151 27` writes the opposite claim as one CNF: some 27-line program decides is_not_14. Its 54 program bits are free. 16 copies of the run share them, one per input, and a unit clause holds each copy's verdict: reject for input 14, accept for the other 15. The CNF has 18,365 variables and 54,949 clauses, by its header, written while this chapter was written. A model would be a 27-line program for is_not_14.
+
+rocsat answered UNSATISFIABLE in 17.0 s, and its DRAT proof of 17,192,870 bytes replayed in `src/drat.c` in 26.9 s (`sat/plus/search.txt`, commit `9ff83c9`). The answer covers shorter programs too: a `decr` after a program's last line keeps its formal language, so a shorter program for is_not_14 would pad to one of 27 lines.
+
+The proof is trusted through its checker. `src/drat.c` is the book's own C, apart from rocsat's Roc. It checks each lemma of the proof again and accepts the proof only when every step derives, through to the empty clause.
+
+### The census's proof
+
+`src/census.c` searches the machine's states instead of its programs, as {{chapter Nibble++}} describes. 374,003 states are reachable, against 2^54 programs of 27 lines, because many programs reach the same state. Breadth first, a formal language's shortest length is the first level where a state with that language appears. is_not_14 first appears at level 28, so every program of 27 lines or fewer decides some other formal language.
+
+### One method, two models
+
+Both proofs replace the programs with a finite model of the machine, the circuit for rocsat and the graph of states for the census, and ask the question of the model once. The census lists every reachable state, 374,003 here. rocsat needs only the circuit, which grows with the program's length and the machine's width, so its method carries over to machines with more states than a list can hold.
+
 ## Guided search
 
 The search of {{chapter Nibble++ meets rocsat}} hands rocsat all 16 runs at once. A guided search, counterexample by counterexample, starts with a few runs and adds the others as they are needed. `plus_sat search-on` writes the search CNF with copies for the named inputs alone, and `sat/plus_guided.shale` runs the loop on the same 11 cases. For a formal language W and a length k:

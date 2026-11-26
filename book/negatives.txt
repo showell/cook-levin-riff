@@ -23,6 +23,7 @@
 # Each line below is `kind: the sentence`, the sentence exactly as the lint
 # prints it, and its kind is a `keep` kind.
 
+quote: Steve asked the Roc Zulip, on 2026-11-26: "How do we prove that no 27-line Nibble++ programs can recognize the language is_not_14?" This chapter answers that question in full.
 quote: Steve's own view of `nada` and of the design, in his words: "nada is kinda not a real instruction under my machine.
 scope: It makes no claim about NP, and it reduces one machine's questions, never an arbitrary verifier's.
 logic: - NOT x is 1 - x;
