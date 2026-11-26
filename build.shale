@@ -3,9 +3,9 @@
 --   shale build.shale          the fast tier: tcc runs every test file and
 --                              the main program, the program's stdout held
 --                              to tests/golden/find_solutions.txt, and
---                              python3 runs python/decides.py, the
---                              book's machine-free Python, which checks
---                              itself.
+--                              python3 runs the book's Python,
+--                              python/decides.py and python/steps.py,
+--                              each of which checks itself.
 --   shale build.shale full=1   the fast tier, then gcc twice: -std=c11 -O2
 --                              -Wall -Wextra -Werror, and -O0 with
 --                              -fsanitize=address,undefined; each builds and
@@ -26,8 +26,8 @@ const GOLDEN = "tests/golden/find_solutions.txt"
 -- Why `run` may start a binary git does not track: this build just made it.
 const RAN = "build: a test binary this build just compiled"
 -- The book's Python, and why `run` may start python3 for it.
-const PYTHON = "python/decides.py"
-const PYTHON_WANT = "build: python/decides.py, the book's Python, checks itself"
+const PYTHON = {"python/decides.py", "python/steps.py"}
+const PYTHON_WANT = "build: the book's Python checks itself"
 const GCC_WARN = {"-std=c11", "-Wall", "-Wextra", "-Werror"}
 
 -- Says a check's line; gives 1 when it failed, else 0.
@@ -128,9 +128,12 @@ for build in builds do
   failures = failures + run_golden(build)
 end
 
-local py = run({"python3", PYTHON}, {timeout_ms = 30000, tail = 10, want = PYTHON_WANT})
-local py_said = trim(py.out)
-failures = failures + check(exited_0(py) and re_find(py_said, "^python/decides.py: [0-9]+ checks passed$") ~= nil, "python3: " .. py_said .. ", " .. how_it_ended(py))
+for file in PYTHON do
+  local py = run({"python3", file}, {timeout_ms = 60000, tail = 10, want = PYTHON_WANT})
+  local py_said = trim(py.out)
+  local said_its_checks = starts_with(py_said, file .. ": ") and re_find(py_said, "^[a-z/_.]+: [0-9]+ checks passed$") ~= nil
+  failures = failures + check(exited_0(py) and said_its_checks, "python3: " .. py_said .. ", " .. how_it_ended(py))
+end
 
 if failures > 0 then fail(failures .. " check(s) failed") end
 print("all checks passed: " .. join(builds, ", "))

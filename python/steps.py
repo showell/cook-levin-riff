@@ -78,16 +78,23 @@ class Bit:
         return str(self.v)
 
 
-# Everything fixed: AX and the program are known, so each step's four bits are.
-def run_with_bits(ax, program, trace=False):
+# Everything fixed: AX and the program are known, so each step's four bits
+# are. With `trace`, it also returns one line a step.
+def run_with_bits(ax, program, trace=None):
     state = (Bit(ax >> 1), Bit(ax & 1), Bit(0), Bit(0))
-    if trace:
-        print(f"  start       hb lb halted accepted = {state}")
+    if trace is not None:
+        trace.append(f"{'start':<14}" + row(state))
     for k, op in enumerate(program, 1):
         state = step(Bit(op >> 1), Bit(op & 1), state)
-        if trace:
-            print(f"  step {k} {NAMES[op]}  hb lb halted accepted = {state}")
+        if trace is not None:
+            trace.append(f"step {k}  {NAMES[op]} {op >> 1}{op & 1}" + row(state))
     return state[3].v == 1
+
+
+# One state as the trace prints it, under "hb lb halted accepted".
+def row(state):
+    hb, lb, halted, accepted = state
+    return f"   {hb}  {lb}     {halted}        {accepted}"
 
 
 # Formulas: the same functions, given unknowns instead of bits. Constants fold
@@ -119,7 +126,7 @@ class F:
             return other
         if other is TRUE or self is other:
             return self
-        return F("and", *sorted((self, other), key=id))
+        return F("and", self, other)
 
     def __or__(self, other):
         if self is TRUE or other is TRUE:
@@ -128,7 +135,7 @@ class F:
             return other
         if other is FALSE or self is other:
             return self
-        return F("or", *sorted((self, other), key=id))
+        return F("or", self, other)
 
     def value(self, env, memo):
         if self in memo:
@@ -153,6 +160,13 @@ class F:
         seen.add(self)
         return 1 + sum(a.gates(seen) for a in self.args)
 
+    # The operands of a chain of one operator, flattened: (a OR b) OR c is
+    # [a, b, c].
+    def chain(self, op):
+        if self.op != op:
+            return [self]
+        return self.args[0].chain(op) + self.args[1].chain(op)
+
     def text(self):
         if self.op == "const":
             return str(self.args[0])
@@ -161,7 +175,12 @@ class F:
         if self.op == "not":
             return "NOT " + self.args[0].text()
         sep = " AND " if self.op == "and" else " OR "
-        return "(" + self.args[0].text() + sep + self.args[1].text() + ")"
+        return "(" + sep.join(f.text() for f in self.chain(self.op)) + ")"
+
+    # The formula as its top OR's disjuncts, one a line.
+    def lines(self):
+        parts = [f.text() for f in self.chain("or")]
+        return ["   " + parts[0]] + ["OR " + p for p in parts[1:]]
 
 
 TRUE, FALSE = F("const", 1), F("const", 0)
@@ -205,17 +224,26 @@ def check():
     return checks, formulas
 
 
-if __name__ == "__main__":
+# The blocks the book shows, a blank line between them: the run of one
+# program at AX = 2, bit by bit; the size of accepted with the program
+# unknown, per input; and that formula for AX = 0, written out.
+def book_blocks(formulas):
     example = [DECR, MOD2, ZERO, DECR, ZERO, NADA]
-    print("Everything fixed: AX = 2, the program decr mod2 zero decr zero nada.")
-    print(f"  accepts: {run_with_bits(2, example, trace=True)}")
+    trace = [" " * 14 + "  hb lb halted accepted"]
+    assert run_with_bits(2, example, trace)
+    blocks = ["```text\n" + "\n".join(trace) + "\n```"]
+    rows = ["| AX | gates in accepted |", "|---|---|"]
+    rows += [f"| {ax} | {formulas[ax].gates()} |" for ax in range(4)]
+    blocks.append("\n".join(rows))
+    blocks.append("```text\n" + "\n".join(formulas[0].lines()) + "\n```")
+    return blocks
+
+
+if __name__ == "__main__":
+    import sys
+
     checks, formulas = check()
-    print()
-    print("The program unknown, v1 .. v12; accepted after six steps, per input:")
-    for ax in range(4):
-        print(f"  AX = {ax}: {formulas[ax].gates()} gates")
-    print()
-    print("AX = 0, written out:")
-    print("  " + formulas[0].text())
-    print()
-    print(f"python/steps.py: {checks} checks passed")
+    if sys.argv[1:] == ["book"]:
+        print("\n\n".join(book_blocks(formulas)))
+    else:
+        print(f"python/steps.py: {checks} checks passed")

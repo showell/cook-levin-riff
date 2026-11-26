@@ -4,12 +4,13 @@
 //
 // Four blocks, each checked before it is printed: the 16 problems, each
 // with its Boolean expression of AX's two bits, hb and lb, held to a program
-// that decides it; the step as Boolean expressions, held to src/stepper.c's
-// step on all 64 settings; for each problem, how many programs decide it
-// and how many products its sum of products over v1 to v12 takes; and the
-// sums of products of the problems in SHOWN, each held to the machine's
-// programs exactly. book/book.shale holds the book's copies to this
-// output, byte for byte.
+// that decides it; for each problem, how many programs decide it and how
+// many products its sum of products over v1 to v12 takes; and the sums of
+// products of the two problems in SHOWN, each held to the machine's
+// programs exactly. Before them it holds src/decides.c's step expressions
+// to src/stepper.c's step on all 64 settings, since the sums of products
+// are built from them; the book shows the step from python/steps.py.
+// book/book.shale holds the book's copies to this output, byte for byte.
 // A unity build, as main.c is.
 
 #include "vm.c"
@@ -79,10 +80,6 @@ int main(void) {
             return 1;
         }
     }
-    printf("\n```text\n");
-    for (int i = 0; i < STEP_DEFINITIONS; i++) printf("%s = %s\n", STEP_EXPRESSIONS[i].name, STEP_EXPRESSIONS[i].text);
-    printf("```\n");
-
     static unsigned char is_true[NUM_LANGUAGES][POINTS];
     static Cover covers[NUM_LANGUAGES];
     printf("\n| code | problem | programs | products |\n");

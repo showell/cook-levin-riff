@@ -111,6 +111,25 @@ function check_tables(name, count)
   return nil
 end
 
+-- The blocks of "The Boolean view" and "Six expressions, composed" that
+-- python/steps.py prints with `book`: a run at AX = 2 bit by bit, the
+-- formula's sizes, and its formula at AX = 0. The book's source must hold
+-- each byte for byte.
+function check_steps()
+  local r = must(run({"python3", "python/steps.py", "book"}, {timeout_ms = 60000, whole = 40000, want = "book: python/steps.py, the book's Python, prints its blocks"}))
+  local blocks = split(trim(r.out), "\n\n")
+  if #blocks ~= 3 then fail("book: python/steps.py printed " .. #blocks .. " blocks, not 3") end
+  local source = read(SOURCE)
+  for b in blocks do
+    if find(source, b) == nil then
+      print(b)
+      fail("book: book/book.md lacks python/steps.py's block above, so /" .. DEST_NAME .. "/ is left as it was")
+    end
+  end
+  print("book: the 3 blocks of python/steps.py are in book/book.md as it prints them")
+  return nil
+end
+
 -- The worked examples in "Cook-Levin as SAT" and "Solved by hand" are
 -- src/sat_hand_main.c's output, which the book's source must hold byte for
 -- byte: each of its blocks, a blank line between them.
@@ -301,7 +320,8 @@ function main()
   end
   compose_polynomials()
   check_tables("tableau_main", 2)
-  check_tables("boolean_main", 5)
+  check_tables("boolean_main", 4)
+  check_steps()
   check_hand()
   check_solver_files()
 

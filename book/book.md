@@ -65,9 +65,9 @@ Steve wrote the first version by hand in Python, in [virtual-machine](https://gi
 
 ### What the book covers
 
-The first part is the toy for its own sake: a finite machine, completely understood, every question settled by running everything, even in Python. It runs from {{chapter The machine}} and the theory behind the word "language" through plain Python, the search of all 4,096 programs and its theorems, the puzzle page and the machine as hardware, to {{chapter Some history of the approach}}, the order in which Steve built it.
+The first part is the toy for its own sake: a finite machine, completely understood, every question settled by running everything, even in Python. It runs from {{chapter The machine}} and the theory of languages through plain Python, the search of all 4,096 programs, the puzzle page, and the machine as Boolean functions and as hardware, to {{chapter Some history of the approach}}, the order in which Steve built it.
 
-The second part is Cook-Levin: {{chapter How it got here}}, {{chapter P, NP and Cook-Levin}}, {{chapter The Boolean view}}, then the step as polynomials, from {{chapter Arithmetization}} to {{chapter The polynomials, in full}}, and the circuit as a tableau and a formula, from {{chapter The Cook-Levin machine}} to {{chapter The solver's work, in full}}.
+The second part is Cook-Levin: {{chapter How it got here}}, {{chapter P, NP and Cook-Levin}}, {{chapter Six expressions, composed}}, then the step as polynomials, from {{chapter Arithmetization}} to {{chapter The polynomials, in full}}, and the circuit as a tableau and a formula, from {{chapter The Cook-Levin machine}} to {{chapter The solver's work, in full}}.
 
 The third part is the cross-checks: {{chapter The oracles}}, {{chapter The Roc port}}, {{chapter What is Shale?}} and {{chapter The VM in Shale}}, then {{chapter What comes next}}. The theorems are numbered through the book, each proved by an exhaustive run that its proof names.
 
@@ -370,6 +370,64 @@ The last puzzle, `is_not_tiny`, also gives its `mod2` on line 2, the line where 
 
 The page's intro, behind a Help link after puzzle 1, says what a language is here (the page's word for a problem), how the machine runs a program four times to find the language it recognizes, and works `decr, zero` through to {1}; the page's check holds that example to the machine.
 
+## The Boolean view
+
+Everything so far ran the machine as a program. This chapter writes the same machine with Boolean logic alone, AND, OR and the complement on bits: the problems first, then one step, then six steps with the input and the program both fixed. Every bit in it is known, so composing the steps is just running the machine.
+
+### Each problem as two bits
+
+Read an input n as its two bits, n = 2·`hb` + `lb`, and each problem is a Boolean function of them: {3} is `hb AND lb`, {1, 2, 3} is `hb OR lb`, {1, 2} is `hb XOR lb`, and {0, 2, 3} is `hb OR NOT lb`.
+
+**Theorem 9.** The 16 problems are exactly the 16 Boolean functions of two bits: each problem is one function of `hb` and `lb`, and each function is one problem.
+
+*Proof.* A function of two bits is its four values, one per input, and a problem is the same four answers, so the two are counted alike, 2^4 = 16. `tests/test_theorems.c` evaluates the 16 expressions below at all four inputs, finds each one true at its problem's members alone and the 16 truth tables all different, and finds each problem decided by some program. `src/boolean_main.c` holds each expression to a program run on the machine and prints the table, and the book's build holds the table to that output.
+
+| code | problem | as hb and lb |
+|---|---|---|
+| 0 | { } | `0` |
+| 1 | {0} | `NOT (hb OR lb)` |
+| 2 | {1} | `NOT hb AND lb` |
+| 3 | {0, 1} | `NOT hb` |
+| 4 | {2} | `hb AND NOT lb` |
+| 5 | {0, 2} | `NOT lb` |
+| 6 | {1, 2} | `hb XOR lb` |
+| 7 | {0, 1, 2} | `NOT (hb AND lb)` |
+| 8 | {3} | `hb AND lb` |
+| 9 | {0, 3} | `NOT (hb XOR lb)` |
+| 10 | {1, 3} | `lb` |
+| 11 | {0, 1, 3} | `NOT hb OR lb` |
+| 12 | {2, 3} | `hb` |
+| 13 | {0, 2, 3} | `hb OR NOT lb` |
+| 14 | {1, 2, 3} | `hb OR lb` |
+| 15 | {0, 1, 2, 3} | `1` |
+
+So the 16 problems, the 16 puzzles of Nibble, are the 16 two-input connectives.
+
+### One step, four functions
+
+A step reads six bits: the line's opcode, `op_hb` and `op_lb`, and the machine's state, the two bits of `AX`, `hb` and `lb`, and the flags `halted` and `accepted`. It writes the four state bits again, and each new bit is a Boolean function of its own of those six. Here they are in Python (`python/steps.py`), where `~`, `&` and `|` are the complement, AND and OR:
+
+{{lines python/steps.py from "def next_hb(" to "    return accepted | (~hb & ~lb & ~op_hb & op_lb & ~halted)"}}
+
+Read each one as a sentence. `AX` keeps its high bit when the machine has halted or the line is `nada` or `zero`, and `decr` takes 3 to 2. It keeps its low bit in those cases and under `mod2`, which clears the high bit, and `decr` takes 2 to 1. `halted` turns on at a `decr` at 0, and `accepted` at a `zero` at 0 on a running machine. Once on, a flag stays on.
+
+### Six steps, everything fixed
+
+Now fix the input and the program. With `AX` = 2 and the program `decr, mod2, zero, decr, zero, nada`, each of the six bits a step reads is a known 0 or 1, and so is each bit it writes. Composing the six steps is running the machine, one row a step:
+
+```text
+                hb lb halted accepted
+start            1  0     0        0
+step 1  decr 10   0  1     0        0
+step 2  mod2 11   0  1     0        0
+step 3  zero 01   0  1     0        0
+step 4  decr 10   0  0     0        0
+step 5  zero 01   0  0     0        1
+step 6  nada 00   0  0     0        1
+```
+
+The last row's `accepted` is 1: the program accepts 2. `python/steps.py` runs each of the 4,096 programs on all four inputs this way and holds every answer to an ordinary interpreter written beside it. {{chapter Six expressions, composed}}, in the second part, keeps the same four functions and the same six steps, and leaves the program's bits unknown.
+
 ## The machine as a circuit
 
 This chapter builds the machine as hardware, a plain digital circuit with two inputs and one output. Its inputs are a problem and a program, and its output is true when the program decides the problem and false otherwise. It is combinational: the whole run is laid out in space, and every wire settles at once. {{chapter The Cook-Levin machine}}, in the second part, turns the same circuit around.
@@ -538,70 +596,37 @@ Decidable languages differ in cost. P is the class decided in time polynomial in
 
 The toy is such a checker. Given a problem and a program, it runs the program on four inputs and says whether the program decides the problem; the program is the certificate. The chapters that follow take that checker apart two ways, after {{chapter Six expressions, composed}} sets the two side by side. {{chapter Arithmetization}} through {{chapter The polynomials, in full}} write its step as polynomials and compose all six, the riff's own route. {{chapter The Cook-Levin machine}} through {{chapter The solver's work, in full}} take Cook and Levin's route: the run as a tableau, the tableau as clauses, and a SAT solver to find the certificates.
 
-## The Boolean view
-
-{{chapter Programs as languages}} found every problem by running programs. This chapter states the same problems, and then one step of the machine, as plain Boolean expressions: AND, OR and NOT on bits. The next chapter composes the steps.
-
-### Each problem as two bits
-
-Read an input n as its two bits, n = 2·`hb` + `lb`, and each problem is a Boolean function of them: {3} is `hb AND lb`, {1, 2, 3} is `hb OR lb`, {1, 2} is `hb XOR lb`, and {0, 2, 3} is `hb OR NOT lb`.
-
-**Theorem 9.** The 16 problems are exactly the 16 Boolean functions of two bits: each problem is one function of `hb` and `lb`, and each function is one problem.
-
-*Proof.* A function of two bits is its four values, one per input, and a problem is the same four answers, so the two are counted alike, 2^4 = 16. `tests/test_theorems.c` evaluates the 16 expressions below at all four inputs, finds each one true at its problem's members alone and the 16 truth tables all different, and finds each problem decided by some program. `src/boolean_main.c` holds each expression to a program run on the machine and prints the table, and the book's build holds the table to that output.
-
-| code | problem | as hb and lb |
-|---|---|---|
-| 0 | { } | `0` |
-| 1 | {0} | `NOT (hb OR lb)` |
-| 2 | {1} | `NOT hb AND lb` |
-| 3 | {0, 1} | `NOT hb` |
-| 4 | {2} | `hb AND NOT lb` |
-| 5 | {0, 2} | `NOT lb` |
-| 6 | {1, 2} | `hb XOR lb` |
-| 7 | {0, 1, 2} | `NOT (hb AND lb)` |
-| 8 | {3} | `hb AND lb` |
-| 9 | {0, 3} | `NOT (hb XOR lb)` |
-| 10 | {1, 3} | `lb` |
-| 11 | {0, 1, 3} | `NOT hb OR lb` |
-| 12 | {2, 3} | `hb` |
-| 13 | {0, 2, 3} | `hb OR NOT lb` |
-| 14 | {1, 2, 3} | `hb OR lb` |
-| 15 | {0, 1, 2, 3} | `1` |
-
-So the 16 problems, the 16 puzzles of Nibble, are the 16 two-input connectives. One step of the machine is a Boolean function too, of six bits.
-
-### The step as expressions
-
-A step reads six bits: the four of the state, `hb`, `lb`, `halted` and `accepted`, and the line's two, `op_hb` and `op_lb`. It is twelve statements (`src/decides.c`):
-
-- **eight intermediate facts** about the machine, each used only inside this step;
-- **four primed bits**, `hb'`, `lb'`, `halted'` and `accepted'`, the next state. These four are all that survive into the next step, where they are its unprimed four.
-
-```text
-ax_is_0 = NOT hb AND NOT lb
-ax_is_2 = hb AND NOT lb
-ax_is_3 = hb AND lb
-is_zero = NOT op_hb AND op_lb
-is_decr = op_hb AND NOT op_lb
-is_mod2 = op_hb AND op_lb
-runs = NOT halted
-keeps = halted OR NOT op_hb
-hb' = (hb AND keeps) OR (ax_is_3 AND is_decr AND runs)
-lb' = (lb AND (keeps OR (is_mod2 AND runs))) OR (ax_is_2 AND is_decr AND runs)
-halted' = halted OR (ax_is_0 AND is_decr)
-accepted' = accepted OR (ax_is_0 AND is_zero AND runs)
-```
-
-`keeps` says that `AX` stays as it is: the machine has halted, or the line is `nada` or `zero`. So `hb'` is the old `hb` kept, or a `decr` from 3 to 2. `lb'` is the old `lb` kept, or kept by `mod2`, which keeps `lb` and clears `hb`, or a `decr` from 2 to 1. `halted'` adds a `decr` at 0, and `accepted'` a `zero` at 0 on a running machine. `tests/test_boolean.c` holds the four to `src/stepper.c`'s step on all 64 settings of the six bits, and `src/boolean_main.c` checks them again before it prints them for this book. They are the gates of `sat_step` in {{chapter The Cook-Levin machine}}, merged by hand.
-
 ## Six expressions, composed
 
-{{chapter The Boolean view}} wrote one step of the machine as twelve Boolean statements of six bits. Six steps composed are one function of fourteen bits: the input's two and the program's twelve. This chapter composes them into the question a puzzle asks, and then names the two ways of composing that the rest of this part follows.
+{{chapter The Boolean view}} ran the machine as four Boolean functions of six bits, composed over six steps, with the input and the program fixed. Cook and Levin's move is to stop fixing the program. Keep the same four functions and the same six steps, give the program's twelve bits names in place of values, v1 to v12, and what comes out of the sixth step is a formula where it was a bit. This chapter does that, turns the formula into the question a puzzle asks, and then names the two ways of composing that the rest of this part follows.
+
+### The program unknown
+
+Line k's opcode bits are v(2k − 1) and v(2k), so instruction k is 2·v(2k − 1) + v(2k), numbered as in {{chapter Cook-Levin as SAT}}. The input stays fixed, so `hb` and `lb` start as constants and both flags as 0. `python/steps.py` composes the six steps with the same Python functions, now given formulas: a constant folds away, and an equal subformula is built once. The final `accepted`, for each input, has this many gates:
+
+| AX | gates in accepted |
+|---|---|
+| 0 | 41 |
+| 1 | 68 |
+| 2 | 119 |
+| 3 | 123 |
+
+For input 0 it is small enough to read:
+
+```text
+   (NOT v1 AND v2)
+OR (NOT v3 AND v4 AND NOT (v1 AND NOT v2))
+OR (NOT v5 AND v6 AND NOT ((v1 AND NOT v2) OR (v3 AND NOT v4)))
+OR (NOT v7 AND v8 AND NOT ((v1 AND NOT v2) OR (v3 AND NOT v4) OR (v5 AND NOT v6)))
+OR (NOT v9 AND v10 AND NOT ((v1 AND NOT v2) OR (v3 AND NOT v4) OR (v5 AND NOT v6) OR (v7 AND NOT v8)))
+OR (NOT v11 AND v12 AND NOT ((v1 AND NOT v2) OR (v3 AND NOT v4) OR (v5 AND NOT v6) OR (v7 AND NOT v8) OR (v9 AND NOT v10)))
+```
+
+Line k's bits `0 1` are `zero`, and `1 0` are `decr`. So the formula says: some line is `zero`, and every line before it is `nada`, `zero` or `mod2`. That is input 0's whole story, since `AX` starts at 0: `zero` accepts it, `decr` rejects it, and `nada` and `mod2` leave it as it is. `python/steps.py` holds all four formulas to the interpreter on all 4,096 programs.
 
 ### Composition
 
-Chain six copies. The first reads the input's two bits as `hb` and `lb`, both flags at 0, and line 1's two bits. Each later copy reads the four primed bits the one before it wrote, and its own line's two bits. So the only bits that enter from outside the chain are the input's two and each line's two, six lines of them:
+Free the input's two bits as well. The first step reads them as `hb` and `lb`, both flags at 0, and line 1's two bits. Each later step reads the four bits the one before it wrote, and its own line's two bits. So the only bits that enter from outside the chain are the input's two and each line's two, six lines of them:
 
 | | bits |
 |---|---|
@@ -610,7 +635,7 @@ Chain six copies. The first reads the input's two bits as `hb` and `lb`, both fl
 | the program, two a line for six lines | 12 |
 | **the composed expression's variables** | **14** |
 
-Everything else is internal: six steps of eight facts each, and of the 24 primed bits, the 20 that the next step reads. After the sixth step, `accepted'` is an expression accepted(n, v) of those 14 bits. The program's bits are v1 to v12, numbered as in {{chapter Cook-Levin as SAT}}, where instruction i is 2·v(2i − 1) + v(2i).
+Everything else is internal: each step's gates, and of the 24 state bits the steps write, the 20 that a next step reads. After the sixth step, `accepted` is an expression accepted(n, v) of those 14 bits.
 
 ### The question as one expression
 
