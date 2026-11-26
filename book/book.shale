@@ -51,7 +51,7 @@ const DRAW = "book_builder/tools/draw_diagrams.shale"
 const MOVE = "book_builder/tools/move_stage.shale"
 const CHECKER = "book_builder/tools/book_check.mjs"
 const BUILD = "book_builder/tools/build_book.shale"
-const APP_TESTS = 13
+const APP_TESTS = 15
 const DOT_WANT = "graphviz: a book's diagrams, drawn at build time"
 const CHECK_WANT = "script: book_check.mjs drives the staged pages in headless Chromium"
 const COMPOSED = "book/build"
@@ -61,7 +61,9 @@ const SAT_DIR = "book/build/sat"
 const PROOFS = "sat/proofs"
 const SAT_WANT = "book: sat_main and drat_main, just built from src/ for the book"
 const OPS = {"nada", "zero", "decr", "mod2"}
-const CIRCUIT_BLOCKS = 19
+const CIRCUIT_BLOCKS = 10
+const CIRCUIT_SCHEMATICS = 7
+const SCHEMATICS = "book/build/schematics"
 
 -- The four final polynomials, composed by the C into COMPOSED/out/. What
 -- compose_main prints is held to the golden's lines: each step's term counts
@@ -154,7 +156,9 @@ end
 -- The circuit chapters' drawings and tables, src/circuit_main.c's: each
 -- block it prints, a blank line apart, is in the book's source byte for byte
 -- ("Parts for a small computer", "The machine as a circuit" and "The
--- circuit, in full").
+-- circuit, in full"). It also draws the parts' schematics into
+-- book/build/schematics/, one SVG each, which the app's `schematic` fences
+-- embed (book/app/Schematics.roc), so each is the netlist's as built.
 function check_circuit()
   must(run({"gcc", "-O2", "-std=c11", "-Wall", "-Wextra", "-Werror", "-o", real(COMPOSED) .. "/circuit_main", "src/circuit_main.c"}, {timeout_ms = 120000, tail = 20}))
   local exe = real(COMPOSED .. "/circuit_main")
@@ -168,7 +172,12 @@ function check_circuit()
       fail("book: book/book.md lacks circuit_main's block above, so /" .. DEST_NAME .. "/ is left as it was")
     end
   end
-  print("book: the " .. #blocks .. " drawings and tables of circuit_main are in book/book.md as it prints them")
+  if exists(SCHEMATICS) then remove_tree(SCHEMATICS) end
+  mkdir(SCHEMATICS)
+  must(run({exe, "svg", real(SCHEMATICS)}, {timeout_ms = 60000, whole = 2000, want = want}))
+  local drawn = #glob(SCHEMATICS .. "/*.svg")
+  if drawn ~= CIRCUIT_SCHEMATICS then fail("book: circuit_main drew " .. drawn .. " schematics, not " .. CIRCUIT_SCHEMATICS) end
+  print("book: the " .. #blocks .. " drawings and tables of circuit_main are in book/book.md as it prints them, and its " .. drawn .. " schematics are drawn")
   return nil
 end
 

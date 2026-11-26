@@ -9,6 +9,8 @@
 ## `book/build/out/`. Each `dimacs` fence shows a SAT formula, proof or
 ## answer in full, as `SatFiles.roc` says; the pre-step writes the formulas
 ## to `book/build/sat/` and checks rocsat's committed proofs and answers.
+## Each `schematic` fence shows one part of the circuit at gate level, as
+## `Schematics.roc` says; the pre-step draws them into `book/build/schematics/`.
 app [main!] {
 	bb: "../../../roc-apps/book_builder/builder/main.roc",
 	pf: platform "../../../roc-apps/book_builder/platform/main.roc",
@@ -24,6 +26,7 @@ import bb.Pages
 import sc.SyntaxColor
 import Polynomials
 import SatFiles
+import Schematics
 
 main! : Str => Try(Str, Str)
 main! = |_folder| {
@@ -47,8 +50,12 @@ main! = |_folder| {
 	for path in SatFiles.paths_wanted(found.manuscript) {
 		$sat_files = $sat_files.append({ path, text: read_text!(path)? })
 	}
+	var $schematics = []
+	for path in Schematics.paths_wanted(found.manuscript) {
+		$schematics = $schematics.append({ path, text: read_text!(path)? })
+	}
 	Builder.build!(
-		{ ..settings, fence_hooks: [Diagrams.hook(drawn), Polynomials.hook($polynomials), SatFiles.hook($sat_files)] },
+		{ ..settings, fence_hooks: [Diagrams.hook(drawn), Polynomials.hook($polynomials), SatFiles.hook($sat_files), Schematics.hook($schematics)] },
 		|path|
 			if path == manuscript_path {
 				Ok(found.manuscript)
