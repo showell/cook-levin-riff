@@ -597,13 +597,672 @@ The one complaint is a proof. The first 438 clauses say only that each gate equa
 
 Every bit here was given; the check only computes. A solver that finds the bits when they are left unknown is where the second part, {{chapter Cook-Levin as SAT}}, takes the same encoding.
 
+## Parts for a small computer
+
+This chapter builds, from the bottom up, the parts that {{chapter The machine as a circuit}} puts together from the top down. Three kinds of gate are allowed, AND, OR and NOT, and each part below is made of them alone. Each part is a literal transcription of one rule of the machine, as `vm_step` in `src/vm.c` states it.
+
+The parts are functions in `src/circuit.c`, which records every gate in a netlist with its name and its part's name. `src/circuit_main.c` draws each drawing here from that netlist and fills each table by running the netlist's simulator on every input the part can be given; the book's build holds both to its output, byte for byte, and `tests/test_circuit.c` checks the same answers.
+
+### Two ways to carry a value
+
+A value from 0 to 3 travels on wires in one of two ways. As *bits*, it is two wires, `hb` and `lb`, the way `AX` holds it. As *one-hot* wires, it is four wires, exactly one of them on: the wire for the value. The opcode's rules are easiest to state on one-hot wires, where each rule is a question of which wire goes where.
+
+### The decoder
+
+The decoder turns two bits into four one-hot wires. Two NOT gates give the complements of `hb` and `lb`, and one AND gate per value lights its wire: `is_0` is `~hb` AND `~lb`.
+
+The decoder, 6 gates
+```dot
+digraph {
+  rankdir=LR;
+  node [shape=box, style=rounded];
+  { rank=source; w2; w3; }
+  w2 [shape=plaintext, label="hb"];
+  w3 [shape=plaintext, label="lb"];
+  w4 [label="NOT\n~hb"];
+  w5 [label="NOT\n~lb"];
+  w6 [label="AND\nis_0"];
+  w7 [label="AND\nis_1"];
+  w8 [label="AND\nis_2"];
+  w9 [label="AND\nis_3"];
+  { rank=sink; p0; p1; p2; p3; }
+  p0 [shape=plaintext, label="is_0"];
+  p1 [shape=plaintext, label="is_1"];
+  p2 [shape=plaintext, label="is_2"];
+  p3 [shape=plaintext, label="is_3"];
+  w2 -> w4;
+  w3 -> w5;
+  w4 -> w6;
+  w5 -> w6;
+  w4 -> w7;
+  w3 -> w7;
+  w2 -> w8;
+  w5 -> w8;
+  w2 -> w9;
+  w3 -> w9;
+  w6 -> p0;
+  w7 -> p1;
+  w8 -> p2;
+  w9 -> p3;
+}
+```
+
+| AX | hb | lb | is_0 | is_1 | is_2 | is_3 |
+|---|---|---|---|---|---|---|
+| 0 | 0 | 0 | 1 | 0 | 0 | 0 |
+| 1 | 0 | 1 | 0 | 1 | 0 | 0 |
+| 2 | 1 | 0 | 0 | 0 | 1 | 0 |
+| 3 | 1 | 1 | 0 | 0 | 0 | 1 |
+
+The same part, with its outputs named `op_nada` to `op_mod2`, decodes a program line's two bits.
+
+### The encoder
+
+The encoder turns one-hot wires back into bits: `hb'` is `next_2` OR `next_3`, and `lb'` is `next_1` OR `next_3`. Value 0 has both bits 0, and it is what remains when wires 1 to 3 are all off, so the encoder reads only those three.
+
+The encoder, 2 gates
+```dot
+digraph {
+  rankdir=LR;
+  node [shape=box, style=rounded];
+  { rank=source; w3; w4; w5; }
+  w3 [shape=plaintext, label="next_1"];
+  w4 [shape=plaintext, label="next_2"];
+  w5 [shape=plaintext, label="next_3"];
+  w6 [label="OR\nhb'"];
+  w7 [label="OR\nlb'"];
+  { rank=sink; p0; p1; }
+  p0 [shape=plaintext, label="hb'"];
+  p1 [shape=plaintext, label="lb'"];
+  w4 -> w6;
+  w5 -> w6;
+  w3 -> w7;
+  w5 -> w7;
+  w6 -> p0;
+  w7 -> p1;
+}
+```
+
+| lit wire | hb' | lb' |
+|---|---|---|
+| next_0 | 0 | 0 |
+| next_1 | 0 | 1 |
+| next_2 | 1 | 0 |
+| next_3 | 1 | 1 |
+
+### The four opcode machines
+
+Each opcode has a machine of its own. It reads `is_0` to `is_3` and gives four one-hot wires for the value `AX` becomes, `next_0` to `next_3`, and two flags, `accepts` and `halts`. A wire tied to 0 is drawn from a `0`.
+
+- **`nada`** is wires alone: each value goes straight across.
+- **`zero`** is wires too: each value goes straight across, and `is_0` is tapped twice, to accept and to halt.
+- **`decr`** is a *shifter*: each wire moves down one place, and `is_0` falls out as a halt.
+- **`mod2`** folds 3 onto 1 and 2 onto 0, with two OR gates.
+
+`nada`, wires alone
+```dot
+digraph {
+  rankdir=LR;
+  node [shape=box, style=rounded];
+  { rank=source; w0; w2; w3; w4; w5; }
+  w0 [shape=plaintext, label="0"];
+  w2 [shape=plaintext, label="is_0"];
+  w3 [shape=plaintext, label="is_1"];
+  w4 [shape=plaintext, label="is_2"];
+  w5 [shape=plaintext, label="is_3"];
+  { rank=sink; p0; p1; p2; p3; p4; p5; }
+  p0 [shape=plaintext, label="next_0"];
+  p1 [shape=plaintext, label="next_1"];
+  p2 [shape=plaintext, label="next_2"];
+  p3 [shape=plaintext, label="next_3"];
+  p4 [shape=plaintext, label="accepts"];
+  p5 [shape=plaintext, label="halts"];
+  w2 -> p0;
+  w3 -> p1;
+  w4 -> p2;
+  w5 -> p3;
+  w0 -> p4;
+  w0 -> p5;
+}
+```
+
+`zero`, wires and two taps
+```dot
+digraph {
+  rankdir=LR;
+  node [shape=box, style=rounded];
+  { rank=source; w2; w3; w4; w5; }
+  w2 [shape=plaintext, label="is_0"];
+  w3 [shape=plaintext, label="is_1"];
+  w4 [shape=plaintext, label="is_2"];
+  w5 [shape=plaintext, label="is_3"];
+  { rank=sink; p0; p1; p2; p3; p4; p5; }
+  p0 [shape=plaintext, label="next_0"];
+  p1 [shape=plaintext, label="next_1"];
+  p2 [shape=plaintext, label="next_2"];
+  p3 [shape=plaintext, label="next_3"];
+  p4 [shape=plaintext, label="accepts"];
+  p5 [shape=plaintext, label="halts"];
+  w2 -> p0;
+  w3 -> p1;
+  w4 -> p2;
+  w5 -> p3;
+  w2 -> p4;
+  w2 -> p5;
+}
+```
+
+`decr`, a shifter
+```dot
+digraph {
+  rankdir=LR;
+  node [shape=box, style=rounded];
+  { rank=source; w0; w2; w3; w4; w5; }
+  w0 [shape=plaintext, label="0"];
+  w2 [shape=plaintext, label="is_0"];
+  w3 [shape=plaintext, label="is_1"];
+  w4 [shape=plaintext, label="is_2"];
+  w5 [shape=plaintext, label="is_3"];
+  { rank=sink; p0; p1; p2; p3; p4; p5; }
+  p0 [shape=plaintext, label="next_0"];
+  p1 [shape=plaintext, label="next_1"];
+  p2 [shape=plaintext, label="next_2"];
+  p3 [shape=plaintext, label="next_3"];
+  p4 [shape=plaintext, label="accepts"];
+  p5 [shape=plaintext, label="halts"];
+  w3 -> p0;
+  w4 -> p1;
+  w5 -> p2;
+  w0 -> p3;
+  w0 -> p4;
+  w2 -> p5;
+}
+```
+
+`mod2`, two folds
+```dot
+digraph {
+  rankdir=LR;
+  node [shape=box, style=rounded];
+  { rank=source; w0; w2; w3; w4; w5; }
+  w0 [shape=plaintext, label="0"];
+  w2 [shape=plaintext, label="is_0"];
+  w3 [shape=plaintext, label="is_1"];
+  w4 [shape=plaintext, label="is_2"];
+  w5 [shape=plaintext, label="is_3"];
+  w6 [label="OR\nfold_0"];
+  w7 [label="OR\nfold_1"];
+  { rank=sink; p0; p1; p2; p3; p4; p5; }
+  p0 [shape=plaintext, label="next_0"];
+  p1 [shape=plaintext, label="next_1"];
+  p2 [shape=plaintext, label="next_2"];
+  p3 [shape=plaintext, label="next_3"];
+  p4 [shape=plaintext, label="accepts"];
+  p5 [shape=plaintext, label="halts"];
+  w2 -> w6;
+  w4 -> w6;
+  w3 -> w7;
+  w5 -> w7;
+  w6 -> p0;
+  w7 -> p1;
+  w0 -> p2;
+  w0 -> p3;
+  w0 -> p4;
+  w0 -> p5;
+}
+```
+
+Each cell names the wires on for that value of `AX`. `decr` at 0 lights only `halts`, and `AX` stays at 0.
+
+| AX | `nada` | `zero` | `decr` | `mod2` |
+|---|---|---|---|---|
+| 0 | next_0 | next_0, accepts, halts | halts | next_0 |
+| 1 | next_1 | next_1 | next_0 | next_1 |
+| 2 | next_2 | next_2 | next_1 | next_0 |
+| 3 | next_3 | next_3 | next_2 | next_1 |
+
+### The hold
+
+A halted machine stays as it is. A second decoder on the line's bits gives `op_nada` to `op_mod2`, and the hold turns them into four enables: `en_nada` is `op_nada` OR `halted`, and each other enable is its op wire AND `~halted`. A halted machine runs `nada`, whatever its line says.
+
+The hold, 5 gates
+```dot
+digraph {
+  rankdir=LR;
+  node [shape=box, style=rounded];
+  { rank=source; w2; w3; w4; w5; w6; }
+  w2 [shape=plaintext, label="op_nada"];
+  w3 [shape=plaintext, label="op_zero"];
+  w4 [shape=plaintext, label="op_decr"];
+  w5 [shape=plaintext, label="op_mod2"];
+  w6 [shape=plaintext, label="halted"];
+  w7 [label="NOT\n~halted"];
+  w8 [label="OR\nen_nada"];
+  w9 [label="AND\nen_zero"];
+  w10 [label="AND\nen_decr"];
+  w11 [label="AND\nen_mod2"];
+  { rank=sink; p0; p1; p2; p3; }
+  p0 [shape=plaintext, label="en_nada"];
+  p1 [shape=plaintext, label="en_zero"];
+  p2 [shape=plaintext, label="en_decr"];
+  p3 [shape=plaintext, label="en_mod2"];
+  w6 -> w7;
+  w2 -> w8;
+  w6 -> w8;
+  w3 -> w9;
+  w7 -> w9;
+  w4 -> w10;
+  w7 -> w10;
+  w5 -> w11;
+  w7 -> w11;
+  w8 -> p0;
+  w9 -> p1;
+  w10 -> p2;
+  w11 -> p3;
+}
+```
+
+| halted | op | en_nada | en_zero | en_decr | en_mod2 |
+|---|---|---|---|---|---|
+| 0 | `nada` | 1 | 0 | 0 | 0 |
+| 0 | `zero` | 0 | 1 | 0 | 0 |
+| 0 | `decr` | 0 | 0 | 1 | 0 |
+| 0 | `mod2` | 0 | 0 | 0 | 1 |
+| 1 | `nada` | 1 | 0 | 0 | 0 |
+| 1 | `zero` | 1 | 0 | 0 | 0 |
+| 1 | `decr` | 1 | 0 | 0 | 0 |
+| 1 | `mod2` | 1 | 0 | 0 | 0 |
+
+### The selector
+
+Exactly one enable is on. The selector builds each output wire of the step as an OR, over the four machines, of that machine's wire AND its enable, so the OR passes the enabled machine's wire. Only the wires a machine drives get gates. Here is the selector for one wire, `next_1`:
+
+The selector for `next_1`, 7 gates
+```dot
+digraph {
+  rankdir=LR;
+  node [shape=box, style=rounded];
+  { rank=source; w2; w3; w4; w5; w6; w7; w8; w9; }
+  w2 [shape=plaintext, label="en_nada"];
+  w3 [shape=plaintext, label="en_zero"];
+  w4 [shape=plaintext, label="en_decr"];
+  w5 [shape=plaintext, label="en_mod2"];
+  w6 [shape=plaintext, label="nada's next_1"];
+  w7 [shape=plaintext, label="zero's next_1"];
+  w8 [shape=plaintext, label="decr's next_1"];
+  w9 [shape=plaintext, label="mod2's next_1"];
+  w10 [label="AND\nnada next_1"];
+  w11 [label="AND\nzero next_1"];
+  w12 [label="OR\nnext_1"];
+  w13 [label="AND\ndecr next_1"];
+  w14 [label="OR\nnext_1"];
+  w15 [label="AND\nmod2 next_1"];
+  w16 [label="OR\nnext_1"];
+  { rank=sink; p0; }
+  p0 [shape=plaintext, label="next_1"];
+  w6 -> w10;
+  w2 -> w10;
+  w7 -> w11;
+  w3 -> w11;
+  w10 -> w12;
+  w11 -> w12;
+  w8 -> w13;
+  w4 -> w13;
+  w12 -> w14;
+  w13 -> w14;
+  w9 -> w15;
+  w5 -> w15;
+  w14 -> w16;
+  w15 -> w16;
+  w16 -> p0;
+}
+```
+
+The whole selector does the same for `next_0` to `next_3`, `accepts` and `halts`: 26 gates. `tests/test_circuit.c` checks each wire on all four enables and all 16 settings of its drivers.
+
+### The latches
+
+A flag, once on, stays on: `accepted'` is `accepted` OR `accepts`, and `halted'` is `halted` OR `halts`.
+
+The latches, 2 gates
+```dot
+digraph {
+  rankdir=LR;
+  node [shape=box, style=rounded];
+  { rank=source; w2; w3; w4; w5; }
+  w2 [shape=plaintext, label="halted"];
+  w3 [shape=plaintext, label="halts"];
+  w4 [shape=plaintext, label="accepted"];
+  w5 [shape=plaintext, label="accepts"];
+  w6 [label="OR\nhalted'"];
+  w7 [label="OR\naccepted'"];
+  { rank=sink; p0; p1; }
+  p0 [shape=plaintext, label="halted'"];
+  p1 [shape=plaintext, label="accepted'"];
+  w2 -> w6;
+  w3 -> w6;
+  w4 -> w7;
+  w5 -> w7;
+  w6 -> p0;
+  w7 -> p1;
+}
+```
+
+| accepted | accepts | accepted' |
+|---|---|---|
+| 0 | 0 | 0 |
+| 0 | 1 | 1 |
+| 1 | 0 | 1 |
+| 1 | 1 | 1 |
+
+### The stepper
+
+A stepper is one step of the machine: the decoder on `AX`, the op decoder on the line's bits, the hold, the four machines, the selector, the encoder and the two latches. It has six wires in, `hb`, `lb`, `halted`, `accepted`, `op_hb` and `op_lb`, and four out, the same state for the next step. `tests/test_circuit.c` holds it to `vm_step` on all 64 settings of its six inputs. {{chapter The machine as a circuit}} opens it up.
+
 ## The machine as a circuit
 
-This chapter builds the machine as hardware, a plain digital circuit with two inputs and one output. Its inputs are a problem and a program, and its output is true when the program decides the problem and false otherwise. It is combinational: the whole run is laid out in space, and every wire settles at once. {{chapter The Cook-Levin machine}}, in the second part, turns the same circuit around.
+This chapter draws the machine as hardware, a plain digital circuit, from the top down: each level is one drawing whose boxes the next level opens, down to single gates. The parts at the bottom are those of {{chapter Parts for a small computer}}. The circuit is combinational: the whole run is laid out in space, and every wire settles at once. {{chapter The Cook-Levin machine}}, in the second part, turns the same circuit around.
 
-### The whole circuit
+### The black box
 
-The circuit has two registers on its left. The *want* register holds four bits, one per input, saying which inputs the problem holds: {1, 2, 3} is `0111`, input 0's bit first. The *program* register holds the twelve bits of a program, two per line. The program goes to four cores side by side, one per input, and each core answers whether its input is accepted. Four comparators check each answer against its want bit, and a final AND joins them.
+From outside, the machine is a box with fourteen wires in and one out. Two wires carry the input, `AX`'s two bits, and twelve carry the program, two per line. The wire out says whether the program accepts the input.
+
+The machine, from outside
+```dot
+digraph {
+  rankdir=LR;
+  node [shape=box, style=rounded];
+  input [shape=plaintext, label="input\n2 bits"];
+  program [shape=plaintext, label="program\n12 bits"];
+  core [label="core"];
+  accepted [shape=plaintext, label="accepted"];
+  input -> core;
+  program -> core;
+  core -> accepted;
+}
+```
+
+### One core
+
+Inside, the box is a *core*: the machine unrolled. The program's twelve wires split into six lines of two bits, and six steppers sit in a chain. The first starts from the input with both flags 0; each later one is fed by the one before it and by its own line. What leaves the sixth stepper's `accepted'` wire is the core's answer.
+
+One core: six steppers in a chain
+```dot
+digraph {
+  rankdir=LR;
+  node [shape=box, style=rounded];
+  start [shape=plaintext, label="AX = input\nhalted = 0\naccepted = 0"];
+  s1 [label="step 1"];
+  s2 [label="step 2"];
+  s3 [label="step 3"];
+  s4 [label="step 4"];
+  s5 [label="step 5"];
+  s6 [label="step 6"];
+  program [shape=plaintext, label="program\n12 bits"];
+  lines [shape=record, label="<l1> line 1|<l2> line 2|<l3> line 3|<l4> line 4|<l5> line 5|<l6> line 6"];
+  accepted [shape=plaintext, label="accepted"];
+  start -> s1 -> s2 -> s3 -> s4 -> s5 -> s6 -> accepted;
+  program -> lines;
+  lines:l1 -> s1;
+  lines:l2 -> s2;
+  lines:l3 -> s3;
+  lines:l4 -> s4;
+  lines:l5 -> s5;
+  lines:l6 -> s6;
+}
+```
+
+All six steppers are the same circuit.
+
+### Inside a stepper
+
+A stepper decodes, computes every opcode at once, and selects. The decoder turns `AX` into one-hot wires, and all four opcode machines work on them side by side. The op decoder and the hold pick one machine, the selector passes that machine's wires, and the encoder turns the chosen value back into bits. The latches sit beside them.
+
+One stepper, by parts
+```dot
+digraph {
+  rankdir=LR;
+  node [shape=box, style=rounded];
+  ax [shape=plaintext, label="hb, lb"];
+  line [shape=plaintext, label="op_hb, op_lb"];
+  flags [shape=plaintext, label="halted, accepted"];
+  dec [label="decoder"];
+  opdec [label="op decoder"];
+  hold [label="hold"];
+  machines [shape=record, label="nada|zero|decr|mod2"];
+  sel [label="selector"];
+  enc [label="encoder"];
+  latches [label="latches"];
+  out [shape=plaintext, label="hb', lb', halted', accepted'"];
+  ax -> dec -> machines -> sel -> enc -> out;
+  line -> opdec -> hold -> sel;
+  flags -> hold;
+  flags -> latches;
+  sel -> latches -> out;
+}
+```
+
+### Every gate of a stepper
+
+Opened all the way, a stepper is 49 gates, each drawn with its kind and name and boxed by its part, from the netlist of `src/circuit.c`. The drawing keeps its own size and scrolls.
+
+A stepper, every gate
+```dot
+digraph {
+  rankdir=LR;
+  class="fullsize";
+  node [shape=box, style=rounded];
+  { rank=source; w2; w3; w4; w5; w6; w7; }
+  w2 [shape=plaintext, label="hb"];
+  w3 [shape=plaintext, label="lb"];
+  w4 [shape=plaintext, label="halted"];
+  w5 [shape=plaintext, label="accepted"];
+  w6 [shape=plaintext, label="op_hb"];
+  w7 [shape=plaintext, label="op_lb"];
+  subgraph cluster_1 {
+    label="decoder";
+    w8 [label="NOT\n~hb"];
+    w9 [label="NOT\n~lb"];
+    w10 [label="AND\nis_0"];
+    w11 [label="AND\nis_1"];
+    w12 [label="AND\nis_2"];
+    w13 [label="AND\nis_3"];
+  }
+  subgraph cluster_2 {
+    label="op decoder";
+    w14 [label="NOT\n~op_hb"];
+    w15 [label="NOT\n~op_lb"];
+    w16 [label="AND\nop_nada"];
+    w17 [label="AND\nop_zero"];
+    w18 [label="AND\nop_decr"];
+    w19 [label="AND\nop_mod2"];
+  }
+  subgraph cluster_3 {
+    label="hold";
+    w20 [label="NOT\n~halted"];
+    w21 [label="OR\nen_nada"];
+    w22 [label="AND\nen_zero"];
+    w23 [label="AND\nen_decr"];
+    w24 [label="AND\nen_mod2"];
+  }
+  subgraph cluster_4 {
+    label="mod2";
+    w25 [label="OR\nfold_0"];
+    w26 [label="OR\nfold_1"];
+  }
+  subgraph cluster_5 {
+    label="selector";
+    w27 [label="AND\nnada next_0"];
+    w28 [label="AND\nzero next_0"];
+    w29 [label="OR\nnext_0"];
+    w30 [label="AND\ndecr next_0"];
+    w31 [label="OR\nnext_0"];
+    w32 [label="AND\nmod2 next_0"];
+    w33 [label="OR\nnext_0"];
+    w34 [label="AND\nnada next_1"];
+    w35 [label="AND\nzero next_1"];
+    w36 [label="OR\nnext_1"];
+    w37 [label="AND\ndecr next_1"];
+    w38 [label="OR\nnext_1"];
+    w39 [label="AND\nmod2 next_1"];
+    w40 [label="OR\nnext_1"];
+    w41 [label="AND\nnada next_2"];
+    w42 [label="AND\nzero next_2"];
+    w43 [label="OR\nnext_2"];
+    w44 [label="AND\ndecr next_2"];
+    w45 [label="OR\nnext_2"];
+    w46 [label="AND\nnada next_3"];
+    w47 [label="AND\nzero next_3"];
+    w48 [label="OR\nnext_3"];
+    w49 [label="AND\nzero accepts"];
+    w50 [label="AND\nzero halts"];
+    w51 [label="AND\ndecr halts"];
+    w52 [label="OR\nhalts"];
+  }
+  subgraph cluster_6 {
+    label="encoder";
+    w53 [label="OR\nhb'"];
+    w54 [label="OR\nlb'"];
+  }
+  subgraph cluster_7 {
+    label="latches";
+    w55 [label="OR\nhalted'"];
+    w56 [label="OR\naccepted'"];
+  }
+  { rank=sink; p46; p47; p48; p49; }
+  p46 [shape=plaintext, label="hb'"];
+  p47 [shape=plaintext, label="lb'"];
+  p48 [shape=plaintext, label="halted'"];
+  p49 [shape=plaintext, label="accepted'"];
+  w2 -> w8;
+  w3 -> w9;
+  w8 -> w10;
+  w9 -> w10;
+  w8 -> w11;
+  w3 -> w11;
+  w2 -> w12;
+  w9 -> w12;
+  w2 -> w13;
+  w3 -> w13;
+  w6 -> w14;
+  w7 -> w15;
+  w14 -> w16;
+  w15 -> w16;
+  w14 -> w17;
+  w7 -> w17;
+  w6 -> w18;
+  w15 -> w18;
+  w6 -> w19;
+  w7 -> w19;
+  w4 -> w20;
+  w16 -> w21;
+  w4 -> w21;
+  w17 -> w22;
+  w20 -> w22;
+  w18 -> w23;
+  w20 -> w23;
+  w19 -> w24;
+  w20 -> w24;
+  w10 -> w25;
+  w12 -> w25;
+  w11 -> w26;
+  w13 -> w26;
+  w10 -> w27;
+  w21 -> w27;
+  w10 -> w28;
+  w22 -> w28;
+  w27 -> w29;
+  w28 -> w29;
+  w11 -> w30;
+  w23 -> w30;
+  w29 -> w31;
+  w30 -> w31;
+  w25 -> w32;
+  w24 -> w32;
+  w31 -> w33;
+  w32 -> w33;
+  w11 -> w34;
+  w21 -> w34;
+  w11 -> w35;
+  w22 -> w35;
+  w34 -> w36;
+  w35 -> w36;
+  w12 -> w37;
+  w23 -> w37;
+  w36 -> w38;
+  w37 -> w38;
+  w26 -> w39;
+  w24 -> w39;
+  w38 -> w40;
+  w39 -> w40;
+  w12 -> w41;
+  w21 -> w41;
+  w12 -> w42;
+  w22 -> w42;
+  w41 -> w43;
+  w42 -> w43;
+  w13 -> w44;
+  w23 -> w44;
+  w43 -> w45;
+  w44 -> w45;
+  w13 -> w46;
+  w21 -> w46;
+  w13 -> w47;
+  w22 -> w47;
+  w46 -> w48;
+  w47 -> w48;
+  w10 -> w49;
+  w22 -> w49;
+  w10 -> w50;
+  w22 -> w50;
+  w10 -> w51;
+  w23 -> w51;
+  w50 -> w52;
+  w51 -> w52;
+  w45 -> w53;
+  w48 -> w53;
+  w40 -> w54;
+  w48 -> w54;
+  w4 -> w55;
+  w52 -> w55;
+  w5 -> w56;
+  w49 -> w56;
+  w53 -> p46;
+  w54 -> p47;
+  w55 -> p48;
+  w56 -> p49;
+}
+```
+
+| part | NOT | AND | OR | gates |
+|---|---|---|---|---|
+| decoder | 2 | 4 | 0 | 6 |
+| op decoder | 2 | 4 | 0 | 6 |
+| hold | 1 | 3 | 1 | 5 |
+| nada | 0 | 0 | 0 | 0 |
+| zero | 0 | 0 | 0 | 0 |
+| decr | 0 | 0 | 0 | 0 |
+| mod2 | 0 | 0 | 2 | 2 |
+| selector | 0 | 16 | 10 | 26 |
+| encoder | 0 | 0 | 2 | 2 |
+| latches | 0 | 0 | 2 | 2 |
+| **the stepper** | 5 | 27 | 17 | 49 |
+| **a core**, six steppers | 30 | 162 | 102 | 294 |
+| **the decider**, four cores and the comparators | 128 | 659 | 412 | 1,199 |
+
+The three machines `nada`, `zero` and `decr` are wires alone, at 0 gates. The selector is more than half the stepper: one AND for each wire a machine drives, and the ORs that join them. One wire ends at the selector: it builds `next_0`, and the encoder reads only wires 1 to 3. It stays, because each part does its whole job as its rule says.
+
+`sat_step` in `src/sat.c`, the stepper of {{chapter The Cook-Levin machine}}, is the same logic in 34 gates. It folds and merges where this drawing is literal; the 15 gates between them are these:
+
+- it writes each NOT as a literal's sign, which is free in a formula: 5 gates;
+- it leaves out wire 0, since value 0 is what remains when wires 1 to 3 are off: `fold_0` and `next_0`'s 4 AND and 3 OR gates, 8 in all;
+- a `zero` that accepts leaves `halted` off there, as Steve's stepper does ({{chapter The tableau, filled in}}), where this stepper halts as `vm_step` does: 2 gates.
+
+A core, six steppers, is 294 gates, and `circuit_main core` draws all of them in {{chapter The circuit, in full}}. `tests/test_circuit.c` runs the core on all 16,384 runs, 4,096 programs by four inputs, and holds every stepper's state, step by step, to the interpreter's.
+
+### Four cores decide a problem
+
+The machine's question is whether a program decides a problem, and four cores answer it. The *want* register holds four bits, one per input, saying which inputs the problem holds: {1, 2, 3} is `0111`, input 0's bit first. The *program* register holds the twelve bits of a program. The program goes to four cores side by side, one per input, each with its input wired in as constants, and each core answers whether its input is accepted. Four comparators check each answer against its want bit, and a final AND joins them.
 
 The circuit, end to end
 ```dot
@@ -624,81 +1283,7 @@ digraph {
 }
 ```
 
-### One core
-
-A core is the machine itself, unrolled. Its `AX` register is wired to its input's number, and six step units sit in a chain, each fed by the one before it and by its own line's two bits from the program register. What leaves the sixth unit's `accepted` wire is the core's answer.
-
-One core: six step units in a chain
-```dot
-digraph {
-  rankdir=LR;
-  node [shape=box, style=rounded];
-  ax [label="AX = input\nhalted = 0\naccepted = 0"];
-  s1 [label="step 1"];
-  s2 [label="step 2"];
-  s3 [label="step 3"];
-  s4 [label="step 4"];
-  s5 [label="step 5"];
-  s6 [label="step 6"];
-  ax -> s1 -> s2 -> s3 -> s4 -> s5 -> s6;
-}
-```
-
-Each step unit has six wires in (`hb` and `lb`, the two bits of `AX`, the flags `halted` and `accepted`, and the line's `op_hb`, `op_lb`) and four wires out, the same four state wires for the next unit. Four cores of six units make 24 step units in all, every one the same.
-
-### Inside a step unit
-
-A step unit is built from two-input AND and OR gates and inverters, and its layout is a classic one: decode, compute every opcode at once, select.
-
-One step unit
-```dot
-digraph {
-  rankdir=TB;
-  node [shape=box, style=rounded];
-  ax [label="AX decoder\nis_0 is_1 is_2 is_3"];
-  op [label="op decoder + halted\nenable: nada zero decr mod2"];
-  mods [shape=record, label="nada|zero|decr|mod2"];
-  join [label="OR together\nbecomes_1 becomes_2 becomes_3\naccepts, halts"];
-  out [label="hb' lb' halted' accepted'"];
-  ax -> mods;
-  op -> mods;
-  mods -> join;
-  join -> out;
-}
-```
-
-- **The AX decoder** turns the two bits `hb`, `lb` into four one-hot wires, one per value: `is_0` is (complement of `hb`) AND (complement of `lb`), and so on, four AND gates.
-- **The op decoder** does the same to the line's two bits, giving one wire per opcode (`nada` 00, `zero` 01, `decr` 10, `mod2` 11). It then gates them with `halted`: a halted machine acts as `nada`, so `nada`'s enable is its wire OR `halted`, and each other opcode's enable is its wire AND the complement of `halted`.
-- **The four opcode modules** each say, for their own opcode, which value `AX` becomes, and whether the step accepts or halts. Value 0 is what remains when `becomes_1`, `becomes_2` and `becomes_3` are all 0, so it takes care of itself.
-- **The output stage** ORs the four modules' wires together, since only one module is enabled, then folds the one-hot value back into two bits: `hb'` is `becomes_2` OR `becomes_3`, and `lb'` is `becomes_1` OR `becomes_3`. The flags only ever turn on: `accepted'` is `accepted` OR the step's accept, and `halted'` likewise.
-
-### Each opcode as gates
-
-With `e` for the module's enable wire, every opcode is a handful of AND gates on the decoder's wires:
-
-| opcode | becomes_1 | becomes_2 | becomes_3 | accepts | halts |
-|---|---|---|---|---|---|
-| `nada` | `is_1` AND e | `is_2` AND e | `is_3` AND e | 0 | 0 |
-| `zero` | `is_1` AND e | `is_2` AND e | `is_3` AND e | `is_0` AND e | 0 |
-| `decr` | `is_2` AND e | `is_3` AND e | 0 | 0 | `is_0` AND e |
-| `mod2` | (`is_1` OR `is_3`) AND e | 0 | 0 | 0 | 0 |
-
-Read across a row and the opcode's rule appears. `nada` passes the value through. `zero` passes it through too and adds one gate that fires on 0. `decr` shifts each wire down one place, 2 to 1 and 3 to 2, lets 1 fall to 0, and turns 0 into a halt. `mod2` sends both odd values to 1 and lets 2 fall to 0. The whole unit is 34 two-input gates.
-
-`decr`, the busiest module, drawn alone
-```dot
-digraph {
-  rankdir=LR;
-  node [shape=box, style=rounded];
-  e [label="enable e"];
-  w [label="is_0  is_2  is_3"];
-  g [shape=record, label="AND|AND|AND"];
-  o [shape=record, label="halts|becomes_1|becomes_2"];
-  e -> g;
-  w -> g;
-  g -> o;
-}
-```
+A comparator is five gates: (`accepted` AND `want`) OR (`~accepted` AND `~want`). The whole decider is 1,199 gates, and `tests/test_circuit.c` runs it on all 4,096 programs and all 16 want registers: it lights "decides" exactly where the program decides the problem the register holds, 4,096 times in all.
 
 ### A program through it
 
@@ -711,7 +1296,909 @@ Load the want register with `0111` and the program register with program 2916 (`
 | 2 | `decr` to 1, `mod2` keeps 1, `zero` passes, `decr` to 0, `zero`: accept | 1 | 1 | yes |
 | 3 | `decr` to 2, `mod2` folds 2 to 0, `zero`: accept | 1 | 1 | yes |
 
-All four comparators say yes, so the AND lights "decides". Change one program bit and some core's answer flips, its comparator reports a mismatch, and the light goes out.
+All four comparators say yes, so the AND lights "decides".
+
+## The circuit, in full
+
+{{chapter The machine as a circuit}} counts a core at 294 gates; this chapter draws every one of them, as {{chapter The polynomials, in full}} prints every term. It is one core: the input's two bits, `in_hb` and `in_lb`, and the program's twelve, `op1_hb` to `op6_lb`, come in, and `accepted` comes out. Each box is one stepper of 49 gates, and the flags start from the constant `0`.
+
+The drawing is `circuit_main core`'s output, drawn by Graphviz, and the book's build holds the source below it to that output, byte for byte. It keeps its own size; the box scrolls both ways.
+
+One core, all 294 gates
+```dot
+digraph {
+  rankdir=LR;
+  class="fullsize";
+  node [shape=box, style=rounded];
+  w0 [shape=plaintext, label="0"];
+  w2 [shape=plaintext, label="in_hb"];
+  w3 [shape=plaintext, label="in_lb"];
+  w4 [shape=plaintext, label="op1_hb"];
+  w5 [shape=plaintext, label="op1_lb"];
+  w6 [shape=plaintext, label="op2_hb"];
+  w7 [shape=plaintext, label="op2_lb"];
+  w8 [shape=plaintext, label="op3_hb"];
+  w9 [shape=plaintext, label="op3_lb"];
+  w10 [shape=plaintext, label="op4_hb"];
+  w11 [shape=plaintext, label="op4_lb"];
+  w12 [shape=plaintext, label="op5_hb"];
+  w13 [shape=plaintext, label="op5_lb"];
+  w14 [shape=plaintext, label="op6_hb"];
+  w15 [shape=plaintext, label="op6_lb"];
+  subgraph cluster_1 {
+    label="step 1";
+    w16 [label="NOT\n~in_hb"];
+    w17 [label="NOT\n~in_lb"];
+    w18 [label="AND\nis_0"];
+    w19 [label="AND\nis_1"];
+    w20 [label="AND\nis_2"];
+    w21 [label="AND\nis_3"];
+    w22 [label="NOT\n~op1_hb"];
+    w23 [label="NOT\n~op1_lb"];
+    w24 [label="AND\nop_nada"];
+    w25 [label="AND\nop_zero"];
+    w26 [label="AND\nop_decr"];
+    w27 [label="AND\nop_mod2"];
+    w28 [label="NOT\n~halted"];
+    w29 [label="OR\nen_nada"];
+    w30 [label="AND\nen_zero"];
+    w31 [label="AND\nen_decr"];
+    w32 [label="AND\nen_mod2"];
+    w33 [label="OR\nfold_0"];
+    w34 [label="OR\nfold_1"];
+    w35 [label="AND\nnada next_0"];
+    w36 [label="AND\nzero next_0"];
+    w37 [label="OR\nnext_0"];
+    w38 [label="AND\ndecr next_0"];
+    w39 [label="OR\nnext_0"];
+    w40 [label="AND\nmod2 next_0"];
+    w41 [label="OR\nnext_0"];
+    w42 [label="AND\nnada next_1"];
+    w43 [label="AND\nzero next_1"];
+    w44 [label="OR\nnext_1"];
+    w45 [label="AND\ndecr next_1"];
+    w46 [label="OR\nnext_1"];
+    w47 [label="AND\nmod2 next_1"];
+    w48 [label="OR\nnext_1"];
+    w49 [label="AND\nnada next_2"];
+    w50 [label="AND\nzero next_2"];
+    w51 [label="OR\nnext_2"];
+    w52 [label="AND\ndecr next_2"];
+    w53 [label="OR\nnext_2"];
+    w54 [label="AND\nnada next_3"];
+    w55 [label="AND\nzero next_3"];
+    w56 [label="OR\nnext_3"];
+    w57 [label="AND\nzero accepts"];
+    w58 [label="AND\nzero halts"];
+    w59 [label="AND\ndecr halts"];
+    w60 [label="OR\nhalts"];
+    w61 [label="OR\nhb'"];
+    w62 [label="OR\nlb'"];
+    w63 [label="OR\nhalted'"];
+    w64 [label="OR\naccepted'"];
+  }
+  subgraph cluster_2 {
+    label="step 2";
+    w65 [label="NOT\n~hb'"];
+    w66 [label="NOT\n~lb'"];
+    w67 [label="AND\nis_0"];
+    w68 [label="AND\nis_1"];
+    w69 [label="AND\nis_2"];
+    w70 [label="AND\nis_3"];
+    w71 [label="NOT\n~op2_hb"];
+    w72 [label="NOT\n~op2_lb"];
+    w73 [label="AND\nop_nada"];
+    w74 [label="AND\nop_zero"];
+    w75 [label="AND\nop_decr"];
+    w76 [label="AND\nop_mod2"];
+    w77 [label="NOT\n~halted"];
+    w78 [label="OR\nen_nada"];
+    w79 [label="AND\nen_zero"];
+    w80 [label="AND\nen_decr"];
+    w81 [label="AND\nen_mod2"];
+    w82 [label="OR\nfold_0"];
+    w83 [label="OR\nfold_1"];
+    w84 [label="AND\nnada next_0"];
+    w85 [label="AND\nzero next_0"];
+    w86 [label="OR\nnext_0"];
+    w87 [label="AND\ndecr next_0"];
+    w88 [label="OR\nnext_0"];
+    w89 [label="AND\nmod2 next_0"];
+    w90 [label="OR\nnext_0"];
+    w91 [label="AND\nnada next_1"];
+    w92 [label="AND\nzero next_1"];
+    w93 [label="OR\nnext_1"];
+    w94 [label="AND\ndecr next_1"];
+    w95 [label="OR\nnext_1"];
+    w96 [label="AND\nmod2 next_1"];
+    w97 [label="OR\nnext_1"];
+    w98 [label="AND\nnada next_2"];
+    w99 [label="AND\nzero next_2"];
+    w100 [label="OR\nnext_2"];
+    w101 [label="AND\ndecr next_2"];
+    w102 [label="OR\nnext_2"];
+    w103 [label="AND\nnada next_3"];
+    w104 [label="AND\nzero next_3"];
+    w105 [label="OR\nnext_3"];
+    w106 [label="AND\nzero accepts"];
+    w107 [label="AND\nzero halts"];
+    w108 [label="AND\ndecr halts"];
+    w109 [label="OR\nhalts"];
+    w110 [label="OR\nhb'"];
+    w111 [label="OR\nlb'"];
+    w112 [label="OR\nhalted'"];
+    w113 [label="OR\naccepted'"];
+  }
+  subgraph cluster_3 {
+    label="step 3";
+    w114 [label="NOT\n~hb'"];
+    w115 [label="NOT\n~lb'"];
+    w116 [label="AND\nis_0"];
+    w117 [label="AND\nis_1"];
+    w118 [label="AND\nis_2"];
+    w119 [label="AND\nis_3"];
+    w120 [label="NOT\n~op3_hb"];
+    w121 [label="NOT\n~op3_lb"];
+    w122 [label="AND\nop_nada"];
+    w123 [label="AND\nop_zero"];
+    w124 [label="AND\nop_decr"];
+    w125 [label="AND\nop_mod2"];
+    w126 [label="NOT\n~halted"];
+    w127 [label="OR\nen_nada"];
+    w128 [label="AND\nen_zero"];
+    w129 [label="AND\nen_decr"];
+    w130 [label="AND\nen_mod2"];
+    w131 [label="OR\nfold_0"];
+    w132 [label="OR\nfold_1"];
+    w133 [label="AND\nnada next_0"];
+    w134 [label="AND\nzero next_0"];
+    w135 [label="OR\nnext_0"];
+    w136 [label="AND\ndecr next_0"];
+    w137 [label="OR\nnext_0"];
+    w138 [label="AND\nmod2 next_0"];
+    w139 [label="OR\nnext_0"];
+    w140 [label="AND\nnada next_1"];
+    w141 [label="AND\nzero next_1"];
+    w142 [label="OR\nnext_1"];
+    w143 [label="AND\ndecr next_1"];
+    w144 [label="OR\nnext_1"];
+    w145 [label="AND\nmod2 next_1"];
+    w146 [label="OR\nnext_1"];
+    w147 [label="AND\nnada next_2"];
+    w148 [label="AND\nzero next_2"];
+    w149 [label="OR\nnext_2"];
+    w150 [label="AND\ndecr next_2"];
+    w151 [label="OR\nnext_2"];
+    w152 [label="AND\nnada next_3"];
+    w153 [label="AND\nzero next_3"];
+    w154 [label="OR\nnext_3"];
+    w155 [label="AND\nzero accepts"];
+    w156 [label="AND\nzero halts"];
+    w157 [label="AND\ndecr halts"];
+    w158 [label="OR\nhalts"];
+    w159 [label="OR\nhb'"];
+    w160 [label="OR\nlb'"];
+    w161 [label="OR\nhalted'"];
+    w162 [label="OR\naccepted'"];
+  }
+  subgraph cluster_4 {
+    label="step 4";
+    w163 [label="NOT\n~hb'"];
+    w164 [label="NOT\n~lb'"];
+    w165 [label="AND\nis_0"];
+    w166 [label="AND\nis_1"];
+    w167 [label="AND\nis_2"];
+    w168 [label="AND\nis_3"];
+    w169 [label="NOT\n~op4_hb"];
+    w170 [label="NOT\n~op4_lb"];
+    w171 [label="AND\nop_nada"];
+    w172 [label="AND\nop_zero"];
+    w173 [label="AND\nop_decr"];
+    w174 [label="AND\nop_mod2"];
+    w175 [label="NOT\n~halted"];
+    w176 [label="OR\nen_nada"];
+    w177 [label="AND\nen_zero"];
+    w178 [label="AND\nen_decr"];
+    w179 [label="AND\nen_mod2"];
+    w180 [label="OR\nfold_0"];
+    w181 [label="OR\nfold_1"];
+    w182 [label="AND\nnada next_0"];
+    w183 [label="AND\nzero next_0"];
+    w184 [label="OR\nnext_0"];
+    w185 [label="AND\ndecr next_0"];
+    w186 [label="OR\nnext_0"];
+    w187 [label="AND\nmod2 next_0"];
+    w188 [label="OR\nnext_0"];
+    w189 [label="AND\nnada next_1"];
+    w190 [label="AND\nzero next_1"];
+    w191 [label="OR\nnext_1"];
+    w192 [label="AND\ndecr next_1"];
+    w193 [label="OR\nnext_1"];
+    w194 [label="AND\nmod2 next_1"];
+    w195 [label="OR\nnext_1"];
+    w196 [label="AND\nnada next_2"];
+    w197 [label="AND\nzero next_2"];
+    w198 [label="OR\nnext_2"];
+    w199 [label="AND\ndecr next_2"];
+    w200 [label="OR\nnext_2"];
+    w201 [label="AND\nnada next_3"];
+    w202 [label="AND\nzero next_3"];
+    w203 [label="OR\nnext_3"];
+    w204 [label="AND\nzero accepts"];
+    w205 [label="AND\nzero halts"];
+    w206 [label="AND\ndecr halts"];
+    w207 [label="OR\nhalts"];
+    w208 [label="OR\nhb'"];
+    w209 [label="OR\nlb'"];
+    w210 [label="OR\nhalted'"];
+    w211 [label="OR\naccepted'"];
+  }
+  subgraph cluster_5 {
+    label="step 5";
+    w212 [label="NOT\n~hb'"];
+    w213 [label="NOT\n~lb'"];
+    w214 [label="AND\nis_0"];
+    w215 [label="AND\nis_1"];
+    w216 [label="AND\nis_2"];
+    w217 [label="AND\nis_3"];
+    w218 [label="NOT\n~op5_hb"];
+    w219 [label="NOT\n~op5_lb"];
+    w220 [label="AND\nop_nada"];
+    w221 [label="AND\nop_zero"];
+    w222 [label="AND\nop_decr"];
+    w223 [label="AND\nop_mod2"];
+    w224 [label="NOT\n~halted"];
+    w225 [label="OR\nen_nada"];
+    w226 [label="AND\nen_zero"];
+    w227 [label="AND\nen_decr"];
+    w228 [label="AND\nen_mod2"];
+    w229 [label="OR\nfold_0"];
+    w230 [label="OR\nfold_1"];
+    w231 [label="AND\nnada next_0"];
+    w232 [label="AND\nzero next_0"];
+    w233 [label="OR\nnext_0"];
+    w234 [label="AND\ndecr next_0"];
+    w235 [label="OR\nnext_0"];
+    w236 [label="AND\nmod2 next_0"];
+    w237 [label="OR\nnext_0"];
+    w238 [label="AND\nnada next_1"];
+    w239 [label="AND\nzero next_1"];
+    w240 [label="OR\nnext_1"];
+    w241 [label="AND\ndecr next_1"];
+    w242 [label="OR\nnext_1"];
+    w243 [label="AND\nmod2 next_1"];
+    w244 [label="OR\nnext_1"];
+    w245 [label="AND\nnada next_2"];
+    w246 [label="AND\nzero next_2"];
+    w247 [label="OR\nnext_2"];
+    w248 [label="AND\ndecr next_2"];
+    w249 [label="OR\nnext_2"];
+    w250 [label="AND\nnada next_3"];
+    w251 [label="AND\nzero next_3"];
+    w252 [label="OR\nnext_3"];
+    w253 [label="AND\nzero accepts"];
+    w254 [label="AND\nzero halts"];
+    w255 [label="AND\ndecr halts"];
+    w256 [label="OR\nhalts"];
+    w257 [label="OR\nhb'"];
+    w258 [label="OR\nlb'"];
+    w259 [label="OR\nhalted'"];
+    w260 [label="OR\naccepted'"];
+  }
+  subgraph cluster_6 {
+    label="step 6";
+    w261 [label="NOT\n~hb'"];
+    w262 [label="NOT\n~lb'"];
+    w263 [label="AND\nis_0"];
+    w264 [label="AND\nis_1"];
+    w265 [label="AND\nis_2"];
+    w266 [label="AND\nis_3"];
+    w267 [label="NOT\n~op6_hb"];
+    w268 [label="NOT\n~op6_lb"];
+    w269 [label="AND\nop_nada"];
+    w270 [label="AND\nop_zero"];
+    w271 [label="AND\nop_decr"];
+    w272 [label="AND\nop_mod2"];
+    w273 [label="NOT\n~halted"];
+    w274 [label="OR\nen_nada"];
+    w275 [label="AND\nen_zero"];
+    w276 [label="AND\nen_decr"];
+    w277 [label="AND\nen_mod2"];
+    w278 [label="OR\nfold_0"];
+    w279 [label="OR\nfold_1"];
+    w280 [label="AND\nnada next_0"];
+    w281 [label="AND\nzero next_0"];
+    w282 [label="OR\nnext_0"];
+    w283 [label="AND\ndecr next_0"];
+    w284 [label="OR\nnext_0"];
+    w285 [label="AND\nmod2 next_0"];
+    w286 [label="OR\nnext_0"];
+    w287 [label="AND\nnada next_1"];
+    w288 [label="AND\nzero next_1"];
+    w289 [label="OR\nnext_1"];
+    w290 [label="AND\ndecr next_1"];
+    w291 [label="OR\nnext_1"];
+    w292 [label="AND\nmod2 next_1"];
+    w293 [label="OR\nnext_1"];
+    w294 [label="AND\nnada next_2"];
+    w295 [label="AND\nzero next_2"];
+    w296 [label="OR\nnext_2"];
+    w297 [label="AND\ndecr next_2"];
+    w298 [label="OR\nnext_2"];
+    w299 [label="AND\nnada next_3"];
+    w300 [label="AND\nzero next_3"];
+    w301 [label="OR\nnext_3"];
+    w302 [label="AND\nzero accepts"];
+    w303 [label="AND\nzero halts"];
+    w304 [label="AND\ndecr halts"];
+    w305 [label="OR\nhalts"];
+    w306 [label="OR\nhb'"];
+    w307 [label="OR\nlb'"];
+    w308 [label="OR\nhalted'"];
+    w309 [label="OR\naccepted'"];
+  }
+  p300 [shape=plaintext, label="accepted"];
+  w2 -> w16;
+  w3 -> w17;
+  w16 -> w18;
+  w17 -> w18;
+  w16 -> w19;
+  w3 -> w19;
+  w2 -> w20;
+  w17 -> w20;
+  w2 -> w21;
+  w3 -> w21;
+  w4 -> w22;
+  w5 -> w23;
+  w22 -> w24;
+  w23 -> w24;
+  w22 -> w25;
+  w5 -> w25;
+  w4 -> w26;
+  w23 -> w26;
+  w4 -> w27;
+  w5 -> w27;
+  w0 -> w28;
+  w24 -> w29;
+  w0 -> w29;
+  w25 -> w30;
+  w28 -> w30;
+  w26 -> w31;
+  w28 -> w31;
+  w27 -> w32;
+  w28 -> w32;
+  w18 -> w33;
+  w20 -> w33;
+  w19 -> w34;
+  w21 -> w34;
+  w18 -> w35;
+  w29 -> w35;
+  w18 -> w36;
+  w30 -> w36;
+  w35 -> w37;
+  w36 -> w37;
+  w19 -> w38;
+  w31 -> w38;
+  w37 -> w39;
+  w38 -> w39;
+  w33 -> w40;
+  w32 -> w40;
+  w39 -> w41;
+  w40 -> w41;
+  w19 -> w42;
+  w29 -> w42;
+  w19 -> w43;
+  w30 -> w43;
+  w42 -> w44;
+  w43 -> w44;
+  w20 -> w45;
+  w31 -> w45;
+  w44 -> w46;
+  w45 -> w46;
+  w34 -> w47;
+  w32 -> w47;
+  w46 -> w48;
+  w47 -> w48;
+  w20 -> w49;
+  w29 -> w49;
+  w20 -> w50;
+  w30 -> w50;
+  w49 -> w51;
+  w50 -> w51;
+  w21 -> w52;
+  w31 -> w52;
+  w51 -> w53;
+  w52 -> w53;
+  w21 -> w54;
+  w29 -> w54;
+  w21 -> w55;
+  w30 -> w55;
+  w54 -> w56;
+  w55 -> w56;
+  w18 -> w57;
+  w30 -> w57;
+  w18 -> w58;
+  w30 -> w58;
+  w18 -> w59;
+  w31 -> w59;
+  w58 -> w60;
+  w59 -> w60;
+  w53 -> w61;
+  w56 -> w61;
+  w48 -> w62;
+  w56 -> w62;
+  w0 -> w63;
+  w60 -> w63;
+  w0 -> w64;
+  w57 -> w64;
+  w61 -> w65;
+  w62 -> w66;
+  w65 -> w67;
+  w66 -> w67;
+  w65 -> w68;
+  w62 -> w68;
+  w61 -> w69;
+  w66 -> w69;
+  w61 -> w70;
+  w62 -> w70;
+  w6 -> w71;
+  w7 -> w72;
+  w71 -> w73;
+  w72 -> w73;
+  w71 -> w74;
+  w7 -> w74;
+  w6 -> w75;
+  w72 -> w75;
+  w6 -> w76;
+  w7 -> w76;
+  w63 -> w77;
+  w73 -> w78;
+  w63 -> w78;
+  w74 -> w79;
+  w77 -> w79;
+  w75 -> w80;
+  w77 -> w80;
+  w76 -> w81;
+  w77 -> w81;
+  w67 -> w82;
+  w69 -> w82;
+  w68 -> w83;
+  w70 -> w83;
+  w67 -> w84;
+  w78 -> w84;
+  w67 -> w85;
+  w79 -> w85;
+  w84 -> w86;
+  w85 -> w86;
+  w68 -> w87;
+  w80 -> w87;
+  w86 -> w88;
+  w87 -> w88;
+  w82 -> w89;
+  w81 -> w89;
+  w88 -> w90;
+  w89 -> w90;
+  w68 -> w91;
+  w78 -> w91;
+  w68 -> w92;
+  w79 -> w92;
+  w91 -> w93;
+  w92 -> w93;
+  w69 -> w94;
+  w80 -> w94;
+  w93 -> w95;
+  w94 -> w95;
+  w83 -> w96;
+  w81 -> w96;
+  w95 -> w97;
+  w96 -> w97;
+  w69 -> w98;
+  w78 -> w98;
+  w69 -> w99;
+  w79 -> w99;
+  w98 -> w100;
+  w99 -> w100;
+  w70 -> w101;
+  w80 -> w101;
+  w100 -> w102;
+  w101 -> w102;
+  w70 -> w103;
+  w78 -> w103;
+  w70 -> w104;
+  w79 -> w104;
+  w103 -> w105;
+  w104 -> w105;
+  w67 -> w106;
+  w79 -> w106;
+  w67 -> w107;
+  w79 -> w107;
+  w67 -> w108;
+  w80 -> w108;
+  w107 -> w109;
+  w108 -> w109;
+  w102 -> w110;
+  w105 -> w110;
+  w97 -> w111;
+  w105 -> w111;
+  w63 -> w112;
+  w109 -> w112;
+  w64 -> w113;
+  w106 -> w113;
+  w110 -> w114;
+  w111 -> w115;
+  w114 -> w116;
+  w115 -> w116;
+  w114 -> w117;
+  w111 -> w117;
+  w110 -> w118;
+  w115 -> w118;
+  w110 -> w119;
+  w111 -> w119;
+  w8 -> w120;
+  w9 -> w121;
+  w120 -> w122;
+  w121 -> w122;
+  w120 -> w123;
+  w9 -> w123;
+  w8 -> w124;
+  w121 -> w124;
+  w8 -> w125;
+  w9 -> w125;
+  w112 -> w126;
+  w122 -> w127;
+  w112 -> w127;
+  w123 -> w128;
+  w126 -> w128;
+  w124 -> w129;
+  w126 -> w129;
+  w125 -> w130;
+  w126 -> w130;
+  w116 -> w131;
+  w118 -> w131;
+  w117 -> w132;
+  w119 -> w132;
+  w116 -> w133;
+  w127 -> w133;
+  w116 -> w134;
+  w128 -> w134;
+  w133 -> w135;
+  w134 -> w135;
+  w117 -> w136;
+  w129 -> w136;
+  w135 -> w137;
+  w136 -> w137;
+  w131 -> w138;
+  w130 -> w138;
+  w137 -> w139;
+  w138 -> w139;
+  w117 -> w140;
+  w127 -> w140;
+  w117 -> w141;
+  w128 -> w141;
+  w140 -> w142;
+  w141 -> w142;
+  w118 -> w143;
+  w129 -> w143;
+  w142 -> w144;
+  w143 -> w144;
+  w132 -> w145;
+  w130 -> w145;
+  w144 -> w146;
+  w145 -> w146;
+  w118 -> w147;
+  w127 -> w147;
+  w118 -> w148;
+  w128 -> w148;
+  w147 -> w149;
+  w148 -> w149;
+  w119 -> w150;
+  w129 -> w150;
+  w149 -> w151;
+  w150 -> w151;
+  w119 -> w152;
+  w127 -> w152;
+  w119 -> w153;
+  w128 -> w153;
+  w152 -> w154;
+  w153 -> w154;
+  w116 -> w155;
+  w128 -> w155;
+  w116 -> w156;
+  w128 -> w156;
+  w116 -> w157;
+  w129 -> w157;
+  w156 -> w158;
+  w157 -> w158;
+  w151 -> w159;
+  w154 -> w159;
+  w146 -> w160;
+  w154 -> w160;
+  w112 -> w161;
+  w158 -> w161;
+  w113 -> w162;
+  w155 -> w162;
+  w159 -> w163;
+  w160 -> w164;
+  w163 -> w165;
+  w164 -> w165;
+  w163 -> w166;
+  w160 -> w166;
+  w159 -> w167;
+  w164 -> w167;
+  w159 -> w168;
+  w160 -> w168;
+  w10 -> w169;
+  w11 -> w170;
+  w169 -> w171;
+  w170 -> w171;
+  w169 -> w172;
+  w11 -> w172;
+  w10 -> w173;
+  w170 -> w173;
+  w10 -> w174;
+  w11 -> w174;
+  w161 -> w175;
+  w171 -> w176;
+  w161 -> w176;
+  w172 -> w177;
+  w175 -> w177;
+  w173 -> w178;
+  w175 -> w178;
+  w174 -> w179;
+  w175 -> w179;
+  w165 -> w180;
+  w167 -> w180;
+  w166 -> w181;
+  w168 -> w181;
+  w165 -> w182;
+  w176 -> w182;
+  w165 -> w183;
+  w177 -> w183;
+  w182 -> w184;
+  w183 -> w184;
+  w166 -> w185;
+  w178 -> w185;
+  w184 -> w186;
+  w185 -> w186;
+  w180 -> w187;
+  w179 -> w187;
+  w186 -> w188;
+  w187 -> w188;
+  w166 -> w189;
+  w176 -> w189;
+  w166 -> w190;
+  w177 -> w190;
+  w189 -> w191;
+  w190 -> w191;
+  w167 -> w192;
+  w178 -> w192;
+  w191 -> w193;
+  w192 -> w193;
+  w181 -> w194;
+  w179 -> w194;
+  w193 -> w195;
+  w194 -> w195;
+  w167 -> w196;
+  w176 -> w196;
+  w167 -> w197;
+  w177 -> w197;
+  w196 -> w198;
+  w197 -> w198;
+  w168 -> w199;
+  w178 -> w199;
+  w198 -> w200;
+  w199 -> w200;
+  w168 -> w201;
+  w176 -> w201;
+  w168 -> w202;
+  w177 -> w202;
+  w201 -> w203;
+  w202 -> w203;
+  w165 -> w204;
+  w177 -> w204;
+  w165 -> w205;
+  w177 -> w205;
+  w165 -> w206;
+  w178 -> w206;
+  w205 -> w207;
+  w206 -> w207;
+  w200 -> w208;
+  w203 -> w208;
+  w195 -> w209;
+  w203 -> w209;
+  w161 -> w210;
+  w207 -> w210;
+  w162 -> w211;
+  w204 -> w211;
+  w208 -> w212;
+  w209 -> w213;
+  w212 -> w214;
+  w213 -> w214;
+  w212 -> w215;
+  w209 -> w215;
+  w208 -> w216;
+  w213 -> w216;
+  w208 -> w217;
+  w209 -> w217;
+  w12 -> w218;
+  w13 -> w219;
+  w218 -> w220;
+  w219 -> w220;
+  w218 -> w221;
+  w13 -> w221;
+  w12 -> w222;
+  w219 -> w222;
+  w12 -> w223;
+  w13 -> w223;
+  w210 -> w224;
+  w220 -> w225;
+  w210 -> w225;
+  w221 -> w226;
+  w224 -> w226;
+  w222 -> w227;
+  w224 -> w227;
+  w223 -> w228;
+  w224 -> w228;
+  w214 -> w229;
+  w216 -> w229;
+  w215 -> w230;
+  w217 -> w230;
+  w214 -> w231;
+  w225 -> w231;
+  w214 -> w232;
+  w226 -> w232;
+  w231 -> w233;
+  w232 -> w233;
+  w215 -> w234;
+  w227 -> w234;
+  w233 -> w235;
+  w234 -> w235;
+  w229 -> w236;
+  w228 -> w236;
+  w235 -> w237;
+  w236 -> w237;
+  w215 -> w238;
+  w225 -> w238;
+  w215 -> w239;
+  w226 -> w239;
+  w238 -> w240;
+  w239 -> w240;
+  w216 -> w241;
+  w227 -> w241;
+  w240 -> w242;
+  w241 -> w242;
+  w230 -> w243;
+  w228 -> w243;
+  w242 -> w244;
+  w243 -> w244;
+  w216 -> w245;
+  w225 -> w245;
+  w216 -> w246;
+  w226 -> w246;
+  w245 -> w247;
+  w246 -> w247;
+  w217 -> w248;
+  w227 -> w248;
+  w247 -> w249;
+  w248 -> w249;
+  w217 -> w250;
+  w225 -> w250;
+  w217 -> w251;
+  w226 -> w251;
+  w250 -> w252;
+  w251 -> w252;
+  w214 -> w253;
+  w226 -> w253;
+  w214 -> w254;
+  w226 -> w254;
+  w214 -> w255;
+  w227 -> w255;
+  w254 -> w256;
+  w255 -> w256;
+  w249 -> w257;
+  w252 -> w257;
+  w244 -> w258;
+  w252 -> w258;
+  w210 -> w259;
+  w256 -> w259;
+  w211 -> w260;
+  w253 -> w260;
+  w257 -> w261;
+  w258 -> w262;
+  w261 -> w263;
+  w262 -> w263;
+  w261 -> w264;
+  w258 -> w264;
+  w257 -> w265;
+  w262 -> w265;
+  w257 -> w266;
+  w258 -> w266;
+  w14 -> w267;
+  w15 -> w268;
+  w267 -> w269;
+  w268 -> w269;
+  w267 -> w270;
+  w15 -> w270;
+  w14 -> w271;
+  w268 -> w271;
+  w14 -> w272;
+  w15 -> w272;
+  w259 -> w273;
+  w269 -> w274;
+  w259 -> w274;
+  w270 -> w275;
+  w273 -> w275;
+  w271 -> w276;
+  w273 -> w276;
+  w272 -> w277;
+  w273 -> w277;
+  w263 -> w278;
+  w265 -> w278;
+  w264 -> w279;
+  w266 -> w279;
+  w263 -> w280;
+  w274 -> w280;
+  w263 -> w281;
+  w275 -> w281;
+  w280 -> w282;
+  w281 -> w282;
+  w264 -> w283;
+  w276 -> w283;
+  w282 -> w284;
+  w283 -> w284;
+  w278 -> w285;
+  w277 -> w285;
+  w284 -> w286;
+  w285 -> w286;
+  w264 -> w287;
+  w274 -> w287;
+  w264 -> w288;
+  w275 -> w288;
+  w287 -> w289;
+  w288 -> w289;
+  w265 -> w290;
+  w276 -> w290;
+  w289 -> w291;
+  w290 -> w291;
+  w279 -> w292;
+  w277 -> w292;
+  w291 -> w293;
+  w292 -> w293;
+  w265 -> w294;
+  w274 -> w294;
+  w265 -> w295;
+  w275 -> w295;
+  w294 -> w296;
+  w295 -> w296;
+  w266 -> w297;
+  w276 -> w297;
+  w296 -> w298;
+  w297 -> w298;
+  w266 -> w299;
+  w274 -> w299;
+  w266 -> w300;
+  w275 -> w300;
+  w299 -> w301;
+  w300 -> w301;
+  w263 -> w302;
+  w275 -> w302;
+  w263 -> w303;
+  w275 -> w303;
+  w263 -> w304;
+  w276 -> w304;
+  w303 -> w305;
+  w304 -> w305;
+  w298 -> w306;
+  w301 -> w306;
+  w293 -> w307;
+  w301 -> w307;
+  w259 -> w308;
+  w305 -> w308;
+  w260 -> w309;
+  w302 -> w309;
+  w309 -> p300;
+}
+```
 
 ## Some history of the approach
 
@@ -871,7 +2358,7 @@ The counts for all 16, programs and products, from the same run:
 The composing above ran all 4,096 programs, which a toy allows. For a real checker there are two ways to compose the step's expressions, and the rest of this part takes each in turn.
 
 - **Expand it.** Substitute each step's expressions into the next and multiply them out, into one big expression of the fourteen bits. {{chapter Arithmetization}} does this with the logic written as arithmetic on integers, AND as a product and the complement of x as 1 − x, which makes each expression a polynomial; that move is called arithmetization. {{chapter Six steps composed}} expands all six, to 10,324 terms for `accepted`. The size grows with every step substituted.
-- **Name it.** Give each intermediate wire a fresh variable, and state only how it relates to its inputs. That is Tseitin's encoding and SAT: {{chapter Cook-Levin as SAT}} has 416 variables and 1,216 clauses for each problem, and the count grows linearly with the steps, one step unit's gates per step.
+- **Name it.** Give each intermediate wire a fresh variable, and state only how it relates to its inputs. That is Tseitin's encoding and SAT: {{chapter Cook-Levin as SAT}} has 416 variables and 1,216 clauses for each problem, and the count grows linearly with the steps, one stepper's gates per step.
 
 Naming is why Cook-Levin's formula stays polynomial in size: each step adds the same few clauses, whatever came before it.
 
@@ -1106,7 +2593,7 @@ accepted after six steps, composed by the C's compose_main at the book's build
 
 ### The circuit, turned around
 
-The want register is fixed at the problem's bits. The program register becomes twelve unknown wires, `v1` to `v12`. The output wire is required to be 1. Everything in between is the same 24 step units and four comparators, and every wire in them is now an unknown too, tied to the wires feeding it by the rule of its gate.
+The want register is fixed at the problem's bits. The program register becomes twelve unknown wires, `v1` to `v12`. The output wire is required to be 1. Everything in between is the same 24 steppers and four comparators, and every wire in them is now an unknown too, tied to the wires feeding it by the rule of its gate.
 
 The question the circuit now asks
 ```dot
@@ -1127,17 +2614,17 @@ A setting of the twelve unknowns that satisfies every gate's rule and lights the
 
 ### The tableau
 
-Cook's proof draws the run of a checking machine as a grid, the tableau: one row for each moment of the run, each row the machine's whole state, and each row fixed by the row above it through a small local rule. Here the grid has seven rows, the start and the six steps, and four columns, one per core. Each cell is a state of four bits, `hb`, `lb`, `halted` and `accepted`. The top row is known, since core `i` starts with `AX` = `i` and both flags 0, and each cell below it is one step unit applied to the cell above and to that row's line of the unknown program. The local rule is the step unit of {{chapter The machine as a circuit}}.
+Cook's proof draws the run of a checking machine as a grid, the tableau: one row for each moment of the run, each row the machine's whole state, and each row fixed by the row above it through a small local rule. Here the grid has seven rows, the start and the six steps, and four columns, one per core. Each cell is a state of four bits, `hb`, `lb`, `halted` and `accepted`. The top row is known, since core `i` starts with `AX` = `i` and both flags 0, and each cell below it is one stepper applied to the cell above and to that row's line of the unknown program. The local rule is the stepper, drawn gate by gate in {{chapter The machine as a circuit}}.
 
 For a general checker the grid is as wide as its tape and as tall as its running time, and when the time is polynomial in the input's length, the grid and its rules are polynomial in size too. That is the whole of the theorem's construction: any question a fast checker can answer becomes the question of whether such a grid can be filled in consistently.
 
 ### The gates, counted
 
-The step unit's gates as the repository builds them, in `sat_step` (`src/sat.c`):
+The stepper's gates as the SAT encoding builds them, in `sat_step` (`src/sat.c`): 34, where the drawing in {{chapter The machine as a circuit}} has 49, and that chapter accounts for the 15 between them.
 
 {{lines src/sat.c from "    Lit is_3 = AND(hb, lb);" to "    Lit lb_set = OR(becomes_3, becomes_1);"}}
 
-`tests/test_sat.c` holds these gates to the machine's step on all 64 settings of the unit's six input wires. A unit is 34 gates when all six inputs are unknown, so 24 units would be 816. The top row's constants fold many away, since each core's `AX` is known at the start and both flags are 0, and a gate already built from the same two inputs is reused. The whole circuit comes to 404 gates over the 12 unknown program bits.
+`tests/test_sat.c` holds these gates to the machine's step on all 64 settings of the stepper's six input wires. A stepper is 34 gates here when all six inputs are unknown, so 24 steppers would be 816. The top row's constants fold many away, since each core's `AX` is known at the start and both flags are 0, and a gate already built from the same two inputs is reused. The whole circuit comes to 404 gates over the 12 unknown program bits.
 
 {{chapter Cook-Levin as SAT}} takes the last step: each gate becomes three clauses, the required output becomes four more, and the circuit becomes one formula for a SAT solver.
 
@@ -1166,7 +2653,7 @@ The bottom row's `accepted` flags read 0, 1, 1, 1, which is {1, 2, 3}, the probl
 Now leave the program free. The same grid, as the SAT encoding builds it for {1, 2, 3}, has in each cell the four wires of one core's state, written `hb lb · halted accepted`:
 
 - **The first two are `AX`**, as two bits: `0 0` is 0, `0 1` is 1, `1 0` is 2, `1 1` is 3. The start row is each core's input in binary: core 0 starts at `0 0`, core 1 at `0 1`, core 2 at `1 0`, core 3 at `1 1`.
-- **The last two are the verdict so far**, `halted` and `accepted`, both 0 at the start. They are there because the circuit runs to the end: all six step units run in every core, even after the program has accepted or rejected. The flags carry "this run already accepted" or "already halted" down to the bottom row, where the comparators read them; `AX` alone has only its value to carry.
+- **The last two are the verdict so far**, `halted` and `accepted`, both 0 at the start. They are there because the circuit runs to the end: all six steppers run in every core, even after the program has accepted or rejected. The flags carry "this run already accepted" or "already halted" down to the bottom row, where the comparators read them; `AX` alone has only its value to carry.
 
 A 1 or 0 is a wire whose value is fixed whatever the program, and `vN` is the formula's variable N, a wire whose value depends on the program. Variables 1 to 12 are the program's bits, two per line.
 
@@ -1205,7 +2692,7 @@ The OR gate g = a OR b is the mirror image: `g -a`, `g -b` and `-g a b`. Each AN
 
 {{lines src/sat.c from "Lit sat_and(Cnf *c, Lit x, Lit y) {" to "Lit c3[3] = {out, -a, -b};"}}
 
-### One step unit
+### One stepper
 
 The formula's first 12 variables are the program's bits: line k's `hb` is v(2k − 1) and its `lb` v(2k), so `nada` is 0 0, `zero` 0 1, `decr` 1 0 and `mod2` 1 1. The logic is the stepper's, gate for gate, NOT, AND and OR as in {{chapter Arithmetization}}. A gate on a constant is folded, and a gate already built from the same two inputs is reused. Core 0 starts with `AX` = 0 and both flags 0, so its state after line 1 reads two gates:
 
@@ -1236,7 +2723,7 @@ Core 1's `AX` falls to 0 exactly when line 1 is `decr`.
 
 ### The unrolling
 
-Each of the six lines, on each of the four cores, is such a unit, wired to the state the unit above it left, and the last four clauses ask that each core's final `accepted` be what the problem wants. Every problem's formula has 416 variables and 1,216 clauses (`out/tcc/sat facts`, run for this book). `len=N` forces the lines past N to `nada`, two unit clauses a line, and `fix=K:OP` fixes line K.
+Each of the six lines, on each of the four cores, is such a stepper, wired to the state the stepper above it left, and the last four clauses ask that each core's final `accepted` be what the problem wants. Every problem's formula has 416 variables and 1,216 clauses (`out/tcc/sat facts`, run for this book). `len=N` forces the lines past N to `nada`, two unit clauses a line, and `fix=K:OP` fixes line K.
 
 ### The proof by propagation
 

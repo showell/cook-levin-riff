@@ -22,7 +22,7 @@
 const OUT = "out"
 const TESTS = {"tests/test_vm.c", "tests/test_reference.c", "tests/test_golden.c", "tests/test_ring_int.c", "tests/test_poly.c", "tests/test_stepper.c", "tests/test_cross_check.c", "tests/test_boolring.c", "tests/test_compose.c", "tests/test_sat.c", "tests/test_drat.c", "tests/test_theorems.c", "tests/test_boolean.c", "tests/test_circuit.c"}
 -- The command lines the oracles and the book run, compiled in each tier.
-const CLIS = {"src/sat_main.c", "src/drat_main.c", "src/boolean_main.c", "src/sat_hand_main.c"}
+const CLIS = {"src/sat_main.c", "src/drat_main.c", "src/boolean_main.c", "src/sat_hand_main.c", "src/circuit_main.c"}
 const GOLDEN = "tests/golden/find_solutions.txt"
 -- Why `run` may start a binary git does not track: this build just made it.
 const RAN = "build: a test binary this build just compiled"
