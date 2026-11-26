@@ -18,7 +18,8 @@
 --
 --   shale sat/plus_search.shale
 --
--- It can take about 2 x TIMEOUT_MS a case, so start it in the background.
+-- It can take about 2 x TIMEOUT_MS a case; the 11 cases took 142 s in all
+-- on the box (2026-11-26), the two proof checks at 27 and 28 lines 65 s.
 -- budget: steps=400000000 read_bytes=4000000000 changes=100000 change_bytes=4000000000 arena_bytes=1500000000 programs=1000
 
 use("./plus_rocsat.shale")
