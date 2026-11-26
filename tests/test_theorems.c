@@ -9,6 +9,7 @@
 #include "test.h"
 
 #include "../src/vm.c"
+#include "../src/boolean.c"
 
 static int length_of(Program p) {
     int len = 0;
@@ -239,10 +240,32 @@ TEST(one_instruction_decides_at_most_five_languages_at_any_length) {
     EXPECT_EQ(most, 5);
 }
 
+// The 16 languages are exactly the 16 Boolean functions of hb and lb: each
+// language's expression is 1 at the bits of its members alone, the 16
+// expressions' truth tables are 16 different ones, and each language is the
+// one some program accepts.
+TEST(the_16_languages_are_the_16_boolean_functions_of_two_bits) {
+    int seen[NUM_LANGUAGES] = {0};
+    int decided[NUM_LANGUAGES] = {0};
+    for (int n = 0; n < NUM_PROGRAMS; n++) decided[language_code(disassemble((uint32_t)n))] = 1;
+    for (int y = 0; y < NUM_LANGUAGES; y++) {
+        int table = language_of_expression(LANGUAGE_EXPRESSIONS[y]);
+        EXPECT_EQ(table, y);
+        seen[table]++;
+        EXPECT(decided[y]);
+    }
+    for (int y = 0; y < NUM_LANGUAGES; y++) EXPECT_EQ(seen[y], 1);
+    // The parser's reading: NOT binds tightest, then AND, then OR and XOR.
+    EXPECT_EQ(language_of_expression("NOT hb AND lb"), 2);
+    EXPECT_EQ(language_of_expression("NOT (hb AND lb)"), 7);
+    EXPECT_EQ(language_of_expression("hb OR lb AND 0"), 12);
+}
+
 TEST_MAIN(TEST_CASE(each_language_has_the_shortest_length_the_book_states),
           TEST_CASE(every_shortest_program_ends_in_zero),
           TEST_CASE(the_analytical_solution_decides_every_language),
           TEST_CASE(without_mod2_fifteen_languages_are_decided),
           TEST_CASE(zero_decr_and_mod2_are_each_needed_and_together_suffice),
           TEST_CASE(decr_and_its_accepting_twin_decide_every_language_in_four_lines),
-          TEST_CASE(one_instruction_decides_at_most_five_languages_at_any_length))
+          TEST_CASE(one_instruction_decides_at_most_five_languages_at_any_length),
+          TEST_CASE(the_16_languages_are_the_16_boolean_functions_of_two_bits))

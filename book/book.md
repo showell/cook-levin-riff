@@ -65,7 +65,7 @@ Steve wrote the first version by hand in Python, in [virtual-machine](https://gi
 
 ### What the book covers
 
-The first part is the toy for its own sake: a finite language, completely understood, every question settled by running everything, even in Python. {{chapter The machine}} sets it out, {{chapter Languages and machines}} gives the computer science behind the word "language", {{chapter Deciding in plain Python}} decides each one with no machine at all, {{chapter Programs as languages}} searches all 4,096 programs and proves the first theorems, {{chapter Nibble, the puzzle page}} turns the 16 languages into puzzles, {{chapter The machine as a circuit}} builds the machine as hardware, and {{chapter Some history of the approach}} says in what order Steve built it all.
+The first part is the toy for its own sake: a finite language, completely understood, every question settled by running everything, even in Python. {{chapter The machine}} sets it out, {{chapter Languages and machines}} gives the computer science behind the word "language", {{chapter Deciding in plain Python}} decides each one in a line of Python, {{chapter Programs as languages}} searches all 4,096 programs and proves the first theorems, {{chapter Nibble, the puzzle page}} turns the 16 languages into puzzles, {{chapter The machine as a circuit}} builds the machine as hardware, and {{chapter Some history of the approach}} says in what order Steve built the Python.
 
 The second part is Cook-Levin: {{chapter How it got here}}, {{chapter P, NP and Cook-Levin}}, then the step as polynomials, from {{chapter Arithmetization}} to {{chapter The polynomials, in full}}, and the circuit as a tableau and a formula, from {{chapter The Cook-Levin machine}} to {{chapter The solver's work, in full}}.
 
@@ -184,7 +184,7 @@ The machine here is Turing's idea at its smallest. Its tape is one 2-bit registe
 
 ## Deciding in plain Python
 
-A language over {0, 1, 2, 3} is four yes-or-no answers, so deciding one takes a line of ordinary code. The code here is `python/decides.py`, which `build.shale` runs on every build: it holds its two versions to each other on all 16 languages and all four inputs, and each one-line test below to its language.
+A language over {0, 1, 2, 3} is four answers, one per input, so deciding one takes a line of ordinary code. The code here is `python/decides.py`, which `build.shale` runs on every build: it holds its two versions to each other on all 16 languages and all four inputs, and each one-line test below to its language.
 
 ### Two versions of `decides`
 
@@ -480,13 +480,60 @@ Load the want register with `0111` and the program register with `decr, mod2, ze
 
 All four comparators say yes, so the AND lights "decides". Change one program bit and some core's answer flips, its comparator reports a mismatch, and the light goes out.
 
+## Some history of the approach
+
+This chapter is mostly story, and a reader in a hurry may skip it: the rest of the book reads the same. It says in what order Steve built the Python, and which view of the toy the order passed over.
+
+### The order of the work
+
+The virtual-machine log records the order. All of it came in four days of March 2023:
+
+1. **2023-03-11, 01:49:** the machine, `run_progam`, and the search `find_solutions`, in the first commit ([f01c1c3](https://github.com/showell/virtual-machine/commit/f01c1c3)).
+2. **13:02 the same day:** the analytical solution ([d6bb78f](https://github.com/showell/virtual-machine/commit/d6bb78f)), as {{chapter Programs as languages}} tells.
+3. **15:47 the same day:** the stepper ([ba9388a](https://github.com/showell/virtual-machine/commit/ba9388a)), with its `NOT`, `AND` and `OR` already arithmetic on integers (`NOT x` was (x − 1)·(x − 1) then), and the assertion that the stepper accepts exactly the language's inputs.
+4. **2023-03-12:** `mod2` and `pass`, today's `nada` ([cad8e18](https://github.com/showell/virtual-machine/commit/cad8e18)), then the polynomial library from 14:35 ([6bb7429](https://github.com/showell/virtual-machine/commit/6bb7429)).
+5. **2023-03-14:** the step polynomials at 12:22 ([a4e4765](https://github.com/showell/virtual-machine/commit/a4e4765)), and at 12:32 programs of six lines, with the assertion that every language has a program ([8646cbe](https://github.com/showell/virtual-machine/commit/8646cbe)).
+
+### The view the order passed over
+
+From the machine Steve went straight to arithmetization, polynomials over the integers. The plain Boolean view sits between the two. Read an input n as its two bits, n = 2·`hb` + `lb`, and each language is a Boolean function of them: {3} is `hb AND lb`, {1, 2, 3} is `hb OR lb`, {1, 2} is `hb XOR lb`, and {0, 2, 3} is `hb OR NOT lb`.
+
+**Theorem 9.** The 16 languages are exactly the 16 Boolean functions of two bits: each language is one function of `hb` and `lb`, and each function is one language.
+
+*Proof.* A function of two bits is its four values, one per input, and a language is the same four answers, so the two are counted alike, 2^4 = 16. `tests/test_theorems.c` evaluates the 16 expressions below at all four inputs, finds each one true at its language's members alone and the 16 truth tables all different, and finds each language decided by some program. `src/boolean_main.c` holds each expression to a program run on the machine and prints the table, and the book's build holds the table to that output.
+
+| code | language | as hb and lb |
+|---|---|---|
+| 0 | { } | `0` |
+| 1 | {0} | `NOT (hb OR lb)` |
+| 2 | {1} | `NOT hb AND lb` |
+| 3 | {0, 1} | `NOT hb` |
+| 4 | {2} | `hb AND NOT lb` |
+| 5 | {0, 2} | `NOT lb` |
+| 6 | {1, 2} | `hb XOR lb` |
+| 7 | {0, 1, 2} | `NOT (hb AND lb)` |
+| 8 | {3} | `hb AND lb` |
+| 9 | {0, 3} | `NOT (hb XOR lb)` |
+| 10 | {1, 3} | `lb` |
+| 11 | {0, 1, 3} | `NOT hb OR lb` |
+| 12 | {2, 3} | `hb` |
+| 13 | {0, 2, 3} | `hb OR NOT lb` |
+| 14 | {1, 2, 3} | `hb OR lb` |
+| 15 | {0, 1, 2, 3} | `1` |
+
+So the 16 puzzles of Nibble are the 16 two-input connectives, and one step of the machine is a Boolean expression of six bits, which {{chapter Six expressions, composed}} writes out.
+
+### Why polynomials
+
+The polynomials were part of the point. Steve, on 2026-11-25, said that part of the project was "to generate obscenely large [polynomials] that actually mapped to a simple Nibble VM solving our 2-bit language". The second part of the book composes them, and {{chapter The polynomials, in full}} prints them whole.
+
 ## How it got here
 
 The first part ran the toy. This part translates it the way Cook and Levin translated a checking machine, and checks that the translation answers as the toy does. This chapter is the short history of that translation, as two git logs record it.
 
 ### The Python, 2023
 
-The virtual-machine log opens on 2023-03-11 with [f01c1c3](https://github.com/showell/virtual-machine/commit/f01c1c3) and runs through 158 commits to 2023-04-08, all under Steve's address. The stepper arrived on its first day ([ba9388a](https://github.com/showell/virtual-machine/commit/ba9388a)), the polynomial library from 2023-03-12 ([6bb7429](https://github.com/showell/virtual-machine/commit/6bb7429)), and the step polynomials on 2023-03-14 ([a4e4765](https://github.com/showell/virtual-machine/commit/a4e4765)), the same day as `MAX_STEPS` of 6. The last 2023 commits, on 2023-04-08, begin with "Eliminate most poly-related stuff" ([72bf4c4](https://github.com/showell/virtual-machine/commit/72bf4c4)).
+The virtual-machine log opens on 2023-03-11 with [f01c1c3](https://github.com/showell/virtual-machine/commit/f01c1c3) and runs through 158 commits to 2023-04-08, all under Steve's address; {{chapter Some history of the approach}} gives the order of its first four days. The last 2023 commits, on 2023-04-08, begin with "Eliminate most poly-related stuff" ([72bf4c4](https://github.com/showell/virtual-machine/commit/72bf4c4)).
 
 ### The composition that stalled, 2026
 
