@@ -131,6 +131,28 @@ Every behaviour of the machine is in those 26 lines. The rest of this part only 
 
 A run that reaches the end of its six instructions rejects. So a program accepts some of the four inputs and rejects the rest, and the set it accepts is the problem it decides.
 
+### One program, input by input
+
+Here is a program that decides {3}, the problem the puzzle page calls `is_huge`. In an ordinary programming language it is `n == 3`.
+
+```text
+decr
+decr
+decr
+zero
+nada
+nada
+```
+
+Read it once for each input:
+
+- **From 0**, line 1's `decr` rejects.
+- **From 1**, line 1 takes `AX` to 0, and line 2 rejects.
+- **From 2**, lines 1 and 2 take `AX` to 0, and line 3 rejects.
+- **From 3**, three `decr`s take `AX` to 0, and line 4's `zero` accepts.
+
+So the program accepts {3} and rejects the rest. Every input's run ends by line 4, so lines 5 and 6 could hold any opcodes. That is one reason most problems have many programs.
+
 Steve's own view of `nada` and of the design, in his words: "nada is kinda not a real instruction under my machine. It just makes it so that every program is exactly 12 bits. It's also worth saying that the language was designed to have some complexity. It's using an imperfect machine to solve the problem somewhat by design." {{chapter Which instructions are needed}} makes both points exact: `nada` is redundant (Theorem 6), and two instructions of another design would decide every problem in four lines (Theorem 7).
 
 ### Counting
@@ -304,9 +326,13 @@ The empty problem, { }, has 844 programs, since any program that rejects every i
 
 ### The four opcodes
 
-**Theorem 6.** The six-line programs over `zero`, `decr` and `mod2` decide all 16 problems, and each of the three is needed: dropping `zero` leaves only { } decided, dropping `decr` leaves 3 problems, and dropping `mod2` leaves 15 (Theorem 2). `nada` is redundant: the programs over the other three decide all 16.
+**Theorem 6.** The six-line programs over `zero`, `decr` and `mod2` decide all 16 problems, and each of the three is needed: dropping `zero` leaves only { } decided, dropping `decr` leaves 3 problems, and dropping `mod2` leaves 15 (Theorem 2). `nada` is redundant: the programs over the other three decide all 16. And every shortest program is made of `zero`, `decr` and `mod2` alone.
 
-*Proof.* `tests/test_theorems.c` runs the 4,096 programs, keeps those whose every instruction is in a given set, and counts the problems they decide, for all four opcodes and for each set of three. Only `zero` accepts, so dropping it leaves every input rejected. Dropping `decr` leaves { }, {0} and {0, 2}: `mod2` brings 2 to 0, and 1 and 3 to 1, where they stay.
+*Proof.* `tests/test_theorems.c` runs the 4,096 programs, keeps those whose every instruction is in a given set, and counts the problems they decide, for all four opcodes and for each set of three. Only `zero` accepts, so dropping it leaves every input rejected. Dropping `decr` leaves { }, {0} and {0, 2}: `mod2` brings 2 to 0, and 1 and 3 to 1, where they stay. For the last part, take a `nada` out of a program and close the gap: every input meets the same lines in the same order, so the shorter program decides the same problem. So every line of a shortest program is `zero`, `decr` or `mod2`, and the same test checks each one.
+
+### What it means for a player
+
+The last part of Theorem 6 is a lemma a player can use. A puzzle with three open lines offers 4^3 = 64 programs to try, but once `nada` is set aside it offers 3^3 = 27. A player who clicks through those 27, knowing only the buttons, will find the answer. That is the toy's version of the question {{chapter P, NP and Cook-Levin}} asks: whether finding an answer can ever be easier than trying the possibilities.
 
 ### Instructions of any kind
 
@@ -601,6 +627,12 @@ The toy's every question was settled by trying everything: 4,096 programs on fou
 ### When deciding is cheap, and when checking is
 
 Decidable languages differ in cost. P is the class decided in time polynomial in the input's length. NP is the class whose members have short certificates that a machine can check in polynomial time: a formula is in SAT, the language of satisfiable Boolean formulas, when an assignment makes it true, and checking an assignment is quick. In 1971 Stephen Cook, in "The Complexity of Theorem-Proving Procedures", and independently Leonid Levin, published in 1973, showed that SAT is as hard as anything in NP. Their proof takes the checking machine, which runs for a polynomial number of steps, and writes each step of its run as clauses: the whole run becomes one formula, satisfiable exactly when a certificate exists.
+
+### Guessing, and the computation history
+
+Michael Sipser's MIT lecture on the theorem ([lecture 16](https://learn.mit.edu/video/7036/lecture-16-cook-levin-theorem?playlist=7021)) frames NP with a nondeterministic machine. At each choice it forks and follows every branch at once, and it accepts if any branch accepts. Such a machine forks for free and follows every branch, which is different from guessing at random. For the toy, the choices are the program's twelve bits. A nondeterministic machine guesses them two at a time, then runs the guessed program on the four inputs. A player clicking through a puzzle's buttons, knowing only the buttons, is that machine run one branch at a time, as {{chapter Which instructions are needed}} counts.
+
+Sipser calls the record of one branch's run, every state from the start to the verdict, its *computation history*. Cook and Levin write a formula that is satisfiable exactly when some branch has an accepting computation history. For the toy, a history is the tableau of {{chapter The Cook-Levin machine}}: seven rows by four cores.
 
 ### The toy as a checker
 

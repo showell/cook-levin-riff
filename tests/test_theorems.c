@@ -1,6 +1,7 @@
 // test_theorems.c: the book's theorems about the toy, proved by running all
 // 4,096 programs on all four inputs: each language's shortest length and
-// the final zero of its shortest programs, Steve's analytical solution on
+// the final zero of its shortest programs, that they use no `nada`, Steve's
+// analytical solution on
 // every language, which opcodes are needed, and what instructions of any
 // kind can do, one and two of them. A program's
 // length is its instructions before its trailing `nada`s. The counts
@@ -61,6 +62,33 @@ TEST(every_shortest_program_ends_in_zero) {
     EXPECT(shortest_programs > 0);
     EXPECT_EQ(ends_in_zero, shortest_programs);
     EXPECT(longer_ending_otherwise > 0);
+}
+
+// No shortest program uses `nada` among its lines: taking one out would
+// leave a program a line shorter that decides the same problem. Longer
+// programs with a `nada` among their lines are counted, so the check is seen
+// to find them.
+TEST(no_shortest_program_uses_nada) {
+    int shortest_programs = 0;
+    int with_nada = 0;
+    int longer_with_nada = 0;
+    for (int n = 0; n < NUM_PROGRAMS; n++) {
+        Program p = disassemble((uint32_t)n);
+        int len = length_of(p);
+        int has_nada = 0;
+        for (int i = 0; i < len; i++) {
+            if (p.ops[i] == OP_NADA) has_nada = 1;
+        }
+        if (len == SHORTEST[language_code(p)]) {
+            shortest_programs++;
+            with_nada += has_nada;
+        } else {
+            longer_with_nada += has_nada;
+        }
+    }
+    EXPECT(shortest_programs > 0);
+    EXPECT_EQ(with_nada, 0);
+    EXPECT(longer_with_nada > 0);
 }
 
 // Steve's analytical solution (virtual-machine's d6bb78f, `solve`): decr
@@ -263,6 +291,7 @@ TEST(the_16_languages_are_the_16_boolean_functions_of_two_bits) {
 
 TEST_MAIN(TEST_CASE(each_language_has_the_shortest_length_the_book_states),
           TEST_CASE(every_shortest_program_ends_in_zero),
+          TEST_CASE(no_shortest_program_uses_nada),
           TEST_CASE(the_analytical_solution_decides_every_language),
           TEST_CASE(without_mod2_fifteen_languages_are_decided),
           TEST_CASE(zero_decr_and_mod2_are_each_needed_and_together_suffice),
