@@ -1,4 +1,4 @@
-// sat.h: a Nibble puzzle as a SAT problem, in DIMACS CNF.
+// sat.h: a problem as a SAT formula, in DIMACS CNF.
 //
 // This is the Cook-Levin construction, on a machine small enough to see
 // whole: "some program of six instructions accepts exactly language L" is

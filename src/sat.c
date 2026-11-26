@@ -1,4 +1,4 @@
-// sat.c: a Nibble puzzle as a SAT problem (sat.h).
+// sat.c: a problem as a SAT formula (sat.h).
 
 #include "sat.h"
 
@@ -263,9 +263,9 @@ static void write_lit(FILE *f, Lit x) {
 
 int sat_write_dimacs(FILE *f, const Cnf *c, const SatPuzzle *p) {
     Lang lang = language((uint32_t)p->lang);
-    fprintf(f, "c Nibble puzzle: accept exactly {");
+    fprintf(f, "c problem: accept exactly {");
     for (size_t k = 0; k < lang.len; k++) fprintf(f, "%s%d", k ? ", " : "", lang.items[k]);
-    fprintf(f, "} (language %d), lines past %d nada, fixed lines mask %d of program %u\n", p->lang, p->max_len,
+    fprintf(f, "} (code %d), lines past %d nada, fixed lines mask %d of program %u\n", p->lang, p->max_len,
             p->fixed, p->fixed_ops);
     fprintf(f, "c a model's op i is 2 * v[2i - 1] + v[2i]:");
     for (int i = 1; i <= MAX_STEPS; i++) fprintf(f, " op%d %d %d", i, sat_op_hb(i), sat_op_lb(i));

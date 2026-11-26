@@ -1,23 +1,23 @@
-# decides.py: deciding a language over {0, 1, 2, 3} with no machine at all.
-# A language is its "want" code, four bits, bit n set when input n is in
+# decides.py: deciding a problem, a subset of {0, 1, 2, 3}, with no machine at all.
+# A problem is its "want" code, four bits, bit n set when input n is in
 # it: {0, 2, 3} is 0b1101, 13, as the C's `encoded_language` writes it.
 # build.shale runs this file; it checks itself and prints one line.
 
 
 def decides(want, n):
-    # The members of the language: each input whose bit is set in `want`.
+    # The members of the problem: each input whose bit is set in `want`.
     members = []
     for i in range(4):
         if want & (1 << i):
             members.append(i)
-    # The language accepts n when n is one of its members.
+    # The problem holds n when n is one of its members.
     return n in members
 
 
 decides_golfed = lambda want, n: want >> n & 1
 
 
-# A few of the 16 languages as one test of n, by want code.
+# A few of the 16 problems as one test of n, by want code.
 ONE_LINERS = {
     14: lambda n: n != 0,  # {1, 2, 3}
     5: lambda n: n % 2 == 0,  # {0, 2}

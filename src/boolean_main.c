@@ -2,12 +2,12 @@
 //
 //   boolean_main
 //
-// Four blocks, each checked before it is printed: the 16 languages, each
+// Four blocks, each checked before it is printed: the 16 problems, each
 // with its Boolean expression of AX's two bits, hb and lb, held to a program
 // that decides it; the step as Boolean expressions, held to src/stepper.c's
-// step on all 64 settings; for each language, how many programs decide it
+// step on all 64 settings; for each problem, how many programs decide it
 // and how many products its sum of products over v1 to v12 takes; and the
-// sums of products of the languages in SHOWN, each held to the machine's
+// sums of products of the problems in SHOWN, each held to the machine's
 // programs exactly. book/book.shale holds the book's copies to this
 // output, byte for byte.
 // A unity build, as main.c is.
@@ -19,7 +19,7 @@
 #include "boolean.c"
 #include "decides.c"
 
-// The languages whose sums of products the book prints, by code.
+// The problems whose sums of products the book prints, by code.
 static const int SHOWN[] = {13, 9};
 
 static void print_language(int code) {
@@ -46,7 +46,7 @@ static Program a_program_deciding(int code) {
 }
 
 int main(void) {
-    printf("| code | language | as hb and lb |\n");
+    printf("| code | problem | as hb and lb |\n");
     printf("|---|---|---|\n");
     for (int code = 0; code < NUM_LANGUAGES; code++) {
         const char *text = LANGUAGE_EXPRESSIONS[code];
@@ -85,7 +85,7 @@ int main(void) {
 
     static unsigned char is_true[NUM_LANGUAGES][POINTS];
     static Cover covers[NUM_LANGUAGES];
-    printf("\n| code | language | programs | products |\n");
+    printf("\n| code | problem | programs | products |\n");
     printf("|---|---|---|---|\n");
     int all = 0;
     for (int code = 0; code < NUM_LANGUAGES; code++) {
