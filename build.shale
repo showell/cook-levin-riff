@@ -4,8 +4,9 @@
 --                              the main program, the program's stdout held
 --                              to tests/golden/find_solutions.txt, and
 --                              python3 runs the book's Python,
---                              python/decides.py and python/steps.py,
---                              each of which checks itself.
+--                              python/decides.py, python/steps.py and
+--                              python/fourteen_cnf.py, each of which
+--                              checks itself.
 --   shale build.shale full=1   the fast tier, then gcc twice: -std=c11 -O2
 --                              -Wall -Wextra -Werror, and -O0 with
 --                              -fsanitize=address,undefined; each builds and
@@ -26,7 +27,7 @@ const GOLDEN = "tests/golden/find_solutions.txt"
 -- Why `run` may start a binary git does not track: this build just made it.
 const RAN = "build: a test binary this build just compiled"
 -- The book's Python, and why `run` may start python3 for it.
-const PYTHON = {"python/decides.py", "python/steps.py"}
+const PYTHON = {"python/decides.py", "python/steps.py", "python/fourteen_cnf.py"}
 const PYTHON_WANT = "build: the book's Python checks itself"
 const GCC_WARN = {"-std=c11", "-Wall", "-Wextra", "-Werror"}
 

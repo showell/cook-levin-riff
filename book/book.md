@@ -468,6 +468,135 @@ Whether a program decides a problem is more gates of the same kind. Run the six 
 
 So the 16 problems, the 16 puzzles of Nibble, are the 16 two-input connectives.
 
+## One formula for the whole machine
+
+{{chapter The Boolean view}} ran the machine as gates on known bits. Its four step functions never ask what their bits are, so they can be handed something else: formulas. The machine is then one function of 14 bits, f, the input's two and the program's twelve, true where the program accepts the input, and running the step functions on formulas writes f down. The Roc port states f directly, in `roc/Fourteen.roc`:
+
+{{function roc/Fourteen.roc f}}
+
+### Formulas as values
+
+`python/steps.py` keeps a formula as a graph of nodes, each a variable, a constant, or a complement, AND or OR of nodes before it. Its operators are the step functions' `~`, `&` and `|`. They fold the plain cases away (a constant, a doubled complement, x AND x, and x OR (¬x AND y), which is x OR y), and a node already built is reused, so equal parts of a formula are one node:
+
+{{lines python/steps.py from "class F:" to "            return self | other.args[1]"}}
+
+### Six steps, every bit unknown
+
+Name the 14 bits v1 to v14: v1 and v2 the input's, high then low, and v3 to v14 the program's, two a line, line 1 first, so that v3 to v14 read as the program's number. Start from the input's two unknowns with both flags 0, and run the six steps, each on its line's two unknowns (`python/fourteen_cnf.py`):
+
+{{lines python/fourteen_cnf.py from "def formula():" to "    return state[3]"}}
+
+What comes back is f. After line 1 the four state bits are short enough to read:
+
+```text
+hb'       = ((NOT v3 AND NOT v4 AND v1) OR (NOT v3 AND v4 AND v1) OR (v3 AND NOT v4 AND v1 AND v2))
+lb'       = ((NOT v3 AND NOT v4 AND v2) OR (NOT v3 AND v4 AND v2) OR (v3 AND v4 AND v2) OR (v3 AND NOT v4 AND v1 AND NOT v2))
+halted'   = (v3 AND NOT v4 AND NOT v1 AND NOT v2)
+accepted' = (NOT v3 AND v4 AND NOT v1 AND NOT v2)
+```
+
+`accepted'` is line 1 being `zero` (`NOT v3 AND v4`) on an `AX` of 0 (`NOT v1 AND NOT v2`). `hb'` is the high bit kept by `nada`, kept by `zero`, or kept by a `decr` from 3; `mod2` clears it. After line 2, `accepted` has the line-1 bits pasted in wherever it uses them:
+
+```text
+((NOT v3 AND v4 AND NOT v1 AND NOT v2) OR (NOT (v3 AND NOT v4 AND NOT v1 AND NOT v2) AND NOT v5 AND v6 AND NOT ((NOT v3 AND NOT v4 AND v1) OR (NOT v3 AND v4 AND v1) OR (v3 AND NOT v4 AND v1 AND v2)) AND NOT ((NOT v3 AND NOT v4 AND v2) OR (NOT v3 AND v4 AND v2) OR (v3 AND v4 AND v2) OR (v3 AND NOT v4 AND v1 AND NOT v2))))
+```
+
+It reads: line 1 accepted, or line 1 left the machine running, line 2 is `zero`, and `AX` after line 1 is 0.
+
+### Graph and tree
+
+Written out as text, each line's formula repeats the last line's state bits wherever it uses them, and the text grows about six-fold a line. Kept as a graph, the same formula grows by about 35 gates a line:
+
+| after line | gates in the graph | written out, characters |
+|---|---|---|
+| 1 | 6 | 37 |
+| 2 | 34 | 322 |
+| 3 | 69 | 2,131 |
+| 4 | 104 | 13,598 |
+| 5 | 139 | 86,211 |
+| 6 | 174 | 546,105 |
+
+The last row is f: 174 gates, or more than half a million characters. {{chapter Checking a claim}} works with the graph.
+
+## Checking a claim
+
+A claim such as "program 1689 accepts input 2" can be checked by a tool that knows only formulas and clauses. This chapter turns f's graph into the format SAT tools read and hands the claim to the checker inside Matthieu Pizenberg's [rocsat](https://github.com/mpizenberg/rocsat).
+
+### Naming each gate
+
+SAT tools read CNF: a list of clauses, each an OR of literals, all of which must hold. Expanding f into CNF would start from its half-million characters. Tseitin's encoding names instead: each AND and OR node gets a variable of its own, and three clauses say that variable equals its gate. A complement is a literal's minus sign.
+
+| gate | its three clauses | what they say |
+|---|---|---|
+| g = a AND b | (¬g ∨ a), (¬g ∨ b), (g ∨ ¬a ∨ ¬b) | g gives a, g gives b, a and b give g |
+| g = a OR b | (g ∨ ¬a), (g ∨ ¬b), (¬g ∨ a ∨ b) | a gives g, b gives g, g gives a or b |
+
+{{lines python/fourteen_cnf.py from "def clauses_of(out):" to "    return lit, gates, clauses"}}
+
+The gates are numbered from v15 up, inputs before the gates that use them. The last clause holds f's own literal alone: it states f = 1. Its head, in DIMACS, the format the tools read:
+
+```text
+c f : {0,1}^14 -> {0,1}, the Nibble machine as one function
+c v1 v2: the input's bits; v3 .. v14: the program's, line 1 first
+c v15 .. v160: AND and OR gates; the last clause: f = 1
+p cnf 160 439
+-15 -3 0
+-15 4 0
+15 3 -4 0
+-16 -1 0
+-16 -2 0
+16 1 2 0
+-17 15 0
+-17 16 0
+17 -15 -16 0
+-18 3 0
+-18 -4 0
+18 -3 4 0
+-19 18 0
+-19 16 0
+19 -18 -16 0
+```
+
+Each group of three is one gate: v15 is `NOT v3 AND v4`, line 1 is `zero`; v16 is `NOT v1 AND NOT v2`, `AX` starts at 0; v17 is v15 AND v16, line 1 accepts; v18 is `v3 AND NOT v4`, line 1 is `decr`; v19 is v18 AND v16, line 1 halts. The formula has 160 variables and 439 clauses, three for each of the 146 gates and one for f = 1. It ends:
+
+```text
+160 -130 0
+160 -159 0
+-160 130 159 0
+160 0
+```
+
+v160 is f, the OR of v130, accepted by line 5, and v159, line 6 accepting.
+
+### A claim is an assignment
+
+A claim gives every variable a value. The 14 bits come from the claim; each gate's value comes from running the gates on them:
+
+{{lines python/fourteen_cnf.py from "def values_at(gates, n, program):" to "    return [env[i] for i in range(1, 15)] + [g.value(env, memo) for g in gates]"}}
+
+For input 2 (`10`) and program 1689 (`01 10 10 01 10 01`), the 160 values, in the solvers' `v` format, a minus sign for false:
+
+```text
+v 1 -2 -3 4 5 -6 7 -8 -9 10 11 -12 -13 14 15 -16 -17 -18 -19 -20 -21 -22 23 24 -25 -26 27 -28 -29 -30 -31 -32 -33 34 -35 -36 -37 -38 -39 -40 41 -42 -43 -44 -45 -46 -47 -48 -49 -50 -51 -52 -53 -54 -55 -56 -57 -58 -59 -60 -61 62 63 64 65 66 -67 -68 -69 -70 71 -72 -73 74 -75 -76 -77 -78 -79 -80 -81 -82 -83 -84 -85 -86 -87 -88 -89 -90 -91 -92 -93 -94 -95 -96 97 98 99 100 -101 -102 -103 -104 -105 -106 -107 -108 -109 -110 -111 -112 -113 -114 -115 -116 -117 -118 -119 -120 -121 -122 -123 -124 -125 -126 127 -128 -129 130 131 132 133 134 -135 -136 -137 -138 -139 -140 -141 -142 -143 -144 -145 -146 -147 -148 -149 -150 -151 -152 -153 -154 -155 -156 157 158 -159 160 0
+```
+
+### rocsat checks it
+
+`rocsat check` reads a formula and an assignment and tests every clause, one by one, and that is all it does. `sat/fourteen.shale` hands it the claim for each of the four inputs, with program 1689:
+
+```text
+input 0, program 1689: exit 0: c model ok
+input 1, program 1689: exit 1: c model falsifies clause 438
+input 2, program 1689: exit 0: c model ok
+input 3, program 1689: exit 0: c model ok
+```
+
+Clause 438, counted from 0, is the last of the 439, `160 0`: f = 1. So program 1689 accepts 0, 2 and 3 and rejects 1, the problem {0, 2, 3}, as Theorem 5 says.
+
+The one complaint is a proof. The first 438 clauses say only that each gate equals its gate's AND or OR, so once the 14 bits are fixed, exactly one assignment satisfies them, the one the gates compute. At input 1 that assignment has v160 false, so every assignment that keeps the gates' clauses breaks f = 1. `python/fourteen_cnf.py`, run by `build.shale`, checks the same at all 16,384 points: the computed assignment keeps every gate's clauses, and it keeps f = 1 exactly where the machine accepts. The book's build holds the blocks here to its output, and rocsat's lines to `sat/fourteen/verdicts.txt`, which `sat/fourteen.shale` writes.
+
+Every bit here was given; the check only computes. A solver that finds the bits when they are left unknown is where the second part, {{chapter Cook-Levin as SAT}}, takes the same encoding.
+
 ## The machine as a circuit
 
 This chapter builds the machine as hardware, a plain digital circuit with two inputs and one output. Its inputs are a problem and a program, and its output is true when the program decides the problem and false otherwise. It is combinational: the whole run is laid out in space, and every wire settles at once. {{chapter The Cook-Levin machine}}, in the second part, turns the same circuit around.

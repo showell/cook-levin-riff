@@ -1,0 +1,43 @@
+-- sat/fourteen.shale: rocsat's model checker on Fourteen's formula, f as one
+-- CNF (python/fourteen_cnf.py), and the claim "program 1689 accepts input n"
+-- for each of the four inputs, written as a full assignment. It writes
+-- rocsat's verdicts to sat/fourteen/verdicts.txt, one line an input, which
+-- the book shows and its build holds byte for byte, so the book builds
+-- without rocsat. From the repository's root:
+--
+--   shale sat/fourteen.shale
+--
+-- It fails unless rocsat accepts the claims for inputs 0, 2 and 3 and
+-- refutes the claim for input 1 at the formula's last clause, f = 1.
+-- rocsat is the one sat/oracle.shale runs, built in build:rocsat.
+
+const OUT = "out/sat/fourteen"
+const VERDICTS = "sat/fourteen/verdicts.txt"
+const PROGRAM = 1689
+const WANT_PY = "fourteen: the book's Python writes Fourteen's CNF and its claims"
+const WANT_ROCSAT = "fourteen: rocsat's model checker, built in build:rocsat from its pinned nightly"
+
+local rocsat = arg("rocsat", "build:rocsat/src/rocsat")
+if not exists(rocsat) then fail("rocsat is not built at " .. rocsat .. ": see README.md, \"SAT\"") end
+mkdir(OUT)
+local cnf = OUT .. "/fourteen.cnf"
+replace(cnf, must(run({"python3", "python/fourteen_cnf.py", "cnf"}, {timeout_ms = 60000, whole = 100000, want = WANT_PY})).out)
+local lines_out = {}
+local clauses = 0
+for l in lines(read(cnf)) do
+  if l ~= "" and not starts_with(l, "c") and not starts_with(l, "p") then clauses = clauses + 1 end
+end
+for n = 0, 3 do
+  local model = OUT .. "/claim-" .. n .. ".txt"
+  replace(model, must(run({"python3", "python/fourteen_cnf.py", "model", "" .. n, "" .. PROGRAM}, {timeout_ms = 60000, whole = 10000, want = WANT_PY})).out)
+  local r = run({real(rocsat), "check", real(cnf), real(model)}, {timeout_ms = 60000, whole = 4000, want = WANT_ROCSAT})
+  local said = trim(r.out)
+  local code = get(r, "code", -1)
+  local accepts = n ~= 1
+  if accepts and (code ~= 0 or said ~= "c model ok") then fail("rocsat refused the claim for input " .. n .. ": exit " .. code .. ", " .. said) end
+  if not accepts and (code == 0 or said ~= "c model falsifies clause " .. (clauses - 1)) then fail("rocsat's answer for input 1 is not the last clause's: exit " .. code .. ", " .. said) end
+  push(lines_out, "input " .. n .. ", program " .. PROGRAM .. ": exit " .. code .. ": " .. said)
+end
+mkdir("sat/fourteen")
+replace(VERDICTS, join(lines_out, "\n") .. "\n")
+print("fourteen: rocsat checked the four claims; " .. VERDICTS .. " written")

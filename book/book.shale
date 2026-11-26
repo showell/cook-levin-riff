@@ -130,11 +130,33 @@ function check_steps()
   return nil
 end
 
+-- The blocks of "One formula for the whole machine" and "Checking a claim":
+-- python/fourteen_cnf.py's six with `book`, and rocsat's verdicts as
+-- sat/fourteen.shale wrote them to sat/fourteen/verdicts.txt. The book's
+-- source must hold each byte for byte.
+function check_fourteen()
+  local r = must(run({"python3", "python/fourteen_cnf.py", "book"}, {timeout_ms = 60000, whole = 40000, want = "book: python/fourteen_cnf.py, the book's Python, prints its blocks"}))
+  local blocks = split(trim(r.out), "\n\n")
+  if #blocks ~= 6 then fail("book: python/fourteen_cnf.py printed " .. #blocks .. " blocks, not 6") end
+  push(blocks, "```text\n" .. trim(read("sat/fourteen/verdicts.txt")) .. "\n```")
+  local source = read(SOURCE)
+  for b in blocks do
+    if find(source, b) == nil then
+      print(b)
+      fail("book: book/book.md lacks the Fourteen block above, so /" .. DEST_NAME .. "/ is left as it was")
+    end
+  end
+  print("book: the 6 blocks of python/fourteen_cnf.py and rocsat's 4 verdicts are in book/book.md")
+  return nil
+end
+
 -- A program's number, as "Program numbers" in "The machine" defines it: its
 -- lines as base-4 digits, line 1 first, nada 0, zero 1, decr 2 and mod2 3,
 -- a program of fewer than six lines padded with nada.
 function program_number(names)
-  local digit = {nada = 0, zero = 1, decr = 2, mod2 = 3}
+  local digit = {nada = 0, zero = 1, decr = 2, mod2 = 3, ["00"] = 0, ["01"] = 1, ["10"] = 2, ["11"] = 3}
+  -- A program in bits, `01 10 10 01 10 01`, is one item of six pairs.
+  if #names == 1 and find(names[1], " ") ~= nil then names = split(trim(names[1]), " ") end
   if #names > 6 then return nil end
   local n = 0
   for k = 1, 6 do
@@ -372,6 +394,7 @@ function main()
   check_tables("boolean_main", 4)
   check_steps()
   check_program_numbers()
+  check_fourteen()
   check_hand()
   check_solver_files()
 
