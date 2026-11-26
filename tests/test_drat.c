@@ -1,7 +1,8 @@
 // test_drat.c: the DRAT checker (drat.h), both ways. Small hand-made proofs
 // that must verify, planted bad ones that must fail (a lemma that does not
 // follow, a missing empty clause, a deletion of a clause a later lemma
-// needs), a RAT lemma, and models. Then rocsat's committed proofs
+// needs, a lemma deleted then needed), deletions that take back what
+// propagation had set, a RAT lemma, and models. Then rocsat's committed proofs
 // (sat/proofs/, written by sat/oracle.shale) against the CNFs sat.c makes
 // here: each of the 15 verifies against its bounded formula, and each fails
 // against the formula one line longer, which is satisfiable.
@@ -88,6 +89,61 @@ TEST(a_deletion_of_a_clause_a_later_lemma_needs_makes_the_proof_fail) {
     EXPECT(!r.ok);
     EXPECT_EQ(r.deletions, 1);
     EXPECT_EQ(r.failed_line, 2);
+}
+
+TEST(a_lemma_deleted_then_needed_makes_the_proof_fail) {
+    // (1) is added, then deleted, so the empty clause no longer follows.
+    DratResult r = checked(FOUR, "1 0\nd 1 0\n0\n");
+    EXPECT(!r.ok);
+    EXPECT_EQ(r.failed_line, 3);
+    EXPECT(contains(r.why, "the empty clause does not follow"));
+    // Added again, it is there for the empty clause.
+    r = checked(FOUR, "1 0\nd 1 0\n1 0\n0\n");
+    EXPECT(r.ok);
+    EXPECT_EQ(r.empty_line, 4);
+}
+
+TEST(a_deletion_takes_back_what_its_clause_propagated) {
+    // The formula alone sets 1, then 2, then 3, so 2 has RUP.
+    const char *chain = "p cnf 3 3\n1 0\n-1 2 0\n-2 3 0\n";
+    DratResult r = checked(chain, "2 0\n");
+    EXPECT_EQ(r.failed_line, 0);
+    // With the unit (1) deleted, nothing is set: 2 has neither RUP nor RAT.
+    r = checked(chain, "d 1 0\n2 0\n");
+    EXPECT_EQ(r.failed_line, 2);
+    EXPECT(contains(r.why, "neither RUP nor RAT"));
+    // With (-1 2), the reason for 2, deleted, 1 stays set and 2 goes.
+    r = checked(chain, "d -1 2 0\n2 0\n");
+    EXPECT_EQ(r.failed_line, 2);
+    // A clause that set nothing changes nothing: 2 still has RUP.
+    r = checked(chain, "d -2 3 0\n2 0\n");
+    EXPECT_EQ(r.failed_line, 0);
+}
+
+TEST(a_deletion_while_the_formula_conflicts_settles_it_again) {
+    // Propagation sets 1, 2 and 3, and (-3 -1) breaks: refuted as it stands.
+    const char *broken = "p cnf 3 4\n1 0\n-1 2 0\n-2 3 0\n-3 -1 0\n";
+    DratResult r = checked(broken, "0\n");
+    EXPECT(r.ok);
+    // The conflicting clause deleted, the formula has a model.
+    r = checked(broken, "d -3 -1 0\n0\n");
+    EXPECT_EQ(r.failed_line, 2);
+    // A clause the conflict went through deleted, 3 is unset and (-3 -1)
+    // holds by -3.
+    r = checked(broken, "d -2 3 0\n0\n");
+    EXPECT_EQ(r.failed_line, 2);
+    // A clause the conflict did not need deleted (a lemma), it still holds.
+    r = checked(broken, "1 2 0\nd 1 2 0\n0\n");
+    EXPECT(r.ok);
+}
+
+TEST(a_formula_with_an_empty_clause_is_refuted_until_it_is_deleted) {
+    const char *empty = "p cnf 1 2\n0\n1 0\n";
+    DratResult r = checked(empty, "");
+    EXPECT(r.ok);
+    r = checked(empty, "d 0\n");
+    EXPECT(!r.ok);
+    EXPECT(contains(r.why, "no empty clause"));
 }
 
 TEST(a_deletion_of_a_clause_the_database_does_not_hold_is_refused) {
@@ -209,6 +265,10 @@ TEST_MAIN(TEST_CASE(a_rup_proof_ending_in_the_empty_clause_verifies),
           TEST_CASE(the_empty_clause_before_its_lemmas_is_refuted),
           TEST_CASE(a_proof_with_no_empty_clause_and_no_conflict_at_its_end_is_refuted),
           TEST_CASE(a_deletion_of_a_clause_a_later_lemma_needs_makes_the_proof_fail),
+          TEST_CASE(a_lemma_deleted_then_needed_makes_the_proof_fail),
+          TEST_CASE(a_deletion_takes_back_what_its_clause_propagated),
+          TEST_CASE(a_deletion_while_the_formula_conflicts_settles_it_again),
+          TEST_CASE(a_formula_with_an_empty_clause_is_refuted_until_it_is_deleted),
           TEST_CASE(a_deletion_of_a_clause_the_database_does_not_hold_is_refused),
           TEST_CASE(a_rat_lemma_passes_on_its_first_literal_and_is_counted),
           TEST_CASE(a_malformed_line_is_refused),

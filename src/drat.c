@@ -92,41 +92,95 @@ static int is_tautology(const int *sorted, int n) {
 static int abs_int(int x) { return x < 0 ? -x : x; }
 
 // ── The database ─────────────────────────────────────────────────────────
+static int slot(const DratDb *db, int lit) { return lit + db->num_vars; }
 
-static int occ_slot(const DratDb *db, int lit) { return lit + db->num_vars; }
+static void push(DratList *list, int x) {
+    if (list->len == list->cap) {
+        list->cap = list->cap ? 2 * list->cap : 8;
+        list->at = grown(list->at, (size_t)list->cap, sizeof *list->at);
+    }
+    list->at[list->len++] = x;
+}
+
+static void *zeroed(size_t n, size_t size) {
+    void *p = calloc(n, size);
+    if (p == NULL) {
+        fprintf(stderr, "drat: out of memory\n");
+        abort();
+    }
+    return p;
+}
 
 static void db_init(DratDb *db, int num_vars) {
     memset(db, 0, sizeof *db);
     db->num_vars = num_vars;
     size_t slots = 2 * (size_t)num_vars + 1;
-    db->occ = calloc(slots, sizeof *db->occ);
-    db->occ_len = calloc(slots, sizeof *db->occ_len);
-    db->occ_cap = calloc(slots, sizeof *db->occ_cap);
-    db->val = malloc((size_t)num_vars + 1);
-    db->trail = malloc(((size_t)num_vars + 1) * sizeof *db->trail);
-    if (!db->occ || !db->occ_len || !db->occ_cap || !db->val || !db->trail) {
-        fprintf(stderr, "drat: out of memory\n");
-        abort();
-    }
+    db->occ = zeroed(slots, sizeof *db->occ);
+    db->watches = zeroed(slots, sizeof *db->watches);
+    db->val = zeroed((size_t)num_vars + 1, 1);
+    db->reason = zeroed((size_t)num_vars + 1, sizeof *db->reason);
+    db->trail = zeroed((size_t)num_vars + 1, sizeof *db->trail);
     memset(db->val, -1, (size_t)num_vars + 1);
 }
 
 void drat_free(DratDb *db) {
     if (db->occ != NULL) {
-        for (int s = 0; s < 2 * db->num_vars + 1; s++) free(db->occ[s]);
+        for (int s = 0; s < 2 * db->num_vars + 1; s++) {
+            free(db->occ[s].at);
+            free(db->watches[s].at);
+        }
     }
     free(db->occ);
-    free(db->occ_len);
-    free(db->occ_cap);
+    free(db->watches);
+    free(db->units.at);
+    free(db->buckets);
     free(db->val);
+    free(db->reason);
     free(db->trail);
     free(db->lits);
     free(db->clauses);
     memset(db, 0, sizeof *db);
 }
 
-// Adds a clause of sorted, distinct literals.
-static void add_clause(DratDb *db, const int *lits, int n) {
+static unsigned hash_of(const int *lits, int n) {
+    unsigned h = 2166136261u;
+    for (int i = 0; i < n; i++) h = (h ^ (unsigned)lits[i]) * 16777619u;
+    return h;
+}
+
+static int *bucket_of(DratDb *db, const int *lits, int n) {
+    return &db->buckets[hash_of(lits, n) & (db->num_buckets - 1)];
+}
+
+// Doubles the buckets once there are as many clauses as buckets, before a
+// clause is stored. Rehashed in
+// index order, so each bucket still lists its newest clause first.
+static void grow_buckets(DratDb *db) {
+    if (db->num_clauses < db->num_buckets) return;
+    db->num_buckets = db->num_buckets ? 2 * db->num_buckets : 1024;
+    free(db->buckets);
+    db->buckets = grown(NULL, db->num_buckets, sizeof *db->buckets);
+    for (size_t b = 0; b < db->num_buckets; b++) db->buckets[b] = -1;
+    for (size_t c = 0; c < db->num_clauses; c++) {
+        DratClause *cl = &db->clauses[c];
+        if (!cl->live) continue;
+        int *b = bucket_of(db, db->lits + cl->start, cl->len);
+        cl->next = *b;
+        *b = (int)c;
+    }
+}
+
+static void watch(DratDb *db, int c, int a, int b) {
+    db->clauses[c].watch[0] = a;
+    db->clauses[c].watch[1] = b;
+    push(&db->watches[slot(db, a)], c);
+    push(&db->watches[slot(db, b)], c);
+}
+
+// Stores a clause of sorted, distinct literals; gives its index. A clause of
+// two or more is not yet watched.
+static int store_clause(DratDb *db, const int *lits, int n) {
+    grow_buckets(db);
     if (db->num_clauses == db->clauses_cap) {
         db->clauses_cap = db->clauses_cap ? 2 * db->clauses_cap : 1024;
         db->clauses = grown(db->clauses, db->clauses_cap, sizeof *db->clauses);
@@ -136,29 +190,35 @@ static void add_clause(DratDb *db, const int *lits, int n) {
         db->lits = grown(db->lits, db->lits_cap, sizeof *db->lits);
     }
     int index = (int)db->num_clauses++;
-    db->clauses[index] = (DratClause){(int)db->lits_len, n, 1};
+    db->clauses[index] = (DratClause){(int)db->lits_len, n, 1, {0, 0}, -1};
     for (int i = 0; i < n; i++) {
         db->lits[db->lits_len++] = lits[i];
-        int s = occ_slot(db, lits[i]);
-        if (db->occ_len[s] == db->occ_cap[s]) {
-            db->occ_cap[s] = db->occ_cap[s] ? 2 * db->occ_cap[s] : 8;
-            db->occ[s] = grown(db->occ[s], (size_t)db->occ_cap[s], sizeof *db->occ[s]);
-        }
-        db->occ[s][db->occ_len[s]++] = index;
+        push(&db->occ[slot(db, lits[i])], index);
     }
+    if (n == 0) db->empty_live++;
+    if (n == 1) push(&db->units, index);
+    int *b = bucket_of(db, lits, n);
+    db->clauses[index].next = *b;
+    *b = index;
+    return index;
 }
 
-// Removes a live clause with these sorted, distinct literals; gives 0 when
-// there is none.
+// Removes a live clause with these sorted, distinct literals, the newest of
+// them; gives its index, or -1 when there is none.
 static int delete_clause(DratDb *db, const int *lits, int n) {
-    for (size_t c = db->num_clauses; c-- > 0;) {
+    if (db->num_buckets == 0) return -1;
+    int *link = bucket_of(db, lits, n);
+    for (int c = *link; c >= 0; c = *link) {
         DratClause *cl = &db->clauses[c];
-        if (cl->live && cl->len == n && (n == 0 || memcmp(db->lits + cl->start, lits, (size_t)n * sizeof *lits) == 0)) {
+        if (cl->len == n && (n == 0 || memcmp(db->lits + cl->start, lits, (size_t)n * sizeof *lits) == 0)) {
+            *link = cl->next;
             cl->live = 0;
-            return 1;
+            if (n == 0) db->empty_live--;
+            return c;
         }
+        link = &cl->next;
     }
-    return 0;
+    return -1;
 }
 
 static int vars_in_range(const DratDb *db, const int *lits, int n) {
@@ -203,7 +263,10 @@ int drat_read_cnf(DratDb *db, const char *text, char *why, size_t why_len) {
             ok = 0;
             continue;
         }
-        add_clause(db, lits, normalized(lits, n));
+        n = normalized(lits, n);
+        int c = store_clause(db, lits, n);
+        // Nothing is assigned yet, so any two literals may be watched.
+        if (n >= 2) watch(db, c, lits[0], lits[1]);
         seen++;
     }
     if (ok && vars < 0) {
@@ -229,75 +292,164 @@ static int lit_value(const DratDb *db, int lit) {
     return lit > 0 ? v : !v;
 }
 
-static void set_true(DratDb *db, int lit) {
-    db->val[abs_int(lit)] = (signed char)(lit > 0);
-    db->trail[db->trail_len++] = abs_int(lit);
+static void set_true(DratDb *db, int lit, int reason) {
+    int v = abs_int(lit);
+    db->val[v] = (signed char)(lit > 0);
+    db->reason[v] = reason;
+    db->trail[db->trail_len++] = v;
 }
 
-static void unset_all(DratDb *db) {
-    for (int i = 0; i < db->trail_len; i++) db->val[db->trail[i]] = -1;
-    db->trail_len = 0;
+// Unsets the trail past its first `keep` entries.
+static void unset_to(DratDb *db, int keep) {
+    while (db->trail_len > keep) db->val[db->trail[--db->trail_len]] = -1;
 }
 
-// A clause under the assignment: gives 1 on a conflict (every literal
-// false); sets its last literal when every other is false.
-static int visit(DratDb *db, int c) {
-    const DratClause *cl = &db->clauses[c];
-    int open = 0, last = 0;
-    for (int i = 0; i < cl->len; i++) {
-        int lit = db->lits[cl->start + i];
-        int v = lit_value(db, lit);
-        if (v == 1) return 0;
-        if (v < 0) {
-            open++;
-            last = lit;
-        }
-    }
-    if (open == 0) return 1;
-    if (open == 1) set_true(db, last);
-    return 0;
-}
-
-// Unit propagation from the assignment made so far, over every live clause;
-// gives 1 when it reaches a conflict. First every clause is visited once,
-// which sets the units; then each variable set, in order, visits the clauses
-// holding its literal made false, the only ones that can become unit.
-static int propagate(DratDb *db) {
-    for (size_t c = 0; c < db->num_clauses; c++) {
-        if (db->clauses[c].live && visit(db, (int)c)) return 1;
-    }
-    for (int head = 0; head < db->trail_len; head++) {
+// Unit propagation from trail entry `head` on; gives 1 when it reaches a
+// conflict. Each literal made false visits the clauses watching it: a clause
+// whose other watch is true is skipped; else the watch moves to a literal
+// not false, and with none the clause is unit (its other watch is set) or a
+// conflict (that one is false too).
+static int propagate(DratDb *db, int head) {
+    for (; head < db->trail_len; head++) {
         int v = db->trail[head];
         int false_lit = db->val[v] ? -v : v;
-        int s = occ_slot(db, false_lit);
-        for (int k = 0; k < db->occ_len[s]; k++) {
-            int c = db->occ[s][k];
-            if (db->clauses[c].live && visit(db, c)) return 1;
+        DratList *list = &db->watches[slot(db, false_lit)];
+        int kept = 0, conflict = 0;
+        for (int i = 0; i < list->len; i++) {
+            int c = list->at[i];
+            DratClause *cl = &db->clauses[c];
+            if (!cl->live) continue;
+            if (conflict) {
+                list->at[kept++] = c;
+                continue;
+            }
+            int side = cl->watch[0] == false_lit ? 0 : 1;
+            int other = cl->watch[1 - side];
+            if (lit_value(db, other) == 1) {
+                list->at[kept++] = c;
+                continue;
+            }
+            int moved = 0;
+            for (int k = 0; k < cl->len && !moved; k++) {
+                int lit = db->lits[cl->start + k];
+                if (lit != other && lit_value(db, lit) != 0) {
+                    cl->watch[side] = lit;
+                    push(&db->watches[slot(db, lit)], c);
+                    moved = 1;
+                }
+            }
+            if (moved) continue;
+            list->at[kept++] = c;
+            if (lit_value(db, other) == 0) {
+                conflict = 1;
+            } else {
+                set_true(db, other, c);
+            }
         }
+        list->len = kept;
+        if (conflict) return 1;
     }
     return 0;
+}
+
+// Propagates the top level again from its first `keep` entries: each live
+// unit clause set, then every entry propagated, so a clause left unit by
+// what was cut is found.
+static void settle_top(DratDb *db, int keep) {
+    unset_to(db, keep);
+    db->top_conflict = 0;
+    for (int i = 0; i < db->units.len && !db->top_conflict; i++) {
+        int c = db->units.at[i];
+        if (!db->clauses[c].live) continue;
+        int lit = db->lits[db->clauses[c].start];
+        int v = lit_value(db, lit);
+        if (v == 0) db->top_conflict = 1;
+        if (v < 0) set_true(db, lit, c);
+    }
+    if (!db->top_conflict) db->top_conflict = propagate(db, 0);
+    db->top_len = db->trail_len;
+}
+
+// After clause `c` was deleted: the top level is cut back to the literal it
+// was the reason for, if any, and settled again; rebuilt whole if it
+// conflicted, since the conflict may have needed `c`.
+static void after_deletion(DratDb *db, int c) {
+    if (db->top_conflict) {
+        settle_top(db, 0);
+        return;
+    }
+    const DratClause *cl = &db->clauses[c];
+    for (int i = 0; i < cl->len; i++) {
+        int v = abs_int(db->lits[cl->start + i]);
+        if (db->val[v] < 0 || db->reason[v] != c) continue;
+        for (int t = 0; t < db->top_len; t++) {
+            if (db->trail[t] == v) {
+                settle_top(db, t);
+                return;
+            }
+        }
+    }
+}
+
+// Adds a lemma to the database and to the top level. Its watches are two
+// literals not false where there are two; else a true one and any other, or
+// its one open literal, which is set, and a false one; else it conflicts.
+static void add_lemma(DratDb *db, const int *lits, int n) {
+    int c = store_clause(db, lits, n);
+    if (db->top_conflict) {
+        if (n >= 2) watch(db, c, lits[0], lits[1]);
+        return;
+    }
+    int open[2] = {0, 0}, num_open = 0, true_lit = 0;
+    for (int i = 0; i < n; i++) {
+        int v = lit_value(db, lits[i]);
+        if (v == 1 && true_lit == 0) true_lit = lits[i];
+        if (v < 0 && num_open < 2) open[num_open++] = lits[i];
+    }
+    if (n >= 2) {
+        if (true_lit != 0) {
+            watch(db, c, true_lit, true_lit == lits[0] ? lits[1] : lits[0]);
+        } else if (num_open == 2) {
+            watch(db, c, open[0], open[1]);
+        } else if (num_open == 1) {
+            watch(db, c, open[0], open[0] == lits[0] ? lits[1] : lits[0]);
+        } else {
+            watch(db, c, lits[0], lits[1]);
+        }
+    }
+    if (true_lit != 0) return;
+    if (num_open == 0) {
+        db->top_conflict = 1;
+    } else if (num_open == 1) {
+        int head = db->trail_len;
+        set_true(db, open[0], c);
+        db->top_conflict = propagate(db, head);
+        db->top_len = db->trail_len;
+    }
 }
 
 // RUP: the clause's literals all false, propagation conflicts. A clause
-// holding a literal and its negation holds trivially.
+// holding a literal and its negation holds trivially. The check starts from
+// the top level and is undone back to it.
 static int has_rup(DratDb *db, const int *lits, int n) {
+    if (db->top_conflict || db->empty_live > 0) return 1;
     int conflict = 0;
     for (int i = 0; i < n && !conflict; i++) {
         int v = lit_value(db, lits[i]);
-        if (v == 1) conflict = 1; // its negation was set: a tautology
-        if (v < 0) set_true(db, -lits[i]);
+        if (v == 1) conflict = 1; // its negation was set: a tautology, or it holds at the top level
+        if (v < 0) set_true(db, -lits[i], -1);
     }
-    if (!conflict) conflict = propagate(db);
-    unset_all(db);
+    if (!conflict) conflict = propagate(db, db->top_len);
+    unset_to(db, db->top_len);
     return conflict;
 }
 
 // RAT on `pivot`: every resolvent with a live clause holding -pivot has RUP
 // or is a tautology. `scratch` grows to hold one resolvent.
 static int has_rat(DratDb *db, const int *lits, int n, int pivot, int **scratch, int *cap) {
-    int s = occ_slot(db, -pivot);
-    for (int k = 0; k < db->occ_len[s]; k++) {
-        const DratClause *d = &db->clauses[db->occ[s][k]];
+    const DratList *holding = &db->occ[slot(db, -pivot)];
+    for (int k = 0; k < holding->len; k++) {
+        const DratClause *d = &db->clauses[holding->at[k]];
         if (!d->live) continue;
         int need = n + d->len;
         if (need > *cap) {
@@ -326,6 +478,7 @@ DratResult drat_check(DratDb *db, const char *proof) {
     int *scratch = NULL, scratch_cap = 0;
     int line_no = 0;
     int done = 0;
+    settle_top(db, 0);
     const char *at = proof;
     while (!done && *at) {
         at = next_line(at, &line);
@@ -344,11 +497,13 @@ DratResult drat_check(DratDb *db, const char *proof) {
         int pivot = n > 0 ? lits[0] : 0;
         n = normalized(lits, n);
         if (deletion) {
-            if (!delete_clause(db, lits, n)) {
+            int c = delete_clause(db, lits, n);
+            if (c < 0) {
                 r.failed_line = line_no;
                 say(r.why, sizeof r.why, "a deletion of a clause the database does not hold");
                 break;
             }
+            after_deletion(db, c);
             r.deletions++;
             continue;
         }
@@ -365,10 +520,10 @@ DratResult drat_check(DratDb *db, const char *proof) {
             continue;
         }
         if (has_rup(db, lits, n)) {
-            add_clause(db, lits, n);
+            add_lemma(db, lits, n);
         } else if (has_rat(db, lits, n, pivot, &scratch, &scratch_cap)) {
             r.rat_lemmas++;
-            add_clause(db, lits, n);
+            add_lemma(db, lits, n);
         } else {
             r.failed_line = line_no;
             say(r.why, sizeof r.why, "a lemma that follows by neither RUP nor RAT on its first literal, %d", pivot);

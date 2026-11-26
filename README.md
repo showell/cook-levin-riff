@@ -242,8 +242,11 @@ propagation once its literals are set false (RUP), over the formula and the
 lemmas so far; each deletion removes a clause the database holds, or the
 proof is refused; and the proof ends at the empty clause, or with the
 database refuted by propagation. A lemma that fails RUP is tried as a RAT
-on its first literal. All 15 of rocsat's proofs pass by RUP alone: 286 to
-821 lemmas each, 7,440 to 14,698 bytes, each checked in 19 to 44 ms by the tcc build.
+on its first literal. Propagation watches two literals a clause and keeps
+what the database alone propagates between lemmas, so Nibble++'s search
+proofs, up to 145,384 lines and 17 MB, check in under a minute (`src/drat.h`). All 15 of
+rocsat's proofs pass by RUP alone: 286 to 821 lemmas each, 7,440 to 14,698
+bytes, each checked in 2 to 6 ms by the tcc build.
 `drat model` holds each SAT answer's `v` lines to every clause too, beside
 the machine's check of its program.
 

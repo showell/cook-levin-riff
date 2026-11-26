@@ -1,4 +1,4 @@
-// drat.h: a DRAT proof checker, forward and plain, for the proofs rocsat
+// drat.h: a DRAT proof checker, forward, for the proofs rocsat
 // writes when it says UNSAT (sat/oracle.shale).
 //
 // A DRAT proof claims that a CNF formula has no model. It is a list of
@@ -23,10 +23,18 @@
 //     with no empty clause is accepted when that holds at its end.
 //
 // So an accepted proof says the formula is unsatisfiable, with no trust in
-// the solver that wrote it. Propagation is plain: each literal keeps the list
-// of clauses that hold it, and a literal set false visits its list. The
-// formulas here are small (416 variables, about 1,216 clauses), so clarity
-// comes first.
+// the solver that wrote it.
+//
+// Propagation watches two literals of each clause (of two or more), so a
+// literal set false visits only the clauses watching it. What propagation
+// gives the database alone, its top level, is kept between lemmas: a lemma's
+// check starts from it and is undone back to it. A lemma added extends it; a
+// deletion of a clause that is the reason for one of its literals cuts it back
+// to there and propagates again, and a deletion while it conflicts rebuilds
+// it. Whether propagation conflicts does not depend on the order it goes in,
+// so each verdict is what propagating from nothing would give. Nibble++'s
+// search proofs (sat/plus_search.shale) run past 100,000 lines over 50,000
+// clauses, which a visit of every clause per lemma could not check in time.
 
 #ifndef COOK_LEVIN_DRAT_H
 #define COOK_LEVIN_DRAT_H
@@ -39,7 +47,16 @@ typedef struct {
     int start; // into lits
     int len;
     int live;
+    int watch[2]; // the two watched literals, for a clause of two or more
+    int next;     // the next clause in its hash bucket, or -1
 } DratClause;
+
+// A list of clause indices that grows.
+typedef struct {
+    int *at;
+    int len;
+    int cap;
+} DratList;
 
 typedef struct {
     int num_vars;
@@ -49,14 +66,28 @@ typedef struct {
     DratClause *clauses;
     size_t num_clauses;
     size_t clauses_cap;
-    // occ[lit + num_vars]: the clauses holding lit, by index.
-    int **occ;
-    int *occ_len;
-    int *occ_cap;
-    // The assignment during a check: val[v] is 1, 0, or -1 for unset.
+    // occ[lit + num_vars]: the clauses holding lit, by index (for RAT).
+    DratList *occ;
+    // watches[lit + num_vars]: the clauses watching lit; a dead clause is
+    // dropped from a list when propagation next walks it.
+    DratList *watches;
+    // The clauses of one literal, and how many live clauses have none.
+    DratList units;
+    int empty_live;
+    // Clauses by their literals, for deletions: buckets[hash] is the newest
+    // clause of that hash, chained by `next`; num_buckets is a power of 2.
+    int *buckets;
+    size_t num_buckets;
+    // The assignment: val[v] is 1, 0, or -1 for unset, in the order of the
+    // trail. Its first top_len entries are the top level, the database's own;
+    // reason[v] is the clause that set v. top_conflict is 1 when propagation
+    // over the database alone conflicts.
     signed char *val;
+    int *reason;
     int *trail;
     int trail_len;
+    int top_len;
+    int top_conflict;
 } DratDb;
 
 // What a check found. `ok` is 1 when the proof refutes the formula.
