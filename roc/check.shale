@@ -13,18 +13,22 @@
 --     ClaimCnf.roc's include Cnf.roc's and hold the whole decider's CNF
 --     sizes, from roc/golden/equations.txt, which build.shale holds to
 --     `circuit_main equations`; its rocsat run is sat/claims.shale's);
---   - each app built on the dev backend and run: FindSolutions' stdout is
+--   - each app built and run: on the dev backend, FindSolutions' stdout is
 --     tests/golden/find_solutions.txt byte for byte, StepPolynomials' is
 --     roc/golden/step_polynomials.txt (the C's `bp_str` of the four step
 --     polynomials), and `composition 6`'s is roc/golden/composition.txt
 --     (tests/test_compose.c's term counts for every step, the final sizes,
---     and the proof against the machine at all 2^14 points, 0 differing).
+--     and the proof against the machine at all 2^14 points, 0 differing);
+--     on LLVM (`--opt=speed`, about 2 s to build, where the dev backend's
+--     code takes about 50 s to run), PlusCensus' stdout for the four
+--     opcode sets is tests/golden/census.txt, census_main's, and it holds
+--     every witness to the Nibble++ interpreter, Plus.roc, before it prints.
 --
 -- The release build and its timing are roc/bench.shale's, not this gate's.
 
 const WANT = "roc-pin: the Roc port's pinned compiler"
 const RAN = "roc-check: an app this gate just built"
-const APPS = {"ClaimCnf.roc", "Cnf.roc", "Composition.roc", "FindSolutions.roc", "Fourteen.roc", "NibbleWasm.roc", "StepPolynomials.roc"}
+const APPS = {"ClaimCnf.roc", "Cnf.roc", "Composition.roc", "FindSolutions.roc", "Fourteen.roc", "NibbleWasm.roc", "PlusCensus.roc", "StepPolynomials.roc"}
 const EXPECTS = {
   {app = "ClaimCnf.roc", count = 13},
   {app = "Cnf.roc", count = 9},
@@ -32,12 +36,16 @@ const EXPECTS = {
   {app = "FindSolutions.roc", count = 28},
   {app = "Fourteen.roc", count = 5},
   {app = "NibbleWasm.roc", count = 21},
+  {app = "PlusCensus.roc", count = 37},
   {app = "StepPolynomials.roc", count = 28},
 }
 const RUNS = {
-  {app = "FindSolutions.roc", exe = "find-solutions", args = {}, golden = "tests/golden/find_solutions.txt"},
-  {app = "StepPolynomials.roc", exe = "step-polynomials", args = {}, golden = "roc/golden/step_polynomials.txt"},
-  {app = "Composition.roc", exe = "composition", args = {"6"}, golden = "roc/golden/composition.txt"},
+  {app = "FindSolutions.roc", exe = "find-solutions", opt = "dev", args = {}, golden = "tests/golden/find_solutions.txt"},
+  {app = "StepPolynomials.roc", exe = "step-polynomials", opt = "dev", args = {}, golden = "roc/golden/step_polynomials.txt"},
+  {app = "Composition.roc", exe = "composition", opt = "dev", args = {"6"}, golden = "roc/golden/composition.txt"},
+  -- The census on the dev backend takes about 50 s; LLVM builds it in
+  -- about 2 s and runs all four sets in about 1.3 s.
+  {app = "PlusCensus.roc", exe = "plus-census", opt = "speed", args = {"zero,decr", "zero,decr,mod2", "zero,decr,half", "zero,decr,mod2,half"}, golden = "tests/golden/census.txt"},
 }
 
 const board = {lines = 0, failed = 0}
@@ -97,11 +105,11 @@ end
 
 mkdir("out/roc")
 for g in RUNS do
-  local exe = "out/roc/" .. g.exe .. "-dev"
-  local b = run({roc, "build", "--opt=dev", "--output=" .. real("out/roc") .. "/" .. g.exe .. "-dev", g.app}, {cwd = "roc", timeout_ms = 300000, tail = 30, want = WANT, nice = 10})
+  local exe = "out/roc/" .. g.exe .. "-" .. g.opt
+  local b = run({roc, "build", "--opt=" .. g.opt, "--output=" .. real(exe), g.app}, {cwd = "roc", timeout_ms = 300000, tail = 30, want = WANT, nice = 10})
   local built = b.code == 0 and marks(b.out) == 0
   if not built then
-    say(false, "roc build --opt=dev roc/" .. g.app .. ": exit " .. b.code)
+    say(false, "roc build --opt=" .. g.opt .. " roc/" .. g.app .. ": exit " .. b.code)
     print(b.out)
   else
     local argv = {real(exe)}
@@ -109,7 +117,7 @@ for g in RUNS do
     local r = run(argv, {timeout_ms = 120000, whole = 1000000, want = RAN, nice = 10})
     local golden = read(g.golden)
     local same = get(r, "code", -1) == 0 and r.out == golden
-    say(same, g.exe .. " " .. join(g.args, " ") .. " (dev): stdout is " .. g.golden .. ", " .. #r.out .. " bytes of " .. #golden .. ", " .. r.ms .. " ms")
+    say(same, g.exe .. " " .. join(g.args, " ") .. " (" .. g.opt .. ", built in " .. b.ms .. " ms): stdout is " .. g.golden .. ", " .. #r.out .. " bytes of " .. #golden .. ", " .. r.ms .. " ms")
     if not same then print(r.out) end
   end
 end
