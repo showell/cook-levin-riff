@@ -25,6 +25,8 @@
 -- clauses and its program on the machine (`sat solves`). The chapter that
 -- shows them is held to what this finds: each proof's row of its table, the
 -- checker's line for each proof it shows, and each shown answer's program.
+-- The chapter "From equations to CNF" is held to python/distribute.py's
+-- sizes and to sat/claims.shale's verdicts (check_cnf).
 --
 -- Then the book builder's tools/build_book.shale runs the app's expects, held
 -- to exactly APP_TESTS, builds the app into book_builder/zig-out/cook-levin,
@@ -256,6 +258,27 @@ function check_hand()
   return nil
 end
 
+-- The blocks of "From equations to CNF": python/distribute.py's sizes for
+-- the decider's equations (EQUATIONS, which check_circuit writes), and
+-- rocsat's verdicts on the three claims and two gates' lines of the first
+-- claim's CNF, as sat/claims.shale wrote them to sat/claims/verdicts.txt and
+-- sat/claims/gates.txt. The book's source must hold each byte for byte.
+function check_cnf()
+  local r = must(run({"python3", "python/distribute.py", real(EQUATIONS), "book"}, {timeout_ms = 120000, whole = 4000, want = "book: python/distribute.py, the book's Python, prints its block", nice = 10}))
+  local blocks = {trim(r.out), "```text\n" .. trim(read("sat/claims/verdicts.txt")) .. "\n```"}
+  for g in split(trim(read("sat/claims/gates.txt")), "\n\n") do push(blocks, "```text\n" .. g .. "\n```") end
+  if #blocks ~= 4 then fail("book: sat/claims/gates.txt holds " .. (#blocks - 2) .. " gates, not 2") end
+  local source = read(SOURCE)
+  for b in blocks do
+    if find(source, b) == nil then
+      print(b)
+      fail("book: book/book.md lacks the CNF block above, so /" .. DEST_NAME .. "/ is left as it was")
+    end
+  end
+  print("book: python/distribute.py's sizes, rocsat's 3 claim verdicts and the 2 gates' clauses are in book/book.md")
+  return nil
+end
+
 -- A count with a comma before each group of three digits.
 function commas(n)
   local s = "" .. n
@@ -428,6 +451,7 @@ function main()
   check_tables("tableau_main", 2)
   check_tables("boolean_main", 4)
   check_circuit()
+  check_cnf()
   check_steps()
   check_program_numbers()
   check_fourteen()

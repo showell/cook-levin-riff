@@ -1041,6 +1041,83 @@ circuit_main equations: every gate of the decider, in evaluation order
 1439
 ```
 
+## From equations to CNF
+
+{{chapter The circuit as equations}} writes the decider as 1,439 gates. This chapter turns those equations into CNF with a small Roc library, `roc/Cnf.roc`, and hands claims about the decider to rocsat, which evaluates them. The encoding is the one {{chapter Checking a claim}} uses on the 14-bit machine, now applied to the whole decider.
+
+### The library
+
+`roc/Cnf.roc` has four parts. An expression, `Cnf.Expr`, is a variable, a constant, the AND or OR of two expressions, or the complement of one. `Cnf.parse` reads the equations text into the inputs and one expression a wire. `Cnf.encode` is Tseitin's encoding, and `Cnf.dimacs` writes the result as DIMACS, with a `c` comment line naming each input's and each wire's literal.
+
+The encoding numbers the 16 inputs v1 to v16, in the order of the `inputs:` line, and then reads the wires in order. A complement is a literal's sign, which is free. An AND or OR with a constant operand folds: x AND 0 is 0 and x AND 1 is x, and OR the same way with the constants swapped. Every other AND or OR gets the next fresh variable and three clauses:
+
+{{function roc/Cnf.roc gate}}
+
+The app `roc/ClaimCnf.roc` writes one claim as a CNF: "program P decides problem W". It takes the program's number, the problem's code (input n is in the problem when bit n is 1, so 13 is {0, 2, 3}) and the equations, one line an argument, since its platform reads its arguments alone. To the encoding it adds 17 unit clauses: one for each of the 16 inputs, fixed to the program's and the want register's bits, and one asking `decides` = 1. `roc/check.shale` holds the library's 9 expects and the app's 13, which include the whole decider's sizes below.
+
+### The size
+
+The equations hold 1,047 AND and OR gates (659 AND, 388 OR), beside 392 complements and 8 copies. Many operands are constants: each core's input, `halted` and `accepted` at the start, and the multiplexer inputs wired to 0. So 586 of the AND and OR gates fold, to a constant or to one operand, and 461 are left:
+
+- 16 + 461 = 477 variables;
+- 3 × 461 + 17 = 1,400 clauses, the last 17 the claim's units.
+
+`sat/claims.shale` writes the CNF of program 1689 deciding {0, 2, 3} and keeps two gates of it in `sat/claims/gates.txt`. First an AND, with its equation and the comment lines for its operands and its wires:
+
+```text
+core0.step1.lb_mux.top.pick1 = core0.step1.lb_mux.high.out AND core0.step1.hold.sel_hb
+c core0.step1.lb_mux.high.out = -6
+c core0.step1.hold.sel_hb = 5
+c core0.step1.lb_mux.top.pick1 = 17
+c core0.step1.lb' = 17
+c core0.step2.zero.hb_or_lb = 17
+c core0.step2.decr.hb_or_lb = 17
+-17 -6 0
+-17 5 0
+17 6 -5 0
+```
+
+Core 0 starts at `AX` = 0, so its multiplexer's high input folds to ¬v6, the complement of `op1_lb`, and the select is `op1_hb` itself, v5. v17 is their AND, and three later wires fold onto it: a copy, and two ORs with a 0. Then an OR:
+
+```text
+core0.step2.lb_mux.low.out = core0.step2.lb_mux.low.pick0 OR core0.step2.lb_mux.low.pick1
+c core0.step2.lb_mux.low.pick0 = 22
+c core0.step2.lb_mux.low.pick1 = 23
+c core0.step2.lb_mux.low.out = 24
+24 -22 0
+24 -23 0
+-24 22 23 0
+```
+
+### rocsat evaluates it
+
+`sat/claims.shale` runs `rocsat solve` on three claims and writes its verdicts to `sat/claims/verdicts.txt`, which the book's build holds here:
+
+```text
+program 1689 decides {0, 2, 3}: 477 variables, 1400 clauses: exit 10, s SATISFIABLE, decisions=0 conflicts=0 propagations=477; rocsat check: c model ok; decides (477) = 1
+program 1689 decides {0, 2}: 477 variables, 1400 clauses: exit 20, s UNSATISFIABLE, decisions=0 conflicts=0 propagations=477
+program 2704 decides {3}: 477 variables, 1400 clauses: exit 10, s SATISFIABLE, decisions=0 conflicts=0 propagations=477; rocsat check: c model ok; decides (477) = 1
+```
+
+A decision is a solver's guess: it sets a variable that propagation left open, and backs up if the guess fails. All three claims took 0. The 16 units fix every input, and each gate comes after its operands, so once both are known one of its three clauses forces its value. Propagation alone settles the whole circuit, 477 propagations for 477 variables, and the solver evaluates the circuit, as the circuit's own wires would. For {0, 2}, propagation sets `decides` to 0 against its unit clause, so rocsat answers UNSAT from the same 0 decisions. For each SAT claim the script checks the model with `rocsat check` and reads `decides` from it, by the literal its comment line names.
+
+### By distribution
+
+The other way to a CNF keeps to the 16 input variables: push each complement down to the inputs by De Morgan's laws and multiply out each OR over the ANDs below it. `python/distribute.py`, run by `build.shale`, does that for the same equations, dropping clauses that hold both x and ¬x and removing subsumed clauses from sets of up to 4,000, within a budget of 2,000,000 clauses. Its run while this book was built:
+
+```text
+core3.step1.accepted': 1 clauses
+core3.step2.accepted': 6 clauses
+core3.step3.accepted': 26 clauses
+core3.step4.accepted': 99 clauses
+core3.step5.accepted': 356 clauses
+core3.step6.accepted': 1,223 clauses
+decides: 3,869 clauses
+decides by distribution equals the circuit at all 65,536 points
+```
+
+`decides` comes to 3,869 clauses over the 16 inputs alone. Core 3's `accepted` multiplies by 3.4 to 3.8 with each of the last three lines, so the expansion grows exponentially in the steps; it stays small here because the machine has six lines and 16 inputs. Tseitin's encoding grows linearly instead, one stepper's gates a step. {{chapter Cook-Levin as SAT}} takes the same encoding with the program's bits left free, where the solver has to search.
+
 ## Some history of the approach
 
 This chapter is mostly story, and a reader in a hurry may skip it: the rest of the book reads the same. It says in what order Steve built the Python, and which view of the toy the order passed over.

@@ -123,4 +123,5 @@ def main():
     print("python/equations.py: %d checks passed" % POINTS)
 
 
-main()
+if __name__ == "__main__":
+    main()

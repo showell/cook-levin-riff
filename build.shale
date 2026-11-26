@@ -11,7 +11,9 @@
 --                              circuit_main prints them, on every program
 --                              and want register; the equations are held
 --                              to roc/golden/equations.txt, which the Roc
---                              port's CNF expects read.
+--                              port's CNF expects read; python/distribute.py
+--                              expands them into CNF by distribution and
+--                              checks that CNF on every point.
 --   shale build.shale full=1   the fast tier, then gcc twice: -std=c11 -O2
 --                              -Wall -Wextra -Werror, and -O0 with
 --                              -fsanitize=address,undefined; each builds and
@@ -152,6 +154,9 @@ if exited_0(eq) then
   local py = run({"python3", "python/equations.py", real(OUT .. "/equations.txt")}, {timeout_ms = 60000, tail = 10, want = PYTHON_WANT})
   local said = trim(py.out)
   failures = failures + check(exited_0(py) and said == "python/equations.py: 65536 checks passed", "python3: " .. said .. ", " .. how_it_ended(py))
+  local dist = run({"python3", "python/distribute.py", real(OUT .. "/equations.txt")}, {timeout_ms = 120000, tail = 10, want = PYTHON_WANT, nice = 10})
+  local dist_said = trim(dist.out)
+  failures = failures + check(exited_0(dist) and dist_said == "python/distribute.py: 65536 checks passed", "python3: " .. dist_said .. ", " .. dist.ms .. " ms, " .. how_it_ended(dist))
 else
   failures = failures + check(false, "circuit_main equations: " .. how_it_ended(eq))
 end

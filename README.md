@@ -223,6 +223,18 @@ makes, and holds each to fail against the formula one line longer, which is
 satisfiable, beside small
 hand-made proofs that must pass and planted bad ones that must fail.
 
+`sat/claims.shale` hands rocsat claims about the whole decider of "The
+circuit, in full": its equations (`circuit_main equations`) turned into CNF
+by `roc/ClaimCnf.roc`, with the 16 inputs and `decides` = 1 fixed by unit
+clauses. Program 1689 deciding {0, 2, 3} and program 2704 deciding {3} are
+SAT, and 1689 deciding {0, 2} is UNSAT, each with 0 decisions, since
+propagation alone settles every gate. It writes `sat/claims/verdicts.txt`
+and `sat/claims/gates.txt`, which the book shows:
+
+```sh
+shale sat/claims.shale     # needs rocsat built at build:rocsat/src/rocsat (or rocsat=PATH)
+```
+
 rocsat builds with its pinned Roc nightly (`roc-version`,
 `nightly-2026-08-18-e9be50a`), via `make build`. Its `scripts/install-roc`
 installs that nightly under `~/.roc`, or under `ROC_INSTALL_DIR`.
@@ -269,15 +281,23 @@ that `roc/roc-version` pins (0.1.0_RC1, at `~/tools/roc-0.1.0_RC1/roc`).
   machine everywhere makes the four final polynomials exactly the C's.
 - The app `NibbleWasm.roc`: `Machine.roc` as the Nibble page's wasm
   (Playground, above).
+- `Cnf.roc` and the app `ClaimCnf.roc`: Boolean expressions, a parser for
+  `circuit_main equations`, Tseitin's encoding (a fresh variable per AND and
+  OR, three clauses each, constants folded) and a DIMACS writer; the app
+  writes "program P decides problem W" as a CNF for `sat/claims.shale`.
+  Its expects hold the whole decider's CNF at 477 variables and 1,400
+  clauses, read from `roc/golden/equations.txt`, which `build.shale` holds to
+  `circuit_main equations`. `python/distribute.py` expands the same
+  equations into CNF by distribution, 3,869 clauses for `decides`.
 
 ```sh
 shale roc/check.shale      # the gate, from the repository's root
 shale roc/bench.shale      # one release build, and the composition timed beside the C's
 ```
 
-The gate runs `roc fmt --check`; `roc check` of the four apps, with no
-errors and no warnings; `roc test` of each, its expects held exactly (30,
-28, 21 and 28); and the three apps but `NibbleWasm.roc` (whose wasm
+The gate runs `roc fmt --check`; `roc check` of the seven apps and
+modules, with no errors and no warnings; `roc test` of each, its expects
+held exactly (13, 9, 30, 28, 5, 21 and 28); and the three apps but `NibbleWasm.roc` (whose wasm
 `web/build.shale` builds and checks) built on the dev backend, its output held byte
 for byte to a golden: `tests/golden/find_solutions.txt`,
 `roc/golden/step_polynomials.txt` (written by the C's `bp_str`) and

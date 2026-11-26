@@ -7,9 +7,11 @@
 -- decisions. For a SAT claim the model is checked with `rocsat check` and
 -- `decides` read from it, by the literal the CNF's comment names.
 --
--- It writes one line a claim to sat/claims/verdicts.txt, which the book's
--- chapter "From equations to CNF" shows and its build holds byte for byte,
--- so the book builds without rocsat. From the repository's root:
+-- It writes one line a claim to sat/claims/verdicts.txt, and the first
+-- claim's lines for one AND gate and one OR gate to sat/claims/gates.txt,
+-- which the book's chapter "From equations to CNF" shows and its build holds
+-- byte for byte, so the book builds without rocsat or Roc. From the
+-- repository's root:
 --
 --   shale sat/claims.shale
 --
@@ -19,6 +21,7 @@
 
 const OUT = "out/sat/claims"
 const VERDICTS = "sat/claims/verdicts.txt"
+const GATES = "sat/claims/gates.txt"
 const CLAIMS = {
   {program = 1689, problem = 13, sat = true},
   {program = 1689, problem = 5, sat = false},
@@ -38,6 +41,47 @@ function set_text(problem)
   return "{" .. join(members, ", ") .. "}"
 end
 
+-- The first AND gate's and the first OR gate's lines in a claim's CNF, two
+-- blocks a blank line apart: each gate's equation, the CNF's comments naming
+-- its two operands and its own wires, then its three clauses. Gate g's
+-- clauses are the 3 after the 3 · (g - first) before them, and an AND's
+-- first clause begins with -g.
+function gate_blocks(cnf, equations, first)
+  local rhs = {}
+  for l in lines(equations) do
+    local at = find(l, " = ")
+    if at ~= nil then rhs[sub(l, 1, at - 1)] = sub(l, at + 3, #l) end
+  end
+  local value = {}
+  local named = {}
+  local clauses = {}
+  local past_head = false
+  for l in lines(cnf) do
+    if starts_with(l, "c ") and find(l, " = ") ~= nil then
+      local at = find(l, " = ")
+      local name = sub(l, 3, at - 1)
+      value[name] = sub(l, at + 3, #l)
+      push_at(named, value[name], name)
+    elseif starts_with(l, "p cnf ") then
+      past_head = true
+    elseif past_head and l ~= "" then
+      push(clauses, l)
+    end
+  end
+  local blocks = {}
+  for kind in {"AND", "OR"} do
+    local g = first
+    while (starts_with(clauses[3 * (g - first) + 1], "-" .. g .. " ")) ~= (kind == "AND") do g = g + 1 end
+    local wires = named["" .. g]
+    local operands = words(rhs[wires[1]])
+    local out = {wires[1] .. " = " .. rhs[wires[1]], "c " .. operands[1] .. " = " .. value[operands[1]], "c " .. operands[3] .. " = " .. value[operands[3]]}
+    for w in wires do push(out, "c " .. w .. " = " .. g) end
+    for k = 1, 3 do push(out, clauses[3 * (g - first) + k]) end
+    push(blocks, join(out, "\n"))
+  end
+  return join(blocks, "\n\n")
+end
+
 -- The value of `key=N` in rocsat's statistics line.
 function statistic(line, key)
   local m = re_find(line, "\\b" .. key .. "=([0-9]+)")
@@ -48,6 +92,7 @@ end
 local rocsat = arg("rocsat", "build:rocsat/src/rocsat")
 if not exists(rocsat) then fail("rocsat is not built at " .. rocsat .. ": see README.md, \"SAT\"") end
 mkdir(OUT)
+mkdir("sat/claims")
 
 -- The equations, from the C.
 must(run({"tcc", "-Wall", "-Werror", "-o", real(OUT) .. "/circuit_main", "src/circuit_main.c"}, {timeout_ms = 60000, tail = 20}))
@@ -72,6 +117,7 @@ for c in CLAIMS do
   local cnf = OUT .. "/" .. name .. ".cnf"
   local text = must(run(argv, {timeout_ms = 60000, whole = 4000000, want = WANT_RAN, nice = 10})).out
   replace(cnf, text)
+  if #said == 0 then replace(GATES, gate_blocks(text, equations, 17) .. "\n") end
   local head = re_find(text, "\np cnf ([0-9]+) ([0-9]+)\n")
   local named = re_find(text, "\nc decides = (-?[0-9]+)\n")
   if head == nil or named == nil then fail(cnf .. " has no `p cnf` line or no `c decides =` comment") end
