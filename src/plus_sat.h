@@ -65,6 +65,13 @@ Lit plus_sat_circuit(Cnf *c, int k);
 // unit clause. Satisfiable exactly when some k-line program decides it.
 Cnf plus_sat_search(uint32_t lang, int k);
 
+// The same search with copies for only the inputs in `inputs` (bit n for
+// input n), for the guided search (sat/plus_guided.shale): satisfiable
+// exactly when some k-line program agrees with `lang` on those inputs, so
+// an UNSAT here already says no k-line program decides `lang`.
+// plus_sat_search is this with all 16.
+Cnf plus_sat_search_on(uint32_t lang, int k, uint32_t inputs);
+
 // A model's program: line i's op from variables 2i - 1 and 2i, `bits[v]`
 // being variable v's value (index 0 unused).
 void plus_sat_ops(const signed char *bits, int k, PlusOp *ops);

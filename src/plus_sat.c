@@ -99,14 +99,20 @@ Lit plus_sat_circuit(Cnf *c, int k) {
 }
 
 Cnf plus_sat_search(uint32_t lang, int k) {
+    return plus_sat_search_on(lang, k, PLUS_LANGUAGES - 1);
+}
+
+Cnf plus_sat_search_on(uint32_t lang, int k, uint32_t inputs) {
     if (k < 0) plus_sat_die("a program of fewer than 0 lines", k);
     if (lang >= PLUS_LANGUAGES) plus_sat_die("language not in 0..65535", (long)lang);
+    if (inputs >= PLUS_LANGUAGES) plus_sat_die("input set not in 0..65535", (long)inputs);
     Cnf c = sat_new();
     // At k = 0 there are no program bits, and every output is a constant;
     // sat.c writes a FALSE unit as (1) and (-1), so variable 1 is kept.
     c.num_vars = k > 0 ? 2 * k : 1;
     Lit outs[PLUS_INPUTS];
     for (int n = 0; n < PLUS_INPUTS; n++) {
+        if (!(inputs >> n & 1)) continue;
         PlusSatState s;
         for (int j = 0; j < PLUS_AX_BITS; j++) s.ax[j] = (n >> j & 1) ? SAT_TRUE : SAT_FALSE;
         s.halted = SAT_FALSE;
@@ -114,7 +120,9 @@ Cnf plus_sat_search(uint32_t lang, int k) {
         for (int i = 1; i <= k; i++) s = plus_sat_step(&c, s, plus_sat_hb(i), plus_sat_lb(i));
         outs[n] = s.accepted;
     }
-    for (int n = 0; n < PLUS_INPUTS; n++) sat_unit(&c, (lang >> n & 1) ? outs[n] : sat_not(outs[n]));
+    for (int n = 0; n < PLUS_INPUTS; n++) {
+        if (inputs >> n & 1) sat_unit(&c, (lang >> n & 1) ? outs[n] : sat_not(outs[n]));
+    }
     return c;
 }
 

@@ -12,6 +12,9 @@
 --     at its census length is SAT, the program found deciding W on the
 --     interpreter, and one line shorter is UNSAT, its proof checked.
 --     sat/plus_search.shale runs the expensive ones.
+--   - one guided search case (GUIDED), plus_guided of sat/plus_rocsat.shale:
+--     the same two answers, asked on the runs of a few inputs at a time.
+--     sat/plus_guided.shale runs it on every case of plus_search.
 --
 -- It writes rocsat's verdicts to sat/plus/verdicts.txt, one line a claim
 -- or a search case, with no times, so `git status` after a run says whether
@@ -31,6 +34,8 @@ const FIFTEEN = "decr,half,decr,half,decr,half,decr,zero"
 const BIT_ONE = "half,decr,mod2,zero"
 -- Search cases, {W, census length}, each settled in well under a second.
 const CHEAP = {{1, 1}, {3, 2}, {52428, 4}, {65280, 5}, {32768, 8}}
+-- The guided search case, {15} at its census length.
+const GUIDED = {32768, 8}
 
 local t = plus_tools(arg("rocsat", "build:rocsat/src/rocsat"), "out/sat/plus")
 mkdir("sat/plus")
@@ -124,6 +129,16 @@ for c in CHEAP do
   push(said, line)
   yield()
 end
+
+-- The guided case.
+local gw = GUIDED[1]
+local gk = GUIDED[2]
+local g = plus_guided(t, gw, gk, 60000)
+if g.verdict ~= "SAT" or not g.checked then fail("guided " .. gw .. " at " .. gk .. " lines: " .. g.verdict .. " on inputs " .. g.inputs .. ", " .. g.line) end
+local gline = "guided W=" .. gw .. ", census length " .. gk .. ": " .. gk .. " lines SAT on inputs " .. g.inputs .. ", " .. g.program .. "; " .. g.line
+local gb = plus_guided(t, gw, gk - 1, 60000)
+if gb.verdict ~= "UNSAT" or not gb.checked then fail("guided " .. gw .. " at " .. (gk - 1) .. " lines: " .. gb.verdict .. " on inputs " .. gb.inputs .. ", " .. gb.line) end
+push(said, gline .. "; " .. (gk - 1) .. " lines UNSAT on inputs " .. gb.inputs .. ", proof " .. gb.proof_bytes .. " bytes, " .. gb.line)
 
 replace(VERDICTS, join(said, "\n") .. "\n")
 print(read(VERDICTS))

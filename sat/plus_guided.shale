@@ -1,0 +1,118 @@
+-- sat/plus_guided.shale: the guided search for Nibble++ programs, beside
+-- sat/plus_search.shale's full one, on the same 11 languages. The full
+-- search asks rocsat one CNF with 16 runs of the program, one per input;
+-- the guided one (sat/plus_rocsat.shale's plus_guided) asks with the runs
+-- of a few inputs only, starting from 0 and 15, and adds an input the found
+-- program gets wrong until the program decides W or the answer is UNSAT.
+-- An UNSAT on a subset of the inputs is already minimality: no program of
+-- that length gets even those inputs right.
+--
+-- For each language W at its census length L it should end SAT, with a
+-- program the interpreter says decides W, and its model checked as
+-- plus_search checks one; at L - 1 it should end UNSAT, with a DRAT proof
+-- src/drat.c checks. It writes sat/plus/guided.txt, a table rewritten after
+-- every case: each answer's inputs, in the order added, its solve time (all
+-- its rounds together), and at L - 1 the proof's size and check time, each
+-- beside the full search's numbers from sat/plus/search.txt. It fails on a
+-- wrong answer, never on a timeout (TIMEOUT_MS a solve, niced). The build
+-- doesn't run it. From the repository's root:
+--
+--   shale sat/plus_guided.shale
+--
+-- budget: steps=400000000 read_bytes=4000000000 changes=100000 change_bytes=4000000000 arena_bytes=1500000000 programs=2000
+
+use("./plus_rocsat.shale")
+
+const RESULTS = "sat/plus/guided.txt"
+const FULL = "sat/plus/search.txt"
+const TIMEOUT_MS = 120000
+const CASES = {1, 3, 52428, 65280, 32768, 95, 383, 1535, 6143, 38910, 49151}
+
+function members(w)
+  local in_it = {}
+  local bits = plus_bits(w)
+  for n = 0, 15 do
+    if bits[n + 1] == 1 then push(in_it, "" .. n) end
+  end
+  return "{" .. join(in_it, ", ") .. "}"
+end
+
+function secs(ms)
+  return (ms // 1000) .. "." .. ((ms % 1000) // 100) .. " s"
+end
+
+-- The full search's cells, by W: its time at L and at L - 1, and its proof.
+function full_rows()
+  local by = {}
+  for l in lines(read(FULL)) do
+    local f = split(re_replace(trim(l), "  +", "\t"), "\t")
+    if #f == 8 and re_find(f[1], "^[0-9]+$") ~= nil then
+      local at = re_find(f[4], "^SAT, ([0-9.]+ s)")
+      local below = re_find(f[5], "^UNSAT, ([0-9.]+ s)")
+      local proof = re_find(f[6], "^([0-9]+) bytes, checked in ([0-9.]+ s)")
+      by[f[1]] = {at = at == nil and f[4] or at.group, below = below == nil and f[5] or below.group, proof = proof == nil and f[6] or (proof.groups[1] .. " B, " .. proof.groups[2])}
+    end
+  end
+  return by
+end
+
+-- A guided answer's inputs cell, `3: 0,15,13`.
+function inputs_cell(g)
+  return #split(g.inputs, ",") .. ": " .. g.inputs
+end
+
+function time_cell(g)
+  if g.verdict == "timeout" then return "timeout (" .. secs(TIMEOUT_MS) .. " a solve)" end
+  return secs(g.ms)
+end
+
+local t = plus_tools(arg("rocsat", "build:rocsat/src/rocsat"), "out/sat/plus_guided")
+mkdir("sat/plus")
+local census = plus_census(t, CASES)
+local full = full_rows()
+local rows = {}
+local wrong = 0
+for w in CASES do
+  local L = census["" .. w].length
+  local f = get(full, "" .. w, {at = "-", below = "-", proof = "-"})
+  local at = plus_guided(t, w, L, TIMEOUT_MS)
+  local row = {W = w, set = members(w), L = L, at = at.verdict .. " on " .. inputs_cell(at), at_time = time_cell(at), at_full = f.at, below = "-", below_time = "-", below_full = f.below, proof = "-", full_proof = f.proof, checked = "-"}
+  if at.verdict == "SAT" then
+    row.checked = at.checked and "model yes" or "model NO"
+    if not at.checked then
+      print("WRONG: W=" .. w .. "'s model at " .. L .. " lines: " .. at.line)
+      wrong = wrong + 1
+    end
+  elseif at.verdict ~= "timeout" then
+    print("WRONG: W=" .. w .. " at " .. L .. " lines: " .. at.verdict .. " on inputs " .. at.inputs)
+    wrong = wrong + 1
+  end
+  if L > 0 then
+    local below = plus_guided(t, w, L - 1, TIMEOUT_MS)
+    row.below = below.verdict .. " on " .. inputs_cell(below)
+    row.below_time = time_cell(below)
+    if below.verdict == "UNSAT" then
+      row.proof = below.proof_bytes .. " B, " .. secs(below.check_ms)
+      if below.check_timed_out then
+        row.proof = below.proof_bytes .. " B, check timed out"
+        row.checked = row.checked .. ", proof unchecked"
+      elseif below.checked then
+        row.checked = row.checked .. ", proof yes"
+      else
+        row.checked = row.checked .. ", proof NO"
+        print("WRONG: W=" .. w .. "'s proof at " .. (L - 1) .. " lines: " .. below.line)
+        wrong = wrong + 1
+      end
+    elseif below.verdict == "SAT" then
+      print("WRONG: W=" .. w .. " is SAT at " .. (L - 1) .. " lines, below the census: " .. below.program)
+      wrong = wrong + 1
+    end
+  end
+  push(rows, row)
+  print(w .. " " .. row.set .. " L=" .. L .. ": " .. row.at .. ", " .. row.at_time .. " (full " .. row.at_full .. "); L-1: " .. row.below .. ", " .. row.below_time .. " (full " .. row.below_full .. "); proof " .. row.proof .. " (full " .. row.full_proof .. ")")
+  replace(RESULTS, "Nibble++ guided search: rocsat on the runs of a few inputs, from 0 and 15, an input the program found gets wrong added each round; at the census length L (SAT) and at L - 1 (UNSAT, its DRAT proof checked by src/drat.c). Inputs are the count and the set, in the order added; a time is all of an answer's rounds together, one run's, nice 19, timeout " .. secs(TIMEOUT_MS) .. " a solve. The full columns are the 16-input search's, from " .. FULL .. ".\n\n" .. table(rows, {"W", "set", "L", "at", "at_time", "at_full", "below", "below_time", "below_full", "proof", "full_proof", "checked"}) .. "\n")
+  yield()
+end
+print(read(RESULTS))
+if wrong > 0 then fail(wrong .. " wrong answer(s)") end
+print("plus_guided: " .. #rows .. " languages; " .. RESULTS .. " written")

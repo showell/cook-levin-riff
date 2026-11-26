@@ -13,6 +13,11 @@
 //   plus_sat search W K               the search for a K-line program that
 //                                     decides W (a language's code, 0 to
 //                                     65535, bit n for input n), DIMACS
+//   plus_sat search-on W K INPUTS     the same search with copies for only
+//                                     INPUTS (numbers 0 to 15 joined by
+//                                     commas), for sat/plus_guided.shale
+//   plus_sat language OPS             the code of the language OPS decides
+//                                     on the plain interpreter (plus.c)
 //   plus_sat decides W OPS            whether OPS decides W on the plain
 //                                     interpreter (plus.c): yes or no, exit
 //                                     0 or 1
@@ -31,7 +36,7 @@
 #include <string.h>
 
 static int usage(void) {
-    fprintf(stderr, "usage: plus_sat size K | claim OPS N [accept] | search W K | decides W OPS | census W... | census-at L\n");
+    fprintf(stderr, "usage: plus_sat size K | claim OPS N [accept] | search W K | search-on W K INPUTS | language OPS | decides W OPS | census W... | census-at L\n");
     return 2;
 }
 
@@ -128,6 +133,41 @@ static int search(uint32_t lang, int k) {
     return 0;
 }
 
+// INPUTS as numbers 0 to 15 joined by commas, as a set's bits; -1 for a
+// list that is empty or names something else.
+static long parse_inputs(const char *s) {
+    long set = 0;
+    const char *at = s;
+    while (1) {
+        const char *end = strchr(at, ',');
+        size_t len = end ? (size_t)(end - at) : strlen(at);
+        char one[4];
+        if (len == 0 || len >= sizeof one) return -1;
+        memcpy(one, at, len);
+        one[len] = 0;
+        long n = number(one, 0, PLUS_INPUTS - 1);
+        if (n < 0) return -1;
+        set |= 1L << n;
+        if (!end) return set;
+        at = end + 1;
+    }
+}
+
+static int search_on(uint32_t lang, int k, uint32_t inputs) {
+    Cnf c = plus_sat_search_on(lang, k, inputs);
+    int runs = 0;
+    for (int n = 0; n < PLUS_INPUTS; n++) runs += inputs >> n & 1;
+    printf("c the guided search: a %d-line Nibble++ program that agrees with language %u on inputs", k, lang);
+    for (int n = 0; n < PLUS_INPUTS; n++) {
+        if (inputs >> n & 1) printf(" %d", n);
+    }
+    printf("; %d runs, %zu gates\n", runs, c.num_gates);
+    write_lines_comment(stdout, k);
+    write_clauses(stdout, &c);
+    sat_free(&c);
+    return 0;
+}
+
 // Static: a census holds two 64 Ki tables beside its state arrays.
 static Census census;
 
@@ -160,6 +200,18 @@ int main(int argc, char **argv) {
         long k = number(argv[3], 0, CENSUS_MAX_LENGTH);
         if (w < 0 || k < 0) return usage();
         ok = search((uint32_t)w, (int)k) == 0;
+    } else if (strcmp(cmd, "search-on") == 0 && argc == 5) {
+        long w = number(argv[2], 0, PLUS_LANGUAGES - 1);
+        long k = number(argv[3], 0, CENSUS_MAX_LENGTH);
+        long inputs = parse_inputs(argv[4]);
+        if (w < 0 || k < 0 || inputs < 0) return usage();
+        ok = search_on((uint32_t)w, (int)k, (uint32_t)inputs) == 0;
+    } else if (strcmp(cmd, "language") == 0 && argc == 3) {
+        PlusOp ops[CENSUS_MAX_LENGTH];
+        int k = parse_ops(argv[2], ops);
+        if (k < 0) return usage();
+        printf("%u\n", plus_language(ops, k));
+        ok = 1;
     } else if (strcmp(cmd, "decides") == 0 && argc == 4) {
         PlusOp ops[CENSUS_MAX_LENGTH];
         long w = number(argv[2], 0, PLUS_LANGUAGES - 1);

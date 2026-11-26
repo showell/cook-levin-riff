@@ -1,5 +1,5 @@
--- sat/plus_rocsat.shale: the library sat/plus.shale and sat/plus_search.shale
--- share, rocsat on Nibble++'s CNF (src/plus_sat.c, through out/tcc/plus_sat)
+-- sat/plus_rocsat.shale: the library sat/plus.shale, sat/plus_search.shale
+-- and sat/plus_guided.shale share, rocsat on Nibble++'s CNF (src/plus_sat.c, through out/tcc/plus_sat)
 -- with src/drat.c checking what it answers. Each function takes `t`, the
 -- tools: {rocsat, plus, drat, out}, Shale paths of rocsat, the plus_sat and
 -- drat binaries, and the folder the CNFs, models and proofs go to.
@@ -128,4 +128,82 @@ function plus_search(t, w, k, timeout_ms)
     row.check_timed_out = said.timed_out
   end
   return row
+end
+
+-- The bits of a language's code as a list, input n at place n + 1.
+function plus_bits(w)
+  local bits = {}
+  local left = w
+  for n = 0, 15 do
+    push(bits, left % 2)
+    left = left // 2
+  end
+  return bits
+end
+
+-- The guided search, counterexample by counterexample: language `w` at `k`
+-- lines asked on a few inputs first, the two ends 0 and 15
+-- (`plus_sat search-on`). A SAT answer's program is run on all 16 inputs on
+-- the interpreter (`plus_sat language`); when it decides w, its model is
+-- checked as plus_search checks one, and when it doesn't, the lowest input
+-- it gets wrong joins the set and rocsat is asked again. An UNSAT answer on
+-- the set says no k-line program even gets those inputs right, so none
+-- decides w, and its DRAT proof, over the smaller formula, is checked by
+-- src/drat.c. Each solve has `timeout_ms`. Gives {verdict, inputs (the
+-- set, joined by commas, in the order added), rounds (rocsat's answers),
+-- ms and cpu_ms (all its solves together), program, checked, line,
+-- proof_bytes, check_ms, check_timed_out}; a program whose language
+-- differs from w on an input of the set stops the run, as rocsat's model
+-- would then be wrong.
+function plus_guided(t, w, k, timeout_ms)
+  local want = plus_bits(w)
+  local inputs = {0, 15}
+  local row = {verdict = "", inputs = "", rounds = 0, ms = 0, cpu_ms = 0, program = "", checked = false, line = "", proof_bytes = 0, check_ms = 0, check_timed_out = false}
+  while true do
+    local list = {}
+    for n in inputs do push(list, "" .. n) end
+    row.inputs = join(list, ",")
+    row.rounds = row.rounds + 1
+    local name = w .. "-len" .. k .. "-on" .. #inputs
+    local cnf = t.out .. "/" .. name .. ".cnf"
+    replace(cnf, plus_says(t, {"search-on", "" .. w, "" .. k, row.inputs}))
+    local drat = t.out .. "/" .. name .. ".drat"
+    if exists(drat) then remove(drat) end
+    local s = plus_solve(t, cnf, drat, timeout_ms)
+    row.ms = row.ms + s.ms
+    row.cpu_ms = row.cpu_ms + s.cpu_ms
+    row.verdict = s.verdict
+    if s.verdict == "timeout" then return row end
+    if s.verdict == "UNSAT" then
+      if not exists(drat) then fail("rocsat said UNSAT on " .. cnf .. " and wrote no proof") end
+      row.proof_bytes = stat(drat).size
+      local said = plus_drat(t, "check", cnf, drat)
+      row.checked = said.ok
+      row.line = said.line
+      row.check_ms = said.ms
+      row.check_timed_out = said.timed_out
+      return row
+    end
+    local ops = plus_ops_of(plus_model_bits(s.out, 2 * k), k)
+    row.program = ops
+    local got = plus_bits(tonumber(trim(plus_says(t, {"language", ops}))))
+    for n in inputs do
+      if got[n + 1] ~= want[n + 1] then fail("guided: " .. ops .. " differs from " .. w .. " on input " .. n .. ", which " .. cnf .. " holds") end
+    end
+    local wrong = -1
+    for n = 0, 15 do
+      if wrong < 0 and got[n + 1] ~= want[n + 1] then wrong = n end
+    end
+    if wrong < 0 then
+      local model = t.out .. "/" .. name .. ".model"
+      replace(model, s.out)
+      local checked = run({real(t.rocsat), "check", real(cnf), real(model)}, {timeout_ms = 60000, whole = 4000, want = PLUS_WANT_ROCSAT})
+      local by_drat = plus_drat(t, "model", cnf, model)
+      local decides = run({real(t.plus), "decides", "" .. w, ops}, {timeout_ms = 60000, tail = 2, want = PLUS_WANT_RAN})
+      row.checked = get(checked, "code", -1) == 0 and trim(checked.out) == "c model ok" and by_drat.ok and get(decides, "code", -1) == 0
+      row.line = "rocsat check: " .. trim(checked.out) .. "; drat model: " .. (by_drat.ok and "ok" or by_drat.line) .. "; the interpreter: decides " .. trim(decides.out)
+      return row
+    end
+    push(inputs, wrong)
+  end
 end

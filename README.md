@@ -97,7 +97,14 @@ checked by `src/drat.c`) and the cheap search cases, and writes
 `sat/plus/verdicts.txt`. `sat/plus_search.shale` runs the expensive search
 cases, SAT at the census length and UNSAT one line shorter with a checked
 DRAT proof, and writes their times to `sat/plus/search.txt`; the build
-doesn't run it. The two share `sat/plus_rocsat.shale`.
+doesn't run it. `sat/plus_guided.shale` runs the same cases as a guided
+search (`plus_sat search-on`): rocsat is asked with the runs of a few
+inputs, from 0 and 15, and an input the found program gets wrong joins them
+each round, until the program decides W (SAT) or no program gets even
+those inputs right (UNSAT, its proof over the smaller formula checked). It
+writes `sat/plus/guided.txt` beside the full search's numbers; the build
+runs one of its cases, {15}, in `sat/plus.shale`. The three share
+`sat/plus_rocsat.shale`.
 
 ## Playground
 The machine's assembly language is called **Nibble**. `web/` is a puzzle
