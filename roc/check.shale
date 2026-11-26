@@ -21,10 +21,11 @@
 
 const WANT = "roc-pin: the Roc port's pinned compiler"
 const RAN = "roc-check: an app this gate just built"
-const APPS = {"Composition.roc", "FindSolutions.roc", "NibbleWasm.roc", "StepPolynomials.roc"}
+const APPS = {"Composition.roc", "FindSolutions.roc", "Fourteen.roc", "NibbleWasm.roc", "StepPolynomials.roc"}
 const EXPECTS = {
   {app = "Composition.roc", count = 30},
   {app = "FindSolutions.roc", count = 28},
+  {app = "Fourteen.roc", count = 5},
   {app = "NibbleWasm.roc", count = 21},
   {app = "StepPolynomials.roc", count = 28},
 }
