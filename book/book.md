@@ -565,11 +565,14 @@ The toy is such a checker. Given a problem and a program, it runs the program on
 
 ## Six expressions, composed
 
-{{chapter Some history of the approach}} showed each problem as a Boolean function of two bits. The machine's step is one too, of six bits, and six steps composed are one of fourteen. This chapter writes the step as plain Boolean expressions, composes them into the question a puzzle asks, and then names the two ways of composing that the rest of this part follows.
+{{chapter Some history of the approach}} showed each problem as a Boolean function of two bits. The machine's step is a function too, of six bits, and six steps composed are one function of fourteen bits: the input's two and the program's twelve. This chapter writes the step as plain Boolean expressions, composes them into the question a puzzle asks, and then names the two ways of composing that the rest of this part follows.
 
 ### The step as expressions
 
-A step reads `hb`, `lb`, `halted`, `accepted`, `op_hb` and `op_lb`, as in {{chapter Arithmetization}}, and writes the next four. Eight small facts about the machine come first, then the four next-state bits, each read with the facts above it (`src/decides.c`):
+A step reads six bits, as in {{chapter Arithmetization}}: the four of the state, `hb`, `lb`, `halted` and `accepted`, and the line's two, `op_hb` and `op_lb`. It is twelve statements (`src/decides.c`):
+
+- **eight intermediate facts** about the machine, each used only inside this step;
+- **four primed bits**, `hb'`, `lb'`, `halted'` and `accepted'`, the next state. These four are all that survive into the next step, where they are its unprimed four.
 
 ```text
 ax_is_0 = NOT hb AND NOT lb
@@ -590,7 +593,16 @@ accepted' = accepted OR (ax_is_0 AND is_zero AND runs)
 
 ### Composition
 
-Chain six copies. The first reads the input's two bits, both flags at 0 and line 1's two bits; each later copy reads the state the one before it wrote, and its own line's bits. After the sixth, `accepted` is an expression accepted(n, v) of 2 + 12 bits: the input's two and the program's twelve, v1 to v12, numbered as in {{chapter Cook-Levin as SAT}}, where instruction i is 2·v(2i − 1) + v(2i).
+Chain six copies. The first reads the input's two bits as `hb` and `lb`, both flags at 0, and line 1's two bits. Each later copy reads the four primed bits the one before it wrote, and its own line's two bits. So the only bits that enter from outside the chain are the input's two and each line's two, six lines of them:
+
+| | bits |
+|---|---|
+| the input, `hb` and `lb` at the start | 2 |
+| the flags at the start | 0 (both constant 0) |
+| the program, two a line for six lines | 12 |
+| **the composed expression's variables** | **14** |
+
+Everything else is internal: six steps of eight facts each, and of the 24 primed bits, the 20 that the next step reads. After the sixth step, `accepted'` is an expression accepted(n, v) of those 14 bits. The program's bits are v1 to v12, numbered as in {{chapter Cook-Levin as SAT}}, where instruction i is 2·v(2i − 1) + v(2i).
 
 ### The question as one expression
 
