@@ -1216,6 +1216,18 @@ The cook-levin-riff log covers one day. The C port of the machine and the search
 
 The toy's every question was settled by trying everything: 4,096 programs on four inputs. That works because the toy is finite. Complexity theory is about formal languages with inputs of every length, where trying everything grows with the input, and it sorts them by how fast the work grows. This chapter gives the two classes the rest of the book leans on, P and NP, at the level of their definitions.
 
+### Problems, formal languages and algorithms
+
+People say "the traveling salesman problem is in NP", and this chapter makes that kind of sentence precise. Under it sit three layers:
+
+- **A problem**, as people say it: "is this formula satisfiable?"
+- **A formal language**, the set of strings that encode the problem's yes-instances. SAT is the set of DIMACS files, the format of {{chapter The SAT solver}}, that encode a satisfiable formula.
+- **An algorithm**, a machine or program that decides the set. rocsat is one algorithm that decides SAT, and a different thing from SAT.
+
+So "in P" is a property of the formal language: some machine decides it in polynomial time. The primes show it. For centuries every known primality test was slow in the number of digits, and in 2002 Manindra Agrawal, Neeraj Kayal and Nitin Saxena proved that PRIMES is in P. The set stayed the same, and the known machines improved. Trial division looks cheap at about √n steps, but n in binary has about log₂ n digits, so √n is exponential in the input's length; {{chapter Nibble, sized}} writes a count in unary for this reason.
+
+A question about two things is one string too. (P, x) names the single string that encodes the pair: the first part's bits, then the second's. For Nibble, (P, x) is P's 2k bits followed by x's n bits.
+
 ### Time as a function of length
 
 An input is a string, and its length n is the measure of its size. A machine's running time is the most steps it takes on any input of length n, a function of n. A running time is *polynomial* when it is at most c·n^k for some fixed c and k: n, n², n³ and so on. The contrast is exponential time, such as 2^n, the cost of trying every assignment of n bits:
@@ -1226,11 +1238,11 @@ An input is a string, and its length n is the measure of its size. A machine's r
 | 20 | 400 | 1,048,576 |
 | 50 | 2,500 | 1,125,899,906,842,624 |
 
-Polynomial is the dividing line for two reasons. A polynomial of a polynomial is a polynomial, so a polynomial-time machine that calls another polynomial-time machine as a step is still polynomial. And every reasonable model of a machine, a Turing machine, a random-access machine, a real computer, simulates the others with a polynomial slowdown, so the class is the same whichever model is chosen.
+Polynomial is the dividing line because it is robust: a polynomial-time machine that calls another as a step is still polynomial, and every reasonable model of a machine simulates the others with a polynomial slowdown.
 
 ### P, deciding fast
 
-**P** is the class of formal languages that some machine decides in polynomial time: on every input, it halts within c·n^k steps with its verdict, accept or reject. Whether a list of numbers is sorted is in P: one pass compares each pair of neighbours. So is whether a number written in binary is even, and, by a cleverer algorithm, whether it is prime.
+**P** is the class of formal languages that some machine decides in polynomial time: on every input, it halts within c·n^k steps with its verdict, accept or reject. Whether a list of numbers is sorted is in P: one pass compares each pair of neighbours. So is whether a number written in binary is even, and, by the 2002 algorithm, whether it is prime.
 
 ### NP, checking fast
 
@@ -1241,11 +1253,10 @@ Polynomial is the dividing line for two reasons. A polynomial of a polynomial is
 
 The certificate is the answer's evidence, and the verifier is a skeptic that only checks. Finding the certificate is someone else's job.
 
-Three examples:
+Two examples:
 
 - **SAT**, the satisfiable Boolean formulas. The certificate is an assignment, and the verifier evaluates the formula at it: `rocsat check`, in {{chapter The SAT solver}}, is such a verifier.
 - **Composite numbers.** The certificate is a factor d with 1 < d < x, and the verifier divides.
-- **Three-colouring a map.** The certificate is a colour for each country, and the verifier looks at each border once.
 
 In each, checking is quick and finding looks hard: the obvious way to find a certificate tries them all, and there are exponentially many.
 
