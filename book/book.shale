@@ -26,8 +26,10 @@
 -- shows them is held to what this finds: each proof's row of its table, the
 -- checker's line for each proof it shows, and each shown answer's program.
 -- The chapter "From equations to CNF" is held to python/distribute.py's
--- sizes and to sat/claims.shale's verdicts (check_cnf), and "The SAT
--- solver" to sat/intro.shale's (check_intro).
+-- sizes and to sat/claims.shale's verdicts (check_cnf), "The SAT
+-- solver" to sat/intro.shale's (check_intro), and "Nibble++ meets rocsat"
+-- to sat/plus/'s answers, src/plus_sat_main.c's sizes and the census
+-- (check_plus_sat).
 --
 -- Then the book builder's tools/build_book.shale runs the app's expects, held
 -- to exactly APP_TESTS, builds the app into book_builder/zig-out/cook-levin,
@@ -68,6 +70,8 @@ const CIRCUIT_BLOCKS = 11
 const CIRCUIT_SCHEMATICS = 7
 const EQUATIONS = "book/build/equations.txt"
 const SCHEMATICS = "book/build/schematics"
+const PLUS_SEARCH = "sat/plus/search.txt"
+const PLUS_VERDICTS = "sat/plus/verdicts.txt"
 
 -- The four final polynomials, composed by the C into COMPOSED/out/. What
 -- compose_main prints is held to the golden's lines: each step's term counts
@@ -312,6 +316,110 @@ function commas(n)
   return out
 end
 
+-- A set of inputs as sat/plus/search.txt writes it, `{0, 1, 2, 4}`, with
+-- each run of three or more as its ends, `{0, ..., 2, 4}`.
+function members_named(set_text)
+  local ns = {}
+  for w in split(sub(set_text, 2, #set_text - 1), ", ") do push(ns, tonumber(w)) end
+  local parts = {}
+  local i = 1
+  while i <= #ns do
+    local j = i
+    while j < #ns and ns[j + 1] == ns[j] + 1 do j = j + 1 end
+    if j - i >= 2 then
+      push(parts, "" .. ns[i] .. ", ..., " .. ns[j])
+    else
+      for k = i, j do push(parts, "" .. ns[k]) end
+    end
+    i = j + 1
+  end
+  return "{" .. join(parts, ", ") .. "}"
+end
+
+-- The blocks of "Nibble++ meets rocsat". The CNF sizes at the longest search
+-- case's length, from src/plus_sat_main.c: one run's circuit, and the search
+-- CNF of that case. rocsat's answers on the evaluation claims, as
+-- sat/plus.shale wrote them to sat/plus/verdicts.txt, with each answer's
+-- solver statistics left out. The search cases of sat/plus/search.txt as a
+-- table, its times left out, since they vary from run to run. And the cases
+-- where rocsat's program differs from the census witness
+-- (`plus_sat census`): each of eight lines or fewer shown, and the count of
+-- them all held in the prose, "in N of the M cases". The book's source must
+-- hold each block byte for byte.
+function check_plus_sat()
+  mkdir(SAT_DIR)
+  must(run({"gcc", "-O2", "-o", real(SAT_DIR) .. "/plus_sat", "src/plus_sat_main.c"}, {timeout_ms = 120000, tail = 20}))
+  local exe = real(SAT_DIR .. "/plus_sat")
+  local want = "book: plus_sat, just built from src/ for the book"
+  local cases = {}
+  for l in lines(read(PLUS_SEARCH)) do
+    local f = split(re_replace(trim(l), "  +", "\t"), "\t")
+    if #f == 8 and re_find(f[1], "^[0-9]+$") ~= nil then
+      push(cases, {w = f[1], set = members_named(f[2]), L = tonumber(f[3]), sat = split(f[4], ",")[1], unsat = split(f[5], ",")[1], proof = f[6], checked = f[7], program = f[8]})
+    end
+  end
+  if #cases == 0 then fail("book: " .. PLUS_SEARCH .. " holds no search cases") end
+  local blocks = {}
+
+  local last = cases[#cases]
+  local k = "" .. last.L
+  local one = split(trim(must(run({exe, "size", k}, {timeout_ms = 20000, whole = 2000, want = want})).out), " ")
+  local search = must(run({exe, "search", last.w, k}, {timeout_ms = 20000, head = 3, want = want})).out
+  local gates = re_find(search, "16 runs, ([0-9]+) gates")
+  local header = re_find(search, "\np cnf ([0-9]+) ([0-9]+)\n")
+  if gates == nil or header == nil then fail("book: plus_sat search " .. last.w .. " " .. k .. " printed no gate count or header") end
+  push(blocks, "| CNF at " .. k .. " lines | Gates | Variables | Clauses |\n|---|---:|---:|---:|\n| one run, its input free | " .. one[2] .. " | " .. one[3] .. " | " .. one[4] .. " |\n| the search for " .. last.set .. " | " .. gates.group .. " | " .. header.groups[1] .. " | " .. header.groups[2] .. " |")
+
+  local claims = {}
+  for l in lines(read(PLUS_VERDICTS)) do
+    if starts_with(l, "program ") then push(claims, re_replace(l, ", conflicts=[^;]*;", ";")) end
+  end
+  if #claims ~= 5 then fail("book: " .. PLUS_VERDICTS .. " holds " .. #claims .. " claims, not 5") end
+  push(blocks, "```text\n" .. join(slice(claims, 1, 2), "\n") .. "\n```")
+  push(blocks, "```text\n" .. join(slice(claims, 3, 5), "\n") .. "\n```")
+
+  local rows = {"| Formal language | Census length L | L lines | L − 1 lines | The proof at L − 1 | Model and proof checked |", "|---|---:|---|---|---:|---|"}
+  for c in cases do
+    local bytes = re_find(c.proof, "^([0-9]+) bytes")
+    local size = bytes == nil and c.proof or commas(tonumber(bytes.group)) .. " bytes"
+    local checked = c.checked == "model yes, proof yes" and "yes" or c.checked
+    push(rows, "| " .. c.set .. " | " .. c.L .. " | " .. c.sat .. " | " .. c.unsat .. " | " .. size .. " | " .. checked .. " |")
+  end
+  push(blocks, join(rows, "\n"))
+
+  local argv = {exe, "census"}
+  for c in cases do push(argv, c.w) end
+  local witness = {}
+  for l in lines(must(run(argv, {timeout_ms = 60000, whole = 20000, want = want})).out) do
+    local f = split(l, " ")
+    if #f == 3 then witness[f[1]] = f[3] end
+  end
+  local differ = 0
+  local shown = {}
+  for c in cases do
+    if witness[c.w] ~= c.program then
+      differ = differ + 1
+      if c.L <= 8 then
+        push(shown, c.set .. ", the census: " .. join(split(witness[c.w], ","), ", "))
+        push(shown, c.set .. ", rocsat:     " .. join(split(c.program, ","), ", "))
+      end
+    end
+  end
+  push(blocks, "```text\n" .. join(shown, "\n") .. "\n```")
+
+  local source = read(SOURCE)
+  for b in blocks do
+    if find(source, b) == nil then
+      print(b)
+      fail("book: book/book.md lacks the Nibble++ SAT block above, so /" .. DEST_NAME .. "/ is left as it was")
+    end
+  end
+  local count = "in " .. differ .. " of the " .. #cases .. " cases"
+  if find(source, count) == nil then fail("book: book/book.md lacks \"" .. count .. "\", rocsat's programs against the census witnesses, so /" .. DEST_NAME .. "/ is left as it was") end
+  print("book: the " .. #blocks .. " Nibble++ SAT blocks are in book/book.md, " .. #cases .. " search cases, rocsat's program the census's " .. (#cases - differ) .. " times")
+  return nil
+end
+
 -- A language's set of inputs, `{0, 2, 3}`, from its code.
 function language_set(lang)
   local items = {}
@@ -482,6 +590,7 @@ function main()
   check_fourteen()
   check_hand()
   check_solver_files()
+  check_plus_sat()
 
   local app = relative_path(real(ROC_APPS .. "/book_builder"), real(APP_DIR .. "/app/main.roc"))
   local argv = {"shale", "--root", ".", BUILD, "book=" .. HERE .. "/" .. APP_DIR, "tests=" .. APP_TESTS, "name=cook-levin", "folder=" .. real("."), "out=" .. HERE .. "/" .. OUT, "report=" .. HERE .. "/" .. REPORT, "app=" .. app}

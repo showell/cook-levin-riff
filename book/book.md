@@ -61,13 +61,13 @@ Third, the assertions, in `find_solutions` ([virtual_machine.py, lines 159 to 16
 
 **That agreement is the thesis of this book: the machine and its Cook-Levin translation answer every question the same way.** Everything after it widens the check. The C runs both on all 4,096 programs and all four inputs; the six steps are chained into four polynomials that agree with the machine on all 2^14 points; a SAT solver, given the same machine as a formula, finds exactly the machine's programs; and seven implementations in five programming languages compute the same answers. His Python stopped short of chaining all six steps, and this repository finishes the chain ({{chapter How it got here}}).
 
-Steve wrote the first version by hand in Python, in [virtual-machine](https://github.com/showell/virtual-machine): the machine (`virtual_machine.py`), a general polynomial library (`poly.py`) and a stepper that writes one step of the machine as polynomials (`stepper.py`). The machine is Steve's invention; the code in this repository, written by AI coding agents (Claude) with human supervision, departs from the 2023 Python wherever a cleaner choice turned up, and its choices, such as how programs are numbered, are this book's own.
+Steve wrote the first version by hand in Python, in [virtual-machine](https://github.com/showell/virtual-machine): the machine (`virtual_machine.py`), a general polynomial library (`poly.py`) and a stepper that writes one step of the machine as polynomials (`stepper.py`). The machine is Steve's invention; the code in this repository, written by AI coding agents (Claude) with human supervision, departs from the 2023 Python wherever a cleaner choice turned up, and its choices are this book's own.
 
 ### What the book covers
 
 The first part is the toy for its own sake: a finite machine, completely understood, every question settled by running everything, even in Python. It runs from {{chapter The machine}} and the theory of formal languages through plain Python, the search of all 4,096 programs, the puzzle page, and the machine as Boolean functions and as hardware, to {{chapter Some history of the approach}}, the order in which Steve built it.
 
-The second part is Cook-Levin: {{chapter How it got here}}, {{chapter P and NP}}, {{chapter Nibble, sized}}, {{chapter Nibble++}}, {{chapter Two theorems about Nibble++}}, {{chapter P, NP and Cook-Levin}}, {{chapter Six expressions, composed}}, then the step as polynomials, from {{chapter Arithmetization}} to {{chapter The polynomials, in full}}, and the circuit as tableau and formula, from {{chapter The Cook-Levin machine}} to {{chapter The solver's work, in full}}.
+The second part is Cook-Levin: {{chapter How it got here}}, {{chapter P and NP}}, {{chapter Nibble, sized}}, {{chapter Nibble++}}, {{chapter Two theorems about Nibble++}}, {{chapter Nibble++ meets rocsat}}, {{chapter P, NP and Cook-Levin}}, {{chapter Six expressions, composed}}, then the step as polynomials, from {{chapter Arithmetization}} to {{chapter The polynomials, in full}}, and the circuit as tableau and formula, from {{chapter The Cook-Levin machine}} to {{chapter The solver's work, in full}}.
 
 The third part is the cross-checks: {{chapter The oracles}}, {{chapter The Roc port}}, {{chapter What is Shale?}} and {{chapter The VM in Shale}}, then {{chapter What comes next}}. The theorems are numbered through the book, each checked by a run that its proof names.
 
@@ -1432,6 +1432,77 @@ The census agrees. The last column is {zero, decr, mod2}, for contrast:
 | 17 | 1596 | 1597 | 2556 |
 
 With `mod2` the counts follow the Fibonacci numbers one place on, F(L + 1), from length 1 to 15, apart from length 4, which has 6 where F(5) is 5. At 16 the count is 1,595, two below F(17). `mod2` breaks the lockstep that Theorem 10 rests on, since it merges inputs, and a formula for these counts is open here.
+
+## Nibble++ meets rocsat
+
+{{chapter Nibble++}} settles every formal language's shortest program by searching the machine's states. This chapter puts the same questions to rocsat, as {{chapter The SAT solver}} frames them, in a CNF that `src/plus_sat.c` builds on the toy's gates.
+
+### The machine as a circuit
+
+`src/plus_sat.c` writes the Nibble++ step on a 4-bit `AX` in the AND and OR gates of `src/sat.c`, a complement being a literal's sign: a test of `AX` for 0, a borrow chain for `decr`, and for each bit of `AX` a four-way multiplexer steered by the line's two bits. Unrolled for a k-line program, one run's circuit takes the 2k program bits and the input's four bits, and its output is `accepted`. At 28 lines, the longest shortest length, `src/plus_sat_main.c` counts:
+
+| CNF at 28 lines | Gates | Variables | Clauses |
+|---|---:|---:|---:|
+| one run, its input free | 1340 | 1400 | 4020 |
+| the search for {0, ..., 13, 15} | 19034 | 19090 | 57118 |
+
+Each gate is one variable and three clauses. The second row is the search below, for the case at 28 lines.
+
+### The questions asked
+
+An evaluation claim fixes every input of one run with unit clauses, the program's bits and the input's, and a unit clause asks for accept. With every input fixed, `solve` only evaluates the circuit, as in {{chapter From equations to CNF}}. The happy path comes first. The census witness of {15} accepts input 15, and the witness of {2, 3, 6, 7, 10, 11, 14, 15} accepts input 6. rocsat answers SATISFIABLE, and `rocsat check` accepts the model it found, with accept at 1:
+
+```text
+program decr,half,decr,half,decr,half,decr,zero (8 lines) accepts input 15: SAT; rocsat check: c model ok; accept (399) = 1
+program half,decr,mod2,zero (4 lines) accepts input 6: SAT; rocsat check: c model ok; accept (199) = 1
+```
+
+The unhappy path takes input 14, outside {15}. Left free, the run is SATISFIABLE with accept at 0. That model with accept turned to 1 breaks a clause, which `check` names. With accept forced, the answer is UNSATISFIABLE, the one expected, and rocsat's DRAT proof replays in `src/drat.c`:
+
+```text
+program decr,half,decr,half,decr,half,decr,zero (8 lines) on input 14, accept left free: SAT, accept (399) = 0
+program decr,half,decr,half,decr,half,decr,zero (8 lines) accepts input 14, the honest model with accept set to 1: rocsat check: exit 1, c model falsifies clause 1136
+program decr,half,decr,half,decr,half,decr,zero (8 lines) accepts input 14: UNSAT; drat check: verified: 401 lemmas (0 by RAT), 0 deletions, over 400 variables and 1161 clauses; the empty clause at line 401
+```
+
+`sat/plus.shale` asks these, and `build.shale` runs it. It writes `sat/plus/verdicts.txt` with its times left out, so a changed answer shows in `git status`.
+
+### The search
+
+The search is the heart of the chapter. For a formal language W and a length k, `plus_sat search W k` writes one CNF. The 2k program bits are free, and 16 copies of the run share them, one per input, each with `AX` fixed to its input, so constant folding trims each copy. A unit clause holds each copy's output to W's want bit: accept for a member, reject for the rest.
+
+A model is then a k-line program that decides W, so SATISFIABLE hands back a program. `sat/plus_search.shale` checks each one with `rocsat check`, with `src/drat.c`'s model check and on the interpreter. One line below the census length L, UNSATISFIABLE says that every program of L − 1 lines decides some other formal language. Shorter programs are covered too: a `decr` added after a program's last line keeps its formal language ({{chapter Nibble++}}), so any shorter program for W pads to one of L − 1 lines. The DRAT proof of that answer, replayed by `src/drat.c`, proves L minimal on its own, apart from the census.
+
+The script ran 11 cases spread across the lengths, up to two of the hardest, at 27 and 28 lines. Its file, `sat/plus/search.txt`, also records each solve's time in the run of commit `9ff83c9`; times vary from run to run, so the table leaves them out:
+
+| Formal language | Census length L | L lines | L − 1 lines | The proof at L − 1 | Model and proof checked |
+|---|---:|---|---|---:|---|
+| {0} | 1 | SAT | UNSAT | 6 bytes | yes |
+| {0, 1} | 2 | SAT | UNSAT | 53 bytes | yes |
+| {2, 3, 6, 7, 10, 11, 14, 15} | 4 | SAT | UNSAT | 13,638 bytes | yes |
+| {8, ..., 15} | 5 | SAT | UNSAT | 34,723 bytes | yes |
+| {15} | 8 | SAT | UNSAT | 117,323 bytes | yes |
+| {0, ..., 4, 6} | 12 | SAT | UNSAT | 490,951 bytes | yes |
+| {0, ..., 6, 8} | 16 | SAT | UNSAT | 1,640,192 bytes | yes |
+| {0, ..., 8, 10} | 20 | SAT | UNSAT | 2,691,961 bytes | yes |
+| {0, ..., 10, 12} | 24 | SAT | UNSAT | 6,145,378 bytes | yes |
+| {1, ..., 10, 12, 15} | 27 | SAT | UNSAT | 11,954,817 bytes | yes |
+| {0, ..., 13, 15} | 28 | SAT | UNSAT | 17,192,870 bytes | yes |
+
+Every case answered as expected: SATISFIABLE at the census length, UNSATISFIABLE one line shorter, each model and each proof checked. The proofs grow with the length, to about 17 MB at 28 lines.
+
+### Two observations
+
+rocsat's programs are its own. A solver hands back whichever model it reaches first, and here that model differs from the census witness in 2 of the 11 cases. At 8 lines, for {15}:
+
+```text
+{15}, the census: decr, half, decr, half, decr, half, decr, zero
+{15}, rocsat:     decr, half, decr, half, decr, decr, decr, zero
+```
+
+After the second `half`, input 15 holds 3 in both. The census brings it to 0 with `decr, half, decr`, and rocsat with three `decr`s, in the same four lines with `zero`.
+
+Three methods agree on every case: the census, a breadth-first search over states in `src/census.c`; rocsat's search over assignments, in Roc; and `src/drat.c`'s replay of each refutation. Each is its own code, so each shortest length in the table is confirmed three separate ways.
 
 ## P, NP and Cook-Levin
 
