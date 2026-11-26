@@ -29,35 +29,93 @@ def run_program(ax, program):
     return False
 
 
-# The four functions of one step. Each is written whole, from the six bits
-# alone, with `not`, `and` and `or`; they work alike on True/False and, below,
-# on formulas.
+# One step, written plainly. The gates know only bits, so the step first
+# decodes them: the line's two bits into which of the four opcodes it is, and
+# AX's two bits into which of the four values it holds. Then each of the four
+# new state bits says what every opcode does to it. `~`, `&` and `|` are the
+# complement, AND and OR; they work alike on bits and, below, on formulas.
+
+
+# The line's two bits, op_hb and op_lb, name its opcode.
+def opcodes(op_hb, op_lb):
+    is_nada = ~op_hb & ~op_lb  # 00
+    is_zero = ~op_hb & op_lb  # 01
+    is_decr = op_hb & ~op_lb  # 10
+    is_mod2 = op_hb & op_lb  # 11
+    return is_nada, is_zero, is_decr, is_mod2
+
+
+# AX's two bits, hb and lb, name its value; the step needs three of them.
+def values(hb, lb):
+    ax_is_0 = ~hb & ~lb
+    ax_is_2 = hb & ~lb
+    ax_is_3 = hb & lb
+    return ax_is_0, ax_is_2, ax_is_3
+
+
 def next_hb(op_hb, op_lb, hb, lb, halted, accepted):
-    # AX keeps its high bit (halted, nada or zero), or decr takes 3 to 2.
-    return (hb & (halted | ~op_hb)) | (hb & lb & op_hb & ~op_lb & ~halted)
+    is_nada, is_zero, is_decr, is_mod2 = opcodes(op_hb, op_lb)
+    ax_is_0, ax_is_2, ax_is_3 = values(hb, lb)
+    # A halted machine keeps its high bit. A running one: nada and zero keep
+    # it, decr sets it only when taking 3 to 2, and mod2 clears it.
+    return (halted & hb) | (~halted & ((is_nada & hb) | (is_zero & hb) | (is_decr & ax_is_3)))
 
 
 def next_lb(op_hb, op_lb, hb, lb, halted, accepted):
-    # AX keeps its low bit (halted, nada, zero or mod2), or decr takes 2 to 1.
-    return (lb & (halted | ~op_hb | (op_hb & op_lb & ~halted))) | (
-        hb & ~lb & op_hb & ~op_lb & ~halted
+    is_nada, is_zero, is_decr, is_mod2 = opcodes(op_hb, op_lb)
+    ax_is_0, ax_is_2, ax_is_3 = values(hb, lb)
+    # A halted machine keeps its low bit. A running one: nada, zero and mod2
+    # keep it, and decr sets it only when taking 2 to 1.
+    return (halted & lb) | (
+        ~halted & ((is_nada & lb) | (is_zero & lb) | (is_mod2 & lb) | (is_decr & ax_is_2))
     )
 
 
 def next_halted(op_hb, op_lb, hb, lb, halted, accepted):
-    # Halted already, or decr at 0.
-    return halted | (~hb & ~lb & op_hb & ~op_lb)
+    is_nada, is_zero, is_decr, is_mod2 = opcodes(op_hb, op_lb)
+    ax_is_0, ax_is_2, ax_is_3 = values(hb, lb)
+    # Halted already, or a running machine's decr finds AX at 0.
+    return halted | (~halted & (is_decr & ax_is_0))
 
 
 def next_accepted(op_hb, op_lb, hb, lb, halted, accepted):
-    # Accepted already, or zero at 0 on a running machine.
-    return accepted | (~hb & ~lb & ~op_hb & op_lb & ~halted)
+    is_nada, is_zero, is_decr, is_mod2 = opcodes(op_hb, op_lb)
+    ax_is_0, ax_is_2, ax_is_3 = values(hb, lb)
+    # Accepted already, or a running machine's zero finds AX at 0.
+    return accepted | (~halted & (is_zero & ax_is_0))
 
 
 def step(op_hb, op_lb, state):
     hb, lb, halted, accepted = state
     args = (op_hb, op_lb, hb, lb, halted, accepted)
     return (next_hb(*args), next_lb(*args), next_halted(*args), next_accepted(*args))
+
+
+# The same four, golfed: the opcodes merged where they act alike. `~op_hb` is
+# "nada or zero", the two opcodes that leave AX alone, and a halted machine
+# acts the same way. check() holds each to its plain twin on all 64 settings.
+def golfed_hb(op_hb, op_lb, hb, lb, halted, accepted):
+    return (hb & (halted | ~op_hb)) | (hb & lb & op_hb & ~op_lb & ~halted)
+
+
+def golfed_lb(op_hb, op_lb, hb, lb, halted, accepted):
+    return (lb & (halted | ~op_hb | (op_hb & op_lb))) | (hb & ~lb & op_hb & ~op_lb & ~halted)
+
+
+def golfed_halted(op_hb, op_lb, hb, lb, halted, accepted):
+    return halted | (~hb & ~lb & op_hb & ~op_lb)
+
+
+def golfed_accepted(op_hb, op_lb, hb, lb, halted, accepted):
+    return accepted | (~hb & ~lb & ~op_hb & op_lb & ~halted)
+
+
+PLAIN_AND_GOLFED = [
+    (next_hb, golfed_hb),
+    (next_lb, golfed_lb),
+    (next_halted, golfed_halted),
+    (next_accepted, golfed_accepted),
+]
 
 
 # Bits as a tiny class, so that ~ & | read as NOT AND OR on 0/1.
@@ -135,6 +193,9 @@ class F:
             return other
         if other is FALSE or self is other:
             return self
+        # Absorption: x OR (NOT x AND y) is x OR y.
+        if other.op == "and" and other.args[0] is ~self:
+            return self | other.args[1]
         return F("or", self, other)
 
     def value(self, env, memo):
@@ -221,6 +282,11 @@ def check():
             assert run_with_bits(ax, program) == expected
             assert (formulas[ax].value(env, {}) == 1) == expected
             checks += 2
+    for setting in range(64):
+        bits = [Bit((setting >> i) & 1) for i in range(6)]
+        for plain, golfed in PLAIN_AND_GOLFED:
+            assert plain(*bits).v == golfed(*bits).v
+            checks += 1
     return checks, formulas
 
 
