@@ -372,11 +372,40 @@ The page's intro, behind a Help link after puzzle 1, says what a language is her
 
 ## The Boolean view
 
-Everything so far ran the machine as a program. This chapter writes the same machine with Boolean logic alone, AND, OR and the complement on bits: the problems first, then one step, then six steps with the input and the program both fixed. Every bit in it is known, so composing the steps is just running the machine.
+Everything so far ran the machine as a program, an interpreter reading its lines. This chapter runs the same machine as a computer's hardware does: a clock, and at each tick, one step of the machine, a fixed bank of Boolean gates, AND, OR and the complement, that takes bits in and puts bits out. The gates are the same at every tick, for every program and every input. They read the line's two opcode bits and the four state bits, and they write four state bits. They see bits and only bits: what a program means, which of the 16 problems it decides, even that problems exist, all lies outside them.
 
-### Each problem as two bits
+### One step, four functions
 
-Read an input n as its two bits, n = 2·`hb` + `lb`, and each problem is a Boolean function of them: {3} is `hb AND lb`, {1, 2, 3} is `hb OR lb`, {1, 2} is `hb XOR lb`, and {0, 2, 3} is `hb OR NOT lb`.
+A step reads six bits: the line's opcode, `op_hb` and `op_lb`, and the machine's state, the two bits of `AX`, `hb` and `lb`, and the flags `halted` and `accepted`. It writes the four state bits again, and each new bit is a Boolean function of its own of those six. Here they are in Python (`python/steps.py`), where `~`, `&` and `|` are the complement, AND and OR:
+
+{{lines python/steps.py from "def next_hb(" to "    return accepted | (~hb & ~lb & ~op_hb & op_lb & ~halted)"}}
+
+Read each one as a sentence. `AX` keeps its high bit when the machine has halted or the line is `nada` or `zero`, and `decr` takes 3 to 2. It keeps its low bit in those cases and under `mod2`, which clears the high bit, and `decr` takes 2 to 1. `halted` turns on at a `decr` at 0, and `accepted` at a `zero` at 0 on a running machine. Once on, a flag stays on.
+
+### Six steps, everything fixed
+
+Now fix the input and the program. With `AX` = 2 and the program `decr, mod2, zero, decr, zero, nada`, each of the six bits a step reads is a known 0 or 1, and so is each bit it writes. Composing the six steps is running the machine, one row a step:
+
+```text
+                hb lb halted accepted
+start            1  0     0        0
+step 1  decr 10   0  1     0        0
+step 2  mod2 11   0  1     0        0
+step 3  zero 01   0  1     0        0
+step 4  decr 10   0  0     0        0
+step 5  zero 01   0  0     0        1
+step 6  nada 00   0  0     0        1
+```
+
+The last row's `accepted` is 1: the program accepts 2. `python/steps.py` runs each of the 4,096 programs on all four inputs this way and holds every answer to an ordinary interpreter written beside it.
+
+### Four inputs, one verdict
+
+Whether a program decides a problem is more gates of the same kind. Run the six ticks once for each input, four copies side by side, and each copy leaves one `accepted` bit. The problem enters only here, as four more bits, the *want* bits: input n's bit is 1 when n is in the problem. Each `accepted` bit is compared with its want bit, a gate that gives 1 when the two agree, and one AND of the four comparisons is the verdict. For the program above and the problem {1, 2, 3}, the four `accepted` bits are 0, 1, 1, 1, the want bits are 0, 1, 1, 1, and the verdict is 1. The gates matched bits; what {1, 2, 3} is stayed outside them.
+
+### The problems, seen from outside
+
+We can see more than the gates do. Read an input n as its two bits, n = 2·`hb` + `lb`, and each problem is itself a Boolean function of them: {3} is `hb AND lb`, {1, 2, 3} is `hb OR lb`, {1, 2} is `hb XOR lb`, and {0, 2, 3} is `hb OR NOT lb`. That is a fact about the problems, found by looking at all 16 at once. The machine reaches each answer the long way instead, six ticks of the same gates.
 
 **Theorem 9.** The 16 problems are exactly the 16 Boolean functions of two bits: each problem is one function of `hb` and `lb`, and each function is one problem.
 
@@ -403,30 +432,7 @@ Read an input n as its two bits, n = 2·`hb` + `lb`, and each problem is a Boole
 
 So the 16 problems, the 16 puzzles of Nibble, are the 16 two-input connectives.
 
-### One step, four functions
-
-A step reads six bits: the line's opcode, `op_hb` and `op_lb`, and the machine's state, the two bits of `AX`, `hb` and `lb`, and the flags `halted` and `accepted`. It writes the four state bits again, and each new bit is a Boolean function of its own of those six. Here they are in Python (`python/steps.py`), where `~`, `&` and `|` are the complement, AND and OR:
-
-{{lines python/steps.py from "def next_hb(" to "    return accepted | (~hb & ~lb & ~op_hb & op_lb & ~halted)"}}
-
-Read each one as a sentence. `AX` keeps its high bit when the machine has halted or the line is `nada` or `zero`, and `decr` takes 3 to 2. It keeps its low bit in those cases and under `mod2`, which clears the high bit, and `decr` takes 2 to 1. `halted` turns on at a `decr` at 0, and `accepted` at a `zero` at 0 on a running machine. Once on, a flag stays on.
-
-### Six steps, everything fixed
-
-Now fix the input and the program. With `AX` = 2 and the program `decr, mod2, zero, decr, zero, nada`, each of the six bits a step reads is a known 0 or 1, and so is each bit it writes. Composing the six steps is running the machine, one row a step:
-
-```text
-                hb lb halted accepted
-start            1  0     0        0
-step 1  decr 10   0  1     0        0
-step 2  mod2 11   0  1     0        0
-step 3  zero 01   0  1     0        0
-step 4  decr 10   0  0     0        0
-step 5  zero 01   0  0     0        1
-step 6  nada 00   0  0     0        1
-```
-
-The last row's `accepted` is 1: the program accepts 2. `python/steps.py` runs each of the 4,096 programs on all four inputs this way and holds every answer to an ordinary interpreter written beside it. {{chapter Six expressions, composed}}, in the second part, keeps the same four functions and the same six steps, and leaves the program's bits unknown.
+{{chapter Six expressions, composed}}, in the second part, keeps the same gates and the same six ticks, and leaves the program's bits unknown.
 
 ## The machine as a circuit
 
