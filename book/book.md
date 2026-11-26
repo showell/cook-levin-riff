@@ -131,6 +131,8 @@ Every behaviour of the machine is in those 26 lines. The rest of this part only 
 
 A run that reaches the end of its six instructions rejects. So a program accepts some of the four inputs and rejects the rest, and the set it accepts is its language.
 
+Steve's own view of `nada` and of the design, in his words: "nada is kinda not a real instruction under my machine. It just makes it so that every program is exactly 12 bits. It's also worth saying that the language was designed to have some complexity. It's using an imperfect machine to solve the problem somewhat by design." {{chapter Programs as languages}} makes both points exact: `nada` is redundant (Theorem 6), and two instructions of another design would decide every language in four lines (Theorem 7).
+
 ### Counting
 
 Each instruction is one of 4 opcodes, so there are 4^6 = 4,096 programs. Each language is a subset of {0, 1, 2, 3}, so there are 2^4 = 16 languages. Each program is a 12-bit number, two bits an instruction, and `assemble` and `disassemble` in `src/vm.c` convert between the two forms.
@@ -270,6 +272,18 @@ Input 0 is accepted on line 1. Input 1 drops to 0 on line 2 and is rejected by t
 
 The empty language has 844 programs, since any program that rejects every input will do, and {0, 2} has 883: `mod2` then `zero` is two lines, and many longer programs reach the same verdicts.
 
+### Which instructions are needed
+
+**Theorem 6.** The six-line programs over `zero`, `decr` and `mod2` decide all 16 languages, and each of the three is needed: dropping `zero` leaves only { } decided, dropping `decr` leaves 3 languages, and dropping `mod2` leaves 15 (Theorem 2). `nada` is redundant: the programs over the other three decide all 16.
+
+*Proof.* `tests/test_theorems.c` runs the 4,096 programs, keeps those whose every instruction is in a given set, and counts the languages they decide, for all four opcodes and for each set of three. Only `zero` accepts, so dropping it leaves every input rejected. Dropping `decr` leaves { }, {0} and {0, 2}: `mod2` brings 2 to 0, and 1 and 3 to 1, where they stay.
+
+The four opcodes are one choice among many. An instruction of any kind says, for each value of `AX`, what happens there: a new value, or accept, or reject. That makes 6^4 = 1,296 instructions, and the toy's four are among them.
+
+**Theorem 7.** Two instructions of that kind decide all 16 languages in four lines: `decr`, and its twin that accepts at 0 and otherwise takes 1 from `AX`. One instruction, repeated, decides at most 5 languages at any length.
+
+*Proof.* For a language L, line i + 1 is the twin when i is in L and `decr` otherwise, for i from 0 to 3. Input n reaches 0 on line n + 1, and that line's verdict is L's. `tests/test_theorems.c` builds the 16 programs and runs them. For one instruction it runs all 1,296, each repeated from 0 to 1,296 times on all four inputs, and finds at most 5 languages for each, and 5 for some. Five is also the bound by argument: an accept is for good, so each length's language contains the one before it, and a chain of subsets of four inputs has at most five members.
+
 ## Nibble, the puzzle page
 
 [Nibble](https://roc.lynrummy.com/nibble/) is a puzzle page with one puzzle for each of the 16 languages: pick instructions until the program accepts exactly the puzzle's inputs and rejects the rest. The search of {{chapter Programs as languages}} says every puzzle has an answer, and how many programs are answers.
@@ -314,7 +328,7 @@ The other twelve ramp by effort: the length of the shortest program, with each `
 
 A program's length is its instructions before its trailing `nada`s. Each puzzle says how short its best program is, and the lines past that are locked to `nada`. Past the lessons, every puzzle's last open line is fixed as `zero`, by this theorem:
 
-**Theorem 6.** Every shortest program of a line or more ends in `zero`.
+**Theorem 8.** Every shortest program of a line or more ends in `zero`.
 
 *Proof.* An instruction after a program's last `zero` can only reject, as running off the end does, so a program whose last instruction is `decr` or `mod2` decides the same language with that instruction cut, in fewer lines. `tests/test_theorems.c` checks it on all 4,096 programs: every shortest program of a line or more ends in `zero`, and longer programs that end otherwise exist.
 
@@ -524,7 +538,7 @@ halted+op_hb+(-1)*hb*op_hb+(-1)*lb*op_hb+(-1)*halted*op_hb+(-1)*op_hb*op_lb
 
 Evaluated at the bits of a state and an instruction, the four polynomials give the next state's bits. So the stepper is a second implementation of the machine, written as algebra.
 
-**Theorem 7.** On every one of the 4,096 programs and each of the four inputs, the stepper, evaluating the step polynomials one step at a time, accepts exactly when `run_progam` does.
+**Theorem 10.** On every one of the 4,096 programs and each of the four inputs, the stepper, evaluating the step polynomials one step at a time, accepts exactly when `run_progam` does.
 
 *Proof.* `tests/test_cross_check.c` runs all 16,384 pairs both ways and holds the differences to 0 and the accepting pairs to 5,596. The Python's `find_solutions` makes the same check on each language's example program alone, 16 programs on 4 inputs.
 
@@ -594,7 +608,7 @@ The final `hb` has degree 9 and its largest coefficient is 6; `lb` has degree 14
 
 Fourteen 0/1 variables make 2^14 = 16,384 points, and each point is one input with one program. This is the book's thesis, as a theorem:
 
-**Theorem 8.** At every one of the 2^14 points, the composed polynomial `accepted` is 1 when the machine accepts that input with that program and 0 when it rejects it.
+**Theorem 11.** At every one of the 2^14 points, the composed polynomial `accepted` is 1 when the machine accepts that input with that program and 0 when it rejects it.
 
 *Proof.* `tests/test_compose.c` evaluates the four final polynomials at every point and holds them to `run_progam` (its test `the_composed_polynomials_agree_with_the_machine_on_all_2_to_the_14`). The Roc port's proof prints the same verdict (`roc/golden/composition.txt`):
 
