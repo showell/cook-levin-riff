@@ -1,0 +1,111 @@
+-- sat/claims.shale: rocsat on claims about the whole decider. Each claim is
+-- "program P decides problem W": the decider's equations, as circuit_main
+-- prints them, turned into CNF by the Roc app roc/ClaimCnf.roc (Tseitin's
+-- encoding, roc/Cnf.roc), with unit clauses fixing the 16 inputs and asking
+-- decides = 1. With every input fixed, unit propagation settles every gate,
+-- so `rocsat solve` evaluates the circuit, and its statistics line shows 0
+-- decisions. For a SAT claim the model is checked with `rocsat check` and
+-- `decides` read from it, by the literal the CNF's comment names.
+--
+-- It writes one line a claim to sat/claims/verdicts.txt, which the book's
+-- chapter "From equations to CNF" shows and its build holds byte for byte,
+-- so the book builds without rocsat. From the repository's root:
+--
+--   shale sat/claims.shale
+--
+-- It fails unless each claim's verdict is the one CLAIMS expects, with 0
+-- decisions, and each SAT model passes the check with decides = 1. rocsat is
+-- the one sat/oracle.shale runs, built in build:rocsat.
+
+const OUT = "out/sat/claims"
+const VERDICTS = "sat/claims/verdicts.txt"
+const CLAIMS = {
+  {program = 1689, problem = 13, sat = true},
+  {program = 1689, problem = 5, sat = false},
+  {program = 2704, problem = 8, sat = true},
+}
+const WANT_ROC = "claims: the Roc port's pinned compiler"
+const WANT_RAN = "claims: circuit_main and claim-cnf, just built by this script"
+const WANT_ROCSAT = "claims: rocsat, built in build:rocsat from its pinned nightly"
+
+-- A problem's set of inputs, `{0, 2, 3}`, from its code.
+function set_text(problem)
+  local members = {}
+  local places = {1, 2, 4, 8}
+  for n = 0, 3 do
+    if (problem // places[n + 1]) % 2 == 1 then push(members, "" .. n) end
+  end
+  return "{" .. join(members, ", ") .. "}"
+end
+
+-- The value of `key=N` in rocsat's statistics line.
+function statistic(line, key)
+  local m = re_find(line, "\\b" .. key .. "=([0-9]+)")
+  if m == nil then fail("rocsat's statistics line has no " .. key .. ": " .. line) end
+  return m.group
+end
+
+local rocsat = arg("rocsat", "build:rocsat/src/rocsat")
+if not exists(rocsat) then fail("rocsat is not built at " .. rocsat .. ": see README.md, \"SAT\"") end
+mkdir(OUT)
+
+-- The equations, from the C.
+must(run({"tcc", "-Wall", "-Werror", "-o", real(OUT) .. "/circuit_main", "src/circuit_main.c"}, {timeout_ms = 60000, tail = 20}))
+local equations = must(run({real(OUT .. "/circuit_main"), "equations"}, {timeout_ms = 60000, whole = 400000, want = WANT_RAN})).out
+
+-- The Roc app, on the dev backend, by the pinned Roc.
+local roc = "tools:roc-" .. trim(read("roc/roc-version")) .. "/roc"
+if not exists(roc) then fail("no " .. roc .. ": install the pinned Roc") end
+local built = run({real(roc), "build", "--opt=dev", "--output=" .. real(OUT) .. "/claim-cnf", "ClaimCnf.roc"}, {cwd = "roc", timeout_ms = 300000, tail = 30, want = WANT_ROC, nice = 10})
+if built.code ~= 0 then
+  print(built.out)
+  fail("roc build roc/ClaimCnf.roc: exit " .. built.code)
+end
+
+local said = {}
+for c in CLAIMS do
+  local name = c.program .. "-" .. c.problem
+  local argv = {real(OUT .. "/claim-cnf"), "" .. c.program, "" .. c.problem}
+  for l in lines(equations) do
+    if l ~= "" then push(argv, l) end
+  end
+  local cnf = OUT .. "/" .. name .. ".cnf"
+  local text = must(run(argv, {timeout_ms = 60000, whole = 4000000, want = WANT_RAN, nice = 10})).out
+  replace(cnf, text)
+  local head = re_find(text, "\np cnf ([0-9]+) ([0-9]+)\n")
+  local named = re_find(text, "\nc decides = (-?[0-9]+)\n")
+  if head == nil or named == nil then fail(cnf .. " has no `p cnf` line or no `c decides =` comment") end
+
+  local r = run({real(rocsat), "solve", real(cnf)}, {timeout_ms = 60000, whole = 200000, want = WANT_ROCSAT, nice = 10})
+  local code = get(r, "code", -1)
+  local stats = re_find(r.out, "(?:^|\n)(c conflicts=[^\n]*)")
+  if stats == nil then fail("rocsat said no statistics line for " .. cnf .. ": " .. r.out) end
+  local decisions = statistic(stats.group, "decisions")
+  local verdict = "s UNSATISFIABLE"
+  if code == 10 then verdict = "s SATISFIABLE" end
+  if (code == 10) ~= c.sat or (code ~= 10 and code ~= 20) or find(r.out, verdict) == nil then fail("rocsat on " .. cnf .. ": exit " .. code .. ", and the claim expects " .. (c.sat and "SAT" or "UNSAT")) end
+  if decisions ~= "0" then fail("rocsat made " .. decisions .. " decisions on " .. cnf .. ", where propagation settles every gate") end
+  local line = "program " .. c.program .. " decides " .. set_text(c.problem) .. ": " .. head.groups[1] .. " variables, " .. head.groups[2] .. " clauses: exit " .. code .. ", " .. verdict .. ", decisions=" .. decisions .. " conflicts=" .. statistic(stats.group, "conflicts") .. " propagations=" .. statistic(stats.group, "propagations")
+
+  if c.sat then
+    local model = OUT .. "/" .. name .. ".model"
+    replace(model, r.out)
+    local checked = run({real(rocsat), "check", real(cnf), real(model)}, {timeout_ms = 60000, whole = 4000, want = WANT_ROCSAT})
+    if get(checked, "code", -1) ~= 0 or trim(checked.out) ~= "c model ok" then fail("rocsat check refused the model of " .. cnf .. ": " .. trim(checked.out)) end
+    local lit = tonumber(named.group)
+    local value = nil
+    for v in re_lines(r.out, "^v ") do
+      for w in words(v.text) do
+        local x = parse_int(w)
+        if x ~= nil and x ~= 0 and abs(x) == abs(lit) then value = (x == lit) end
+      end
+    end
+    if value ~= true then fail("the model of " .. cnf .. " leaves decides (" .. lit .. ") unset or 0") end
+    line = line .. "; rocsat check: " .. trim(checked.out) .. "; decides (" .. lit .. ") = 1"
+  end
+  print(line)
+  push(said, line)
+end
+mkdir("sat/claims")
+replace(VERDICTS, join(said, "\n") .. "\n")
+print("claims: rocsat settled the " .. #CLAIMS .. " claims by propagation; " .. VERDICTS .. " written")

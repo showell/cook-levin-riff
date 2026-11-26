@@ -9,7 +9,9 @@
 --                              checks itself, and python/equations.py
 --                              evaluates the decider's equations, as
 --                              circuit_main prints them, on every program
---                              and want register.
+--                              and want register; the equations are held
+--                              to roc/golden/equations.txt, which the Roc
+--                              port's CNF expects read.
 --   shale build.shale full=1   the fast tier, then gcc twice: -std=c11 -O2
 --                              -Wall -Wextra -Werror, and -O0 with
 --                              -fsanitize=address,undefined; each builds and
@@ -27,6 +29,7 @@ const TESTS = {"tests/test_vm.c", "tests/test_reference.c", "tests/test_golden.c
 -- The command lines the oracles and the book run, compiled in each tier.
 const CLIS = {"src/sat_main.c", "src/drat_main.c", "src/boolean_main.c", "src/sat_hand_main.c", "src/circuit_main.c"}
 const GOLDEN = "tests/golden/find_solutions.txt"
+const EQUATIONS_GOLDEN = "roc/golden/equations.txt"
 -- Why `run` may start a binary git does not track: this build just made it.
 const RAN = "build: a test binary this build just compiled"
 -- The book's Python, and why `run` may start python3 for it.
@@ -144,6 +147,8 @@ end
 local eq = run({real(OUT .. "/" .. builds[1] .. "/circuit_main"), "equations"}, {timeout_ms = 60000, whole = 400000, want = RAN})
 if exited_0(eq) then
   replace(OUT .. "/equations.txt", eq.out)
+  -- roc/ClaimCnf.roc's expects read the equations from this golden.
+  failures = failures + check(eq.out == read(EQUATIONS_GOLDEN), "circuit_main equations is " .. EQUATIONS_GOLDEN .. ": " .. #eq.out .. " bytes of " .. #read(EQUATIONS_GOLDEN))
   local py = run({"python3", "python/equations.py", real(OUT .. "/equations.txt")}, {timeout_ms = 60000, tail = 10, want = PYTHON_WANT})
   local said = trim(py.out)
   failures = failures + check(exited_0(py) and said == "python/equations.py: 65536 checks passed", "python3: " .. said .. ", " .. how_it_ended(py))

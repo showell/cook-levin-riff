@@ -9,7 +9,10 @@
 --   - `roc check` of each app, with no error and no warning (no ✗ or ●);
 --   - `roc test` of each app, its expects' count held exactly to EXPECTS
 --     (NibbleWasm.roc, the page's machine, is checked and tested here; its
---     wasm build and its check against the C are web/build.shale's);
+--     wasm build and its check against the C are web/build.shale's;
+--     ClaimCnf.roc's include Cnf.roc's and hold the whole decider's CNF
+--     sizes, from roc/golden/equations.txt, which build.shale holds to
+--     `circuit_main equations`; its rocsat run is sat/claims.shale's);
 --   - each app built on the dev backend and run: FindSolutions' stdout is
 --     tests/golden/find_solutions.txt byte for byte, StepPolynomials' is
 --     roc/golden/step_polynomials.txt (the C's `bp_str` of the four step
@@ -21,8 +24,10 @@
 
 const WANT = "roc-pin: the Roc port's pinned compiler"
 const RAN = "roc-check: an app this gate just built"
-const APPS = {"Composition.roc", "FindSolutions.roc", "Fourteen.roc", "NibbleWasm.roc", "StepPolynomials.roc"}
+const APPS = {"ClaimCnf.roc", "Cnf.roc", "Composition.roc", "FindSolutions.roc", "Fourteen.roc", "NibbleWasm.roc", "StepPolynomials.roc"}
 const EXPECTS = {
+  {app = "ClaimCnf.roc", count = 13},
+  {app = "Cnf.roc", count = 9},
   {app = "Composition.roc", count = 30},
   {app = "FindSolutions.roc", count = 28},
   {app = "Fourteen.roc", count = 5},
