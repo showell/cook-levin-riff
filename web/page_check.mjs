@@ -35,7 +35,17 @@
 //   them) and hint as it opens, and solves each by clicking its example's
 //   open lines. Two more screenshots go beside the first: is_one with its
 //   fixed line 1 (`-given` before `.png`), and is_odd with its fixed zero
-//   (`-fixed`).
+//   (`-fixed`);
+// - follows the puzzle page's link to the sandbox, sandbox.html, and sees it
+//   open as all nada, program #0 deciding grumpy's { }, every line's four
+//   buttons free with the puzzle page's tips, and a trace of the steps and
+//   how each run ended, with no puzzle's rows and no verdict; clicks in
+//   program 1689 (zero, decr, decr, zero, decr, zero) and sees #1689 deciding
+//   is_not_one's {0, 2, 3}; clears it; types program numbers into its box
+//   and sees each load as the wasm runs it, and one past 4095 refused;
+//   opens and closes the machine code's "?"; sees nothing scroll sideways
+//   and nothing stored; saves a screenshot (`-sandbox`); and follows its
+//   link back to the puzzles.
 //
 // The browser is started as roc-apps' tools/chromium.mjs starts it (its
 // flags and its folder under TMPDIR, for Shale's confinement); this is a
@@ -184,7 +194,7 @@ expect([0, 2, 3].every((op) => solves(grumpy, op)) && !solves(grumpy, 1), "grump
 expect(table.ops.map((o) => o.name).join(" ") === "nada zero decr mod2", "the table's opcodes are nada zero decr mod2");
 
 // ── the page, in Chromium ────────────────────────────────────────────────
-const TYPES = { ".html": "text/html", ".js": "text/javascript", ".wasm": "application/wasm", ".json": "application/json" };
+const TYPES = { ".html": "text/html", ".css": "text/css", ".js": "text/javascript", ".wasm": "application/wasm", ".json": "application/json" };
 const server = createServer((req, res) => {
   const name = req.url === "/" ? "index.html" : decodeURIComponent(req.url.slice(1));
   if (!files.includes(name)) { res.writeHead(404); res.end(); return; }
@@ -273,6 +283,13 @@ async function click(selector) {
     await page("Input.dispatchMouseEvent", { type, x: box.x, y: box.y, button: "left", clickCount: 1 });
   }
   await sleep(30);
+}
+// A link clicked, and the page it opens loaded.
+async function follow(selector) {
+  const done = new Promise((d) => { loaded = d; });
+  await click(selector);
+  await done;
+  for (let k = 0; k < 50 && !(await evaluate("!!document.getElementById('trace')")); k++) await sleep(100);
 }
 async function screenshot(file) {
   await evaluate("window.scrollTo(0, 0)");
@@ -490,6 +507,75 @@ try {
   }
   expect(fixedSolved === puzzles.filter((p, i) => i >= LESSONS.length && p.fixed).length, `${fixedSolved} fixed-zero puzzles solved by clicks`);
   expect((await evaluate("localStorage.length")) === 0, "the page stored something in localStorage");
+
+  // ── the sandbox ──
+  await follow("#sandbox-link");
+  expect((await evaluate("document.title")) === "Nibble sandbox", `the puzzle page's Sandbox link opens \`${await evaluate("document.title")}\``);
+  // What the sandbox shows: the machine code, and the problem decided, its
+  // name and its set.
+  const shows = async () => `${await text("machine-code")} | ${await text("decided-name")} ${await text("decided-set")}`;
+  const nameOf = (lang) => puzzles.find((p) => p.code === lang).name;
+  const setOf = (lang) => { const s = [0, 1, 2, 3].filter((n) => (lang >> n) & 1); return s.length ? `{${s.join(", ")}}` : "{ }"; };
+  // The program numbered n, as the machine's code: line 1 is n's highest base-4 digit.
+  const codeOfNumber = (n) => Array.from({ length: STEPS }, (_, k) => Math.floor(n / 4 ** (STEPS - 1 - k)) % 4).reduce((sum, op, k) => sum + op * 4 ** k, 0);
+  const bitsOf = (n) => Array.from({ length: STEPS }, (_, k) => (Math.floor(n / 4 ** (STEPS - 1 - k)) % 4).toString(2).padStart(2, "0")).join(" ");
+  const wantShows = (n) => `${bitsOf(n)}  (#${n}) | ${nameOf(m.accepts(codeOfNumber(n)))} ${setOf(m.accepts(codeOfNumber(n)))}`;
+  const onOps = () => evaluate("[...document.querySelectorAll('.slot')].map((r) => r.querySelector('button.on')?.dataset.op ?? '-').join(' ')");
+  expect((await shows()) === "00 00 00 00 00 00  (#0) | grumpy { }", `the fresh sandbox shows \`${await shows()}\``);
+  expect((await text("decided")) === "This program decides grumpy: it accepts { } and rejects the rest.", `the fresh sandbox's problem reads \`${await text("decided")}\``);
+  // Every line free: six lines of four buttons, none disabled, none locked or
+  // given, each with the puzzle page's tip.
+  const free = await evaluate("[...document.querySelectorAll('.slot')].map((r) => [...r.querySelectorAll('button')].filter((b) => !b.disabled).length + (r.classList.contains('locked') || r.classList.contains('given') ? 'L' : '')).join(' ')");
+  expect(free === "4 4 4 4 4 4", `the sandbox's lines' free buttons are \`${free}\``);
+  const lastTips = await evaluate("['nada', 'zero', 'decr', 'mod2'].map((op) => document.querySelector(`[data-slot=\"5\"][data-op=\"${op}\"]`).title).join(' | ')");
+  expect(lastTips === tips, `the sandbox's line 6 tips are \`${lastTips}\``);
+  expect((await evaluate("document.querySelectorAll('#trace tbody tr').length")) === STEPS + 1, "the sandbox's trace hasn't a row a step, then result");
+  expect(!(await evaluate("!!document.querySelector('#trace tr[data-row=\"want\"], #trace tr[data-row=\"outcome\"], #verdict, #puzzles, .wrong')")), "the sandbox shows a puzzle's want, outcome, verdict, list or marks");
+  // Ops change the trace and the problem: zero on line 1 accepts 0.
+  await click('[data-slot="0"][data-op="zero"]');
+  const zeroStep = await evaluate("[...document.querySelectorAll('#trace tr[data-step=\"1\"] td')].map((c) => c.textContent).join(\" \")");
+  expect(zeroStep === "accept AX=1 AX=2 AX=3", `after zero on line 1 the sandbox's step 1 shows \`${zeroStep}\``);
+  expect((await shows()) === "01 00 00 00 00 00  (#1024) | is_tiny {0}", `after zero on line 1 the sandbox shows \`${await shows()}\``);
+  // Program 1689, clicked in: zero, decr, decr, zero, decr, zero.
+  const p1689 = ["zero", "decr", "decr", "zero", "decr", "zero"];
+  for (let k = 0; k < STEPS; k++) await click(`[data-slot="${k}"][data-op="${p1689[k]}"]`);
+  expect((await shows()) === "01 10 10 01 10 01  (#1689) | is_not_one {0, 2, 3}", `program 1689, clicked in, shows \`${await shows()}\``);
+  expect((await shows()) === wantShows(1689), `program 1689 doesn't show what the wasm says, \`${wantShows(1689)}\``);
+  const results = await evaluate("[...document.querySelectorAll('#trace tr[data-row=\"result\"] td')].map((c) => c.textContent).join(\" | \")");
+  expect(results === "accept | reject | accept | accept", `program 1689's result row says \`${results}\``);
+  await click("#clear");
+  expect((await shows()) === "00 00 00 00 00 00  (#0) | grumpy { }", `Clear leaves the sandbox showing \`${await shows()}\``);
+  // A number typed in loads that program, its buttons and all.
+  async function typeNumber(said) {
+    await evaluate("document.getElementById('program-number').value = ''");
+    await click("#program-number");
+    await page("Input.insertText", { text: said });
+    await click("#load-button");
+  }
+  for (const n of [1689, 2112, 4095, 7]) {
+    await typeNumber(String(n));
+    expect((await shows()) === wantShows(n), `typing ${n} shows \`${await shows()}\`, not \`${wantShows(n)}\``);
+    const want = Array.from({ length: STEPS }, (_, k) => OPS[Math.floor(n / 4 ** (STEPS - 1 - k)) % 4]).join(" ");
+    expect((await onOps()) === want, `typing ${n} lights \`${await onOps()}\`, not \`${want}\``);
+  }
+  // A number past 4095 loads nothing and marks the box.
+  await typeNumber("4096");
+  expect((await shows()) === wantShows(7) && (await evaluate("document.getElementById('program-number').classList.contains('bad')")), `typing 4096 shows \`${await shows()}\`, or leaves the box unmarked`);
+  await typeNumber("1689");
+  expect((await shows()) === wantShows(1689) && !(await evaluate("document.getElementById('program-number').classList.contains('bad')")), "typing 1689 after 4096 doesn't load it and clear the mark");
+  // The machine code's "?" opens its line and closes it.
+  expect(await evaluate("document.getElementById('code-explain').hidden"), "the sandbox's code explanation shows before its ? is pressed");
+  await click("#code-help");
+  expect(!(await evaluate("document.getElementById('code-explain').hidden")) && (await text("code-explain")).startsWith("The machine code:"), "the sandbox's ? doesn't open its explanation");
+  await click("#code-help");
+  expect(await evaluate("document.getElementById('code-explain').hidden"), "the sandbox's ? doesn't close its explanation");
+  const sandboxWidths = await evaluate(`(() => { const s = document.scrollingElement, t = document.getElementById("trace");
+    return { page: s.scrollWidth, pageBox: s.clientWidth, trace: t.scrollWidth, traceBox: t.clientWidth }; })()`);
+  expect(sandboxWidths.page <= sandboxWidths.pageBox && sandboxWidths.trace <= sandboxWidths.traceBox, `at ${WIDTH}px the sandbox scrolls sideways: ${JSON.stringify(sandboxWidths)}`);
+  expect((await evaluate("localStorage.length")) === 0, "the sandbox stored something in localStorage");
+  await screenshot(shotFile.replace(/\.png$/, "-sandbox.png"));
+  await follow("#puzzles-link");
+  expect((await text("title")) === `Puzzle 1 of 16: ${first.name}`, `the sandbox's Puzzles link opens \`${await text("title")}\``);
   expect(thrown.length === 0, `the page threw: ${thrown.join("; ")}`);
 } finally {
   socket.close();
@@ -503,4 +589,4 @@ try {
 if (failures > 0) { console.error(`page_check: ${failures} of ${checks} checks failed`); process.exit(1); }
 const hardest = puzzles[puzzles.length - 1];
 const fixedCount = puzzles.filter((p, i) => i >= LESSONS.length && p.fixed).length;
-console.log(`ok   page_check: the wasm matches the C on all ${PROGRAMS * 4} runs and its ${puzzles.length}-puzzle table (${first.name} ${first.count} programs, shortest ${first.shortest}; ... ${hardest.name} ${hardest.count}, shortest ${hardest.shortest}); in Chromium at ${WIDTH}px with no sideways scroll the first puzzle was solved by clicks, a reload started fresh with nothing stored, is_one and is_even were solved by line 2's zero and grumpy by one click, and puzzles 5 to 16 opened with their locks and were solved by clicks, ${fixedCount} of them with a fixed zero (${checks} checks)`);
+console.log(`ok   page_check: the wasm matches the C on all ${PROGRAMS * 4} runs and its ${puzzles.length}-puzzle table (${first.name} ${first.count} programs, shortest ${first.shortest}; ... ${hardest.name} ${hardest.count}, shortest ${hardest.shortest}); in Chromium at ${WIDTH}px with no sideways scroll the first puzzle was solved by clicks, a reload started fresh with nothing stored, is_one and is_even were solved by line 2's zero and grumpy by one click, and puzzles 5 to 16 opened with their locks and were solved by clicks, ${fixedCount} of them with a fixed zero; the sandbox opened free as #0 deciding grumpy, showed #1689 deciding is_not_one {0, 2, 3} by clicks and by its typed number, and loaded typed numbers as the wasm runs them (${checks} checks)`);

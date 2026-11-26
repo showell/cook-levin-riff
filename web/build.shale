@@ -10,18 +10,25 @@
 --    (`--target=wasm32 --opt=speed`, an archive), and Zig (zig016:zig)
 --    links it with web/platform/host.zig into out/web/nibble.wasm, whose
 --    exports are the page's `status`, `after` and `accepts`.
--- 3. The page goes to out/web/site, each file but index.html named by its
---    bytes (`nibble.<hash>.js`, the first 16 hex digits of its sha256), as
---    roc-apps' site names them; the JS's names for the wasm and the table
---    are rewritten to their hashed names before the JS is hashed.
+-- 3. The two pages, the puzzles (index.html) and the sandbox (sandbox.html),
+--    go to out/web/site, each file but the two pages named by its bytes
+--    (`nibble.<hash>.js`, the first 16 hex digits of its sha256), as
+--    roc-apps' site names them: the wasm, the table, the shared stylesheet
+--    nibble.css, the shared module machine.js and each page's script,
+--    nibble.js and sandbox.js. Each name a file holds is rewritten to its
+--    hashed one before that file is hashed: machine.js's wasm and table,
+--    the two scripts' import of machine.js, the pages' script and
+--    stylesheet.
 -- 4. web/page_check.mjs holds the wasm to the C's table on all 4,096 x 4
 --    runs and to its 16-puzzle table and order, then loads the page in
 --    headless Chromium at 390px, solves the first puzzle by clicking, sees
 --    nothing scroll sideways, the locked and fixed lines locked, and a
 --    reload start fresh with nothing stored, solves the other three lessons
 --    by one click each, and opens and solves puzzles 5 to 16 by clicks, each
---    with its fixed zero; it saves screenshots to out/web/page.png,
---    out/web/page-given.png and out/web/page-fixed.png.
+--    with its fixed zero; then it loads the sandbox and plays it by clicks
+--    and by a typed program number. It saves screenshots to
+--    out/web/page.png, out/web/page-given.png, out/web/page-fixed.png and
+--    out/web/page-sandbox.png.
 --
 -- One line a stage. Exits 0 only when every check passes.
 
@@ -41,6 +48,25 @@ end
 -- The hashed name of OUT's `name.ext`, `name.<hash>.ext`.
 function hashed_name(name, ext)
   return name .. "." .. hash_of(OUT .. "/" .. name .. "." .. ext) .. "." .. ext
+end
+
+-- `text` with `old` put as `new`; a name that isn't there stops the build,
+-- so no rewrite misses quietly.
+function rename_in(text, old, new, file)
+  if not contains(text, old) then fail("web/build.shale: " .. file .. " holds no " .. old) end
+  return substitute(text, old, new)
+end
+
+-- `web/<name>.<ext>`, each `{old, new}` of `swaps` rewritten, written to OUT
+-- and copied to SITE by its hashed name, which it gives.
+function hashed_copy(name, ext, swaps)
+  local file = name .. "." .. ext
+  local text = read("web/" .. file)
+  for s in swaps do text = rename_in(text, s[1], s[2], "web/" .. file) end
+  replace(OUT .. "/" .. file, text)
+  local hashed = hashed_name(name, ext)
+  copy(OUT .. "/" .. file, SITE .. "/" .. hashed)
+  return hashed
 end
 
 -- The Roc roc/roc-version pins, ~/tools/roc-<pin>/roc, held to its version
@@ -92,13 +118,18 @@ local wasm = hashed_name("nibble", "wasm")
 copy(OUT .. "/nibble.wasm", SITE .. "/" .. wasm)
 local json = hashed_name("puzzles", "json")
 copy(OUT .. "/puzzles.json", SITE .. "/" .. json)
-local js_text = substitute(substitute(read("web/nibble.js"), "fetch(\"nibble.wasm\")", "fetch(\"" .. wasm .. "\")"),
-  "fetch(\"puzzles.json\")", "fetch(\"" .. json .. "\")")
-replace(OUT .. "/nibble.js", js_text)
-local js = hashed_name("nibble", "js")
-copy(OUT .. "/nibble.js", SITE .. "/" .. js)
-replace(SITE .. "/index.html", substitute(read("web/index.html"), "src=\"nibble.js\"", "src=\"" .. js .. "\""))
-print("ok   " .. SITE .. ": index.html, " .. join({js, wasm, json}, ", "))
+local shared = hashed_copy("machine", "js", {{"fetch(\"nibble.wasm\")", "fetch(\"" .. wasm .. "\")"},
+  {"fetch(\"puzzles.json\")", "fetch(\"" .. json .. "\")"}})
+local css = hashed_copy("nibble", "css", {})
+local import = {"from \"./machine.js\"", "from \"./" .. shared .. "\""}
+local js = hashed_copy("nibble", "js", {import})
+local sandbox_js = hashed_copy("sandbox", "js", {import})
+local sheet = {"href=\"nibble.css\"", "href=\"" .. css .. "\""}
+replace(SITE .. "/index.html", rename_in(rename_in(read("web/index.html"), "src=\"nibble.js\"", "src=\"" .. js .. "\"", "web/index.html"),
+  sheet[1], sheet[2], "web/index.html"))
+replace(SITE .. "/sandbox.html", rename_in(rename_in(read("web/sandbox.html"), "src=\"sandbox.js\"", "src=\"" .. sandbox_js .. "\"", "web/sandbox.html"),
+  sheet[1], sheet[2], "web/sandbox.html"))
+print("ok   " .. SITE .. ": index.html, sandbox.html, " .. join({js, sandbox_js, shared, css, wasm, json}, ", "))
 
 local check = run({"node", "web/page_check.mjs", real(SITE), real(OUT .. "/puzzles.json"), real(OUT .. "/runs.json"), real(OUT) .. "/page.png"},
   {timeout_ms = 90000, tail = 30, want = WANT_NODE})
