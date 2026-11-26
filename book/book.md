@@ -61,7 +61,7 @@ Third, the assertions, in `find_solutions` ([virtual_machine.py, lines 159 to 16
 
 **That agreement is the thesis of this book: the machine and its Cook-Levin translation answer every question the same way.** Everything after it widens the check. The C runs both on all 4,096 programs and all four inputs; the six steps are chained into four polynomials that agree with the machine on all 2^14 points; a SAT solver, given the same machine as a formula, finds exactly the machine's programs; and seven implementations in five languages compute the same answers. His Python stopped short of chaining all six steps, and this repository finishes the chain ({{chapter How it got here}}).
 
-Steve wrote the first version by hand in Python, in [virtual-machine](https://github.com/showell/virtual-machine): the machine (`virtual_machine.py`), a general polynomial library (`poly.py`) and a stepper that writes one step of the machine as polynomials (`stepper.py`). In the cook-levin-riff repository, the code was written by AI coding agents (Claude), with human supervision, as its `README.md` says in its second line.
+Steve wrote the first version by hand in Python, in [virtual-machine](https://github.com/showell/virtual-machine): the machine (`virtual_machine.py`), a general polynomial library (`poly.py`) and a stepper that writes one step of the machine as polynomials (`stepper.py`). The machine is Steve's invention; the code in this repository, written by AI coding agents (Claude) with human supervision, departs from the 2023 Python wherever a cleaner choice turned up, and its choices, such as how programs are numbered, are this book's own.
 
 ### What the book covers
 
