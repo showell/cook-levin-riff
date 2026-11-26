@@ -1,12 +1,15 @@
 // circuit_main.c: the circuit chapters' drawings and tables, from the
 // netlist of circuit.c.
 //
-//   circuit_main          the blocks of "Parts for a small computer" and
-//                         "The machine as a circuit": each part's drawing
-//                         and its table on every input, the gate counts,
-//                         and the stepper with every gate drawn
-//   circuit_main core     the drawing of one whole core, every gate of its
-//                         six steppers, for "The circuit, in full"
+//   circuit_main
+//
+// It prints, in order, the blocks of "Parts for a small computer", "The
+// machine as a circuit" and "The circuit, in full": each part's drawing at
+// gate level and its table on every input, the parts as boxes, a stepper
+// drawn as its boxes, the gate counts, a core drawn as six stepper boxes,
+// and the decider drawn as four core boxes, its comparators and its AND.
+// The box drawings come from the links the netlist's composers record, so
+// they show the wiring the simulator runs.
 //
 // Blocks are a blank line apart, each a ```dot fence or a Markdown table,
 // and book/book.shale holds the book's source to each, byte for byte. Every
@@ -21,15 +24,12 @@
 static Net NET;
 static int VALUES[CIRCUIT_MAX_WIRES];
 
-static const char *const IS[4] = {"is_0", "is_1", "is_2", "is_3"};
 static const char *const NEXT_NAMES[4] = {"next_0", "next_1", "next_2", "next_3"};
-static const char *const OP_WIRES[4] = {"op_nada", "op_zero", "op_decr", "op_mod2"};
-static const char *const EN[4] = {"en_nada", "en_zero", "en_decr", "en_mod2"};
 
 static int port(const char *part, const char *name) { return VALUES[net_port_wire(&NET, part, name)]; }
 
 // A part's drawing: its inputs on the left, its outputs on the right.
-static const DotStyle PART = {"LR", 0, 0, 1};
+static const DotStyle PART = {"LR", 0, 1};
 
 static void dot_block(const char *part, DotStyle style) {
     printf("```dot\n");
@@ -112,7 +112,7 @@ static void machines(void) {
 }
 
 static void hold(void) {
-    OneHot op = four_inputs(OP_WIRES);
+    OneHot op = four_inputs(OPS);
     int h = net_input(&NET, "halted");
     part_hold(&NET, "hold", op, h);
     dot_block("hold", PART);
@@ -130,7 +130,7 @@ static void hold(void) {
 }
 
 static void selector(void) {
-    static const char *const D[4] = {"nada's next_1", "zero's next_1", "decr's next_1", "mod2's next_1"};
+    static const char *const D[4] = {"nada's", "zero's", "decr's", "mod2's"};
     net_init(&NET);
     OneHot en;
     int driver[4];
@@ -187,27 +187,52 @@ static void counts(void) {
     printf("\n");
 }
 
-static void stepper(void) {
+static void boxes_block(const char *scope, const char *rankdir) {
+    printf("```dot\n");
+    net_boxes_dot(&NET, scope, rankdir, stdout);
+    printf("```\n\n");
+}
+
+// Each part of a stepper as a box: how many wires go in and come out, and
+// how many gates are inside, read from the stepper's links and ports.
+static void vocabulary(void) {
+    static const char *const PARTS[] = {"decoder", "op decoder", "hold", "nada", "zero", "decr", "mod2", "selector",
+                                        "encoder", "latches"};
     circuit_stepper(&NET);
-    dot_block("", (DotStyle){"LR", 9, 1, 1});
+    printf("| box | wires in | wires out | gates |\n|---|---|---|---|\n");
+    for (size_t i = 0; i < sizeof PARTS / sizeof PARTS[0]; i++) {
+        int in = 0, out = 0;
+        for (int k = 0; k < NET.num_links; k++) {
+            if (strcmp(NET.links[k].scope, "") == 0 && strcmp(NET.links[k].to, PARTS[i]) == 0) in++;
+        }
+        for (int k = 0; k < NET.num_ports; k++) {
+            if (strcmp(NET.ports[k].part, PARTS[i]) == 0) out++;
+        }
+        GateCount c = net_count(&NET, PARTS[i]);
+        printf("| %s | %d | %d | %d |\n", PARTS[i], in, out, c.nots + c.ands + c.ors);
+    }
+    printf("\n");
 }
 
 int main(int argc, char **argv) {
-    if (argc == 2 && strcmp(argv[1], "core") == 0) {
-        circuit_core(&NET);
-        dot_block("", (DotStyle){"LR", 2, 1, 0});
-    } else if (argc == 1) {
-        decoder();
-        encoder();
-        machines();
-        hold();
-        selector();
-        latches();
-        counts();
-        stepper();
-    } else {
-        fprintf(stderr, "usage: circuit_main [core]\n");
+    (void)argv;
+    if (argc != 1) {
+        fprintf(stderr, "usage: circuit_main\n");
         return 2;
     }
+    decoder();
+    encoder();
+    machines();
+    hold();
+    selector();
+    latches();
+    vocabulary();
+    circuit_stepper(&NET);
+    boxes_block("", "TB");
+    counts();
+    circuit_core(&NET);
+    boxes_block("", "TB");
+    circuit_decides(&NET);
+    boxes_block("", "LR");
     return fflush(stdout) == 0 ? 0 : 1;
 }
