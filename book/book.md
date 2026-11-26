@@ -831,6 +831,73 @@ digraph {
 | **a core**, six steppers | 96 | 162 | 96 | 354 |
 | **the decider**, four cores and the comparators | 392 | 659 | 388 | 1,439 |
 
+### A stepper as equations
+
+Each gate is one equation: its output named on the left, its gate and inputs on the right, in the order the simulator evaluates them, so each name is defined before it is read. A wire is named for the outermost box that hands it out (`hb'` is the stepper's own output, `decr.hb'` the decrementer's), else for its gate inside its box (`hb_mux.low.pick0`). Here are a stepper's 59, as `circuit_main` prints them:
+
+```text
+inputs: hb lb halted accepted op_hb op_lb
+zero.hb_or_lb = hb OR lb
+zero.accepts = NOT zero.hb_or_lb
+decr.hb' = hb AND lb
+decr.lb' = NOT lb
+decr.hb_or_lb = hb OR lb
+decr.halts = NOT decr.hb_or_lb
+hold.running = NOT halted
+hold.sel_hb = op_hb AND hold.running
+hold.sel_lb = op_lb AND hold.running
+hb_mux.low.not_s = NOT hold.sel_lb
+hb_mux.low.pick0 = hb AND hb_mux.low.not_s
+hb_mux.low.pick1 = hb AND hold.sel_lb
+hb_mux.low.out = hb_mux.low.pick0 OR hb_mux.low.pick1
+hb_mux.high.not_s = NOT hold.sel_lb
+hb_mux.high.pick0 = decr.hb' AND hb_mux.high.not_s
+hb_mux.high.pick1 = 0 AND hold.sel_lb
+hb_mux.high.out = hb_mux.high.pick0 OR hb_mux.high.pick1
+hb_mux.top.not_s = NOT hold.sel_hb
+hb_mux.top.pick0 = hb_mux.low.out AND hb_mux.top.not_s
+hb_mux.top.pick1 = hb_mux.high.out AND hold.sel_hb
+hb' = hb_mux.top.pick0 OR hb_mux.top.pick1
+lb_mux.low.not_s = NOT hold.sel_lb
+lb_mux.low.pick0 = lb AND lb_mux.low.not_s
+lb_mux.low.pick1 = lb AND hold.sel_lb
+lb_mux.low.out = lb_mux.low.pick0 OR lb_mux.low.pick1
+lb_mux.high.not_s = NOT hold.sel_lb
+lb_mux.high.pick0 = decr.lb' AND lb_mux.high.not_s
+lb_mux.high.pick1 = lb AND hold.sel_lb
+lb_mux.high.out = lb_mux.high.pick0 OR lb_mux.high.pick1
+lb_mux.top.not_s = NOT hold.sel_hb
+lb_mux.top.pick0 = lb_mux.low.out AND lb_mux.top.not_s
+lb_mux.top.pick1 = lb_mux.high.out AND hold.sel_hb
+lb' = lb_mux.top.pick0 OR lb_mux.top.pick1
+accepts_mux.low.not_s = NOT hold.sel_lb
+accepts_mux.low.pick0 = 0 AND accepts_mux.low.not_s
+accepts_mux.low.pick1 = zero.accepts AND hold.sel_lb
+accepts_mux.low.out = accepts_mux.low.pick0 OR accepts_mux.low.pick1
+accepts_mux.high.not_s = NOT hold.sel_lb
+accepts_mux.high.pick0 = 0 AND accepts_mux.high.not_s
+accepts_mux.high.pick1 = 0 AND hold.sel_lb
+accepts_mux.high.out = accepts_mux.high.pick0 OR accepts_mux.high.pick1
+accepts_mux.top.not_s = NOT hold.sel_hb
+accepts_mux.top.pick0 = accepts_mux.low.out AND accepts_mux.top.not_s
+accepts_mux.top.pick1 = accepts_mux.high.out AND hold.sel_hb
+accepts_mux.out = accepts_mux.top.pick0 OR accepts_mux.top.pick1
+halts_mux.low.not_s = NOT hold.sel_lb
+halts_mux.low.pick0 = 0 AND halts_mux.low.not_s
+halts_mux.low.pick1 = 0 AND hold.sel_lb
+halts_mux.low.out = halts_mux.low.pick0 OR halts_mux.low.pick1
+halts_mux.high.not_s = NOT hold.sel_lb
+halts_mux.high.pick0 = decr.halts AND halts_mux.high.not_s
+halts_mux.high.pick1 = 0 AND hold.sel_lb
+halts_mux.high.out = halts_mux.high.pick0 OR halts_mux.high.pick1
+halts_mux.top.not_s = NOT hold.sel_hb
+halts_mux.top.pick0 = halts_mux.low.out AND halts_mux.top.not_s
+halts_mux.top.pick1 = halts_mux.high.out AND hold.sel_hb
+halts_mux.out = halts_mux.top.pick0 OR halts_mux.top.pick1
+halted' = halted OR halts_mux.out
+accepted' = accepted OR accepts_mux.out
+```
+
 ### The stepper of the second part
 
 `sat_step` in `src/sat.c`, the stepper of {{chapter The Cook-Levin machine}}, computes the same flags in 34 gates. It writes each NOT as a literal's sign, which is free in a formula, so it counts AND and OR alone; counted that way, this stepper has 43. The two differ in kind. `sat_step` decodes `AX` and the line into one-hot wires, gates each opcode's wires with an enable, and folds away every constant. This stepper keeps `AX` as two bits, chooses with multiplexers, and feeds the flag muxes their constant 0s: those two muxes alone are 18 AND and OR gates, where `sat_step` spends one AND on each flag.
@@ -950,6 +1017,17 @@ Load the want register with `0111` and the program register with program 2916 (`
 | 3 | `decr` to 2, `mod2` folds 2 to 0, `zero`: accept | 1 | 1 | yes |
 
 All four comparators say yes, so the AND lights "decides".
+
+## The circuit as equations
+
+{{chapter The circuit, in full}} draws the decider as boxes. This chapter writes every gate of it as one Boolean equation, 1,439 in all, as {{chapter The polynomials, in full}} prints every term. The names are those of {{chapter The machine as a circuit}}, led by the core and the step: `core2.step3.hb'` is core 2's high bit of `AX` after line 3. The 16 inputs come first, then each core's input as two constants, `core2.in_hb = 1`, and the last line is `decides`.
+
+`python/equations.py` reads this text back with a parser and an interpreter of its own, apart from the C that printed it, and evaluates it on all 4,096 programs and all 16 want registers at once: `decides` is 1 at exactly the 4,096 points where the program decides the problem the register holds. `build.shale` runs it on every build.
+
+```equations book/build/equations.txt
+circuit_main equations: every gate of the decider, in evaluation order
+1439
+```
 
 ## Some history of the approach
 
