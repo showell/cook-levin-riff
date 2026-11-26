@@ -76,8 +76,18 @@ settings = {
 	negatives: Lint({ words: "book/negative_words.txt", table: "book/negatives.txt" }),
 	colorer: colored_code,
 	include_languages: Includes.default_languages.append({ extension: "c", language: "c" }).append({ extension: "py", language: "python" }),
-	look: { ..default_look, head_end: Polynomials.style, dividers: parts },
+	look: { ..default_look, head_end: "${Polynomials.style}${full_size_style}", dividers: parts },
 }
+
+## The stylesheet's rules for a drawing of the class `fullsize`, the
+## gate-level circuits src/circuit_main.c draws: the drawing keeps its own
+## size, so each gate's label stays legible, in a box that scrolls both ways.
+full_size_style : Str
+full_size_style =
+	\\<style>
+	\\figure.diagram:has(g.fullsize) { max-height: 80vh; overflow: auto; }
+	\\svg.diagram:has(g.fullsize) { max-width: none; }
+	\\</style>
 
 ## The book's three parts, each named above its first chapter in the
 ## contents. A part's title lives here alone; the manuscript says "the first
