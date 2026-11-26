@@ -12,7 +12,7 @@ Steve Howell devised a virtual machine with a single two-bit register, `AX`, and
 
 `nada` leaves `AX` as it is, and `mod2` takes 2 from `AX` when it is 2 or 3. So each program sorts the four inputs into accepted and rejected, and the accepted ones are the set the program decides. Complexity theory calls such a set a *language* or a *decision problem*; this book calls each of the 16 subsets of {0, 1, 2, 3} a *problem*. The machine is small enough that every program, every input and every step can be listed, 4,096 programs in all, so every claim about it can be checked by running all of them.
 
-Once Steve was confident in how the mundane machine worked, he used techniques inspired by the Cook-Levin proof to answer the same questions with polynomials. Each step of the machine becomes four polynomials in the state's bits and the instruction's bits, so that evaluating them at 0s and 1s gives the next state. Chained through all six steps, they become polynomials that answer "does this program accept this input?" for every program and every input at once.
+Once the plain machine worked, Steve used techniques inspired by the Cook-Levin proof to answer the same questions with polynomials. Each step of the machine becomes four polynomials in the state's bits and the instruction's bits, so that evaluating them at 0s and 1s gives the next state. Chained through all six steps, they become polynomials that answer "does this program accept this input?" for every program and every input at once.
 
 Then Steve proved that the Cook-Levin machinery matches the toy. His Python's search runs each problem's example program twice, once on the interpreter and once through the step polynomials, and checks that the two give the same verdicts. Three pieces of his Python, quoted as they stand in [virtual-machine](https://github.com/showell/virtual-machine) at commit [94c3d31](https://github.com/showell/virtual-machine/commit/94c3d31), carry the whole idea. First, logic becomes arithmetic ([stepper.py, lines 8 to 17](https://github.com/showell/virtual-machine/blob/94c3d31/stepper.py#L8-L17)):
 
@@ -67,9 +67,9 @@ Steve wrote the first version by hand in Python, in [virtual-machine](https://gi
 
 The first part is the toy for its own sake: a finite machine, completely understood, every question settled by running everything, even in Python. It runs from {{chapter The machine}} and the theory of languages through plain Python, the search of all 4,096 programs, the puzzle page, and the machine as Boolean functions and as hardware, to {{chapter Some history of the approach}}, the order in which Steve built it.
 
-The second part is Cook-Levin: {{chapter How it got here}}, {{chapter P and NP}}, {{chapter Nibble, sized}}, {{chapter P, NP and Cook-Levin}}, {{chapter Six expressions, composed}}, then the step as polynomials, from {{chapter Arithmetization}} to {{chapter The polynomials, in full}}, and the circuit as tableau and formula, from {{chapter The Cook-Levin machine}} to {{chapter The solver's work, in full}}.
+The second part is Cook-Levin: {{chapter How it got here}}, {{chapter P and NP}}, {{chapter Nibble, sized}}, {{chapter Nibble++}}, {{chapter Two theorems about Nibble++}}, {{chapter P, NP and Cook-Levin}}, {{chapter Six expressions, composed}}, then the step as polynomials, from {{chapter Arithmetization}} to {{chapter The polynomials, in full}}, and the circuit as tableau and formula, from {{chapter The Cook-Levin machine}} to {{chapter The solver's work, in full}}.
 
-The third part is the cross-checks: {{chapter The oracles}}, {{chapter The Roc port}}, {{chapter What is Shale?}} and {{chapter The VM in Shale}}, then {{chapter What comes next}}. The theorems are numbered through the book, each proved by an exhaustive run that its proof names.
+The third part is the cross-checks: {{chapter The oracles}}, {{chapter The Roc port}}, {{chapter What is Shale?}} and {{chapter The VM in Shale}}, then {{chapter What comes next}}. The theorems are numbered through the book, each checked by a run that its proof names.
 
 ### Why the name fits
 
@@ -1279,6 +1279,122 @@ Keep the four opcodes and give the machine two sizes. `AX` holds n bits, so the 
 
 Finding the program is the costly part. Trying every program tries 4^k of them, exponential in k. Whether SOLVABLE is in P is a question this book leaves open. {{chapter Cook-Levin as SAT}} answers SOLVABLE's questions for the toy, n = 2 and k = 6, by Cook and Levin's route: the verifier becomes a formula, and a SAT solver finds the certificate.
 
+## Nibble++
+
+The toy is small enough to settle by listing every program, 4,096 of them. Nibble++ is the case n = 4 of {{chapter Nibble, sized}}, with programs of any length: inputs 0 to 15, and 2^16 = 65,536 formal languages, the sets of inputs a program can decide. It is too big to list, and small enough to settle exactly by searching the machine's states. `src/plus.c` is its interpreter and `src/census.c` its census.
+
+### The machine
+
+Nibble++ keeps `zero`, `decr` and `mod2` with their rules, and gives `nada`'s code, 0, to a new opcode, `half`, which sets `AX` to `AX` >> 1, half of it rounded down. The four codes fill two bits exactly, so a line is still two bits.
+
+`nada` can go because `decr` is a safe pad: a `decr` added after a program's last line keeps the formal language it decides. An input that has halted stays halted. An input still running at the old end was rejected there, and after the pad it is rejected too, by a `decr` that finds `AX` at 0 or at the new end; `decr`'s only verdict is to reject. `tests/test_census.c` pads the shortest program of every formal language with `decr` to 32 lines and checks that each still decides its formal language.
+
+`mod2` stays for two reasons: the four codes fill the two bits exactly, and the machine stays continuous with the toy.
+
+### Searching states
+
+The longest shortest program has 28 lines, and there are 4^28 = 2^56 programs of that length. The census searches states instead. A state is the whole machine on all 16 inputs at once: each input's `AX`, or accepted, or rejected. Two programs that reach the same state have the same futures, so the search keeps each state once, at the length that first reaches it, and grows the states a line at a time, breadth first. A state's formal language is the set of its accepted inputs, so a formal language's shortest length is the first level where a state with that language appears, and following a state back to its parents gives a witness program. `tests/test_census.c` runs every witness on the interpreter, and checks the census against every program of up to 9 lines. The four censuses below took 0.67 seconds together, run by `src/plus_book_main.c` while this chapter was written:
+
+| Opcodes | States reached | Mean shortest length | Longest |
+|---|---:|---:|---:|
+| {zero, decr} | 163838 | 22.00 | 31 |
+| {zero, decr, mod2} | 262136 | 21.06 | 30 |
+| {zero, decr, half} | 240401 | 19.77 | 30 |
+| {zero, decr, mod2, half} | 374003 | 19.07 | 28 |
+
+Each set decides every formal language. With all four, every formal language has a program of 28 lines or fewer, so each has a 32-line program of 64 bits, padded with `decr`. The formal languages by shortest length, with all four:
+
+| Shortest length | Languages |
+|---:|---:|
+| 0 | 1 |
+| 1 | 1 |
+| 2 | 3 |
+| 3 | 7 |
+| 4 | 16 |
+| 5 | 34 |
+| 6 | 72 |
+| 7 | 126 |
+| 8 | 212 |
+| 9 | 331 |
+| 10 | 494 |
+| 11 | 707 |
+| 12 | 991 |
+| 13 | 1376 |
+| 14 | 1898 |
+| 15 | 2612 |
+| 16 | 3599 |
+| 17 | 4928 |
+| 18 | 6555 |
+| 19 | 8171 |
+| 20 | 9158 |
+| 21 | 8870 |
+| 22 | 7164 |
+| 23 | 4667 |
+| 24 | 2368 |
+| 25 | 896 |
+| 26 | 237 |
+| 27 | 39 |
+| 28 | 3 |
+
+### What `half` and `mod2` buy
+
+Five formal languages' shortest lengths under each set:
+
+| Formal language | {zero, decr} | {zero, decr, mod2} | {zero, decr, half} | {zero, decr, mod2, half} |
+|---|---:|---:|---:|---:|
+| {15} | 16 | 16 | 8 | 8 |
+| {8, ..., 15} | 23 | 12 | 5 | 5 |
+| {2, 3, 6, 7, 10, 11, 14, 15} | 23 | 23 | 12 | 4 |
+| all but 13 | 30 | 30 | 28 | 28 |
+| all 16 | 31 | 4 | 5 | 3 |
+
+`half` buys the most on formal languages with bit structure, since it moves a high bit of `AX` down to where `zero` and `mod2` test it. Beside {zero, decr, mod2}, it takes {15} from 16 lines to 8, the top half from 12 to 5, and the inputs with bit 1 set from 23 to 4. The census's witnesses, with all four:
+
+```text
+{15}: decr, half, decr, half, decr, half, decr, zero
+{8, ..., 15}: half, half, half, decr, zero
+{2, 3, 6, 7, 10, 11, 14, 15}: half, decr, mod2, zero
+all 16: mod2, half, zero
+```
+
+`mod2` folds every input onto 0 or 1, so it buys the most on large sets: all 16 inputs cost 31 lines with {zero, decr} and 4 with `mod2` added. Both opcodes together buy little on the hardest formal languages, near-full sets with an isolated gap: everything but 13 costs 30 lines with {zero, decr, mod2} and 28 with all four. A formal language's cost tracks its boundaries, the places where membership flips between neighbours, more than its size: all 16 inputs cost 3 lines.
+
+## Two theorems about Nibble++
+
+With `zero` and `decr` alone, a short proof gives every formal language's shortest length and the count of formal languages at each length. The census of {{chapter Nibble++}} checks both, and `tests/test_census.c` holds them.
+
+**Theorem 10.** With `zero` and `decr` alone, the shortest program for a nonempty set S of inputs has exactly max(S) + |S| lines, and the empty set's has 0.
+
+*Proof.* The inputs move in lockstep: after d `decr`s, an input x still running has `AX` = x − d. The `decr` numbered x + 1 finds input x at 0 and rejects it. A `zero` accepts the inputs whose `AX` is 0 when it runs, so a `zero` after exactly d `decr`s accepts input d, and every other input passes it: those above d hold `AX` above 0, and those below d have halted. Inputs above the last such d run to the end and are rejected. So a program decides the set of counts d at which some `zero` runs. For S it needs a `zero` at each member's count, |S| lines, and max(S) `decr`s before the last of them, max(S) lines more. The program that walks d from 0 to max(S), with a `zero` at each member and a `decr` between counts, has exactly max(S) + |S| lines. The empty program decides the empty set.
+
+**Theorem 11.** With `zero` and `decr` alone, the number of formal languages whose shortest program has L lines is F(L), the Fibonacci number with F(1) = F(2) = 1, for L from 1 to 16, and F(17) − 1 at L = 17.
+
+*Proof.* By Theorem 10, the count at length L is the number of sets S with max(S) + |S| = L. A set with largest member m and k members picks its other k − 1 members from {0, ..., m − 1}, so there are C(m, k − 1) of them, with m = L − k. The count is the sum over k ≥ 1 of C(L − k, k − 1). With j = k − 1 it is the sum over j of C(L − 1 − j, j), the sum along a shallow diagonal of Pascal's triangle, which is F(L). The inputs end at 15, so m is at most 15. For L up to 16 every term has m = L − k ≤ 15. At L = 17 the term k = 1 is the set {16}, past the machine's inputs, and the count is F(17) − 1.
+
+The census agrees. The last column is {zero, decr, mod2}, for contrast:
+
+| Length L | {zero, decr} | F(L) | {zero, decr, mod2} |
+|---:|---:|---:|---:|
+| 1 | 1 | 1 | 1 |
+| 2 | 1 | 1 | 2 |
+| 3 | 2 | 2 | 3 |
+| 4 | 3 | 3 | 6 |
+| 5 | 5 | 5 | 8 |
+| 6 | 8 | 8 | 13 |
+| 7 | 13 | 13 | 21 |
+| 8 | 21 | 21 | 34 |
+| 9 | 34 | 34 | 55 |
+| 10 | 55 | 55 | 89 |
+| 11 | 89 | 89 | 144 |
+| 12 | 144 | 144 | 233 |
+| 13 | 233 | 233 | 377 |
+| 14 | 377 | 377 | 610 |
+| 15 | 610 | 610 | 987 |
+| 16 | 987 | 987 | 1595 |
+| 17 | 1596 | 1597 | 2556 |
+
+With `mod2` the counts follow the Fibonacci numbers one place on, F(L + 1), from length 1 to 15, apart from length 4, which has 6 where F(5) is 5. At 16 the count is 1,595, two below F(17). `mod2` breaks the lockstep that Theorem 10 rests on, since it merges inputs, and a formula for these counts is open here.
+
 ## P, NP and Cook-Levin
 
 {{chapter P and NP}} defines the two classes, and {{chapter Nibble, sized}} places the toy among them. This chapter states the theorem that ties NP to one language, SAT, and says what it means for the toy.
@@ -1455,7 +1571,7 @@ halted+op_hb+(-1)*hb*op_hb+(-1)*lb*op_hb+(-1)*halted*op_hb+(-1)*op_hb*op_lb
 
 Evaluated at the bits of a state and an instruction, the four polynomials give the next state's bits. So the stepper is a second implementation of the machine, written as algebra.
 
-**Theorem 10.** On every one of the 4,096 programs and each of the four inputs, the stepper, evaluating the step polynomials one step at a time, accepts exactly when `run_progam` does.
+**Theorem 12.** On every one of the 4,096 programs and each of the four inputs, the stepper, evaluating the step polynomials one step at a time, accepts exactly when `run_progam` does.
 
 *Proof.* `tests/test_cross_check.c` runs all 16,384 pairs both ways and holds the differences to 0 and the accepting pairs to 5,596. The Python's `find_solutions` makes the same check on each problem's example program alone, 16 programs on 4 inputs.
 
@@ -1525,7 +1641,7 @@ The final `hb` has degree 9 and its largest coefficient is 6; `lb` has degree 14
 
 Fourteen 0/1 variables make 2^14 = 16,384 points, and each point is one input with one program. This is the book's thesis, as a theorem:
 
-**Theorem 11.** At every one of the 2^14 points, the composed polynomial `accepted` is 1 when the machine accepts that input with that program and 0 when it rejects it.
+**Theorem 13.** At every one of the 2^14 points, the composed polynomial `accepted` is 1 when the machine accepts that input with that program and 0 when it rejects it.
 
 *Proof.* `tests/test_compose.c` evaluates the four final polynomials at every point and holds them to `run_progam` (its test `the_composed_polynomials_agree_with_the_machine_on_all_2_to_the_14`). The Roc port's proof prints the same verdict (`roc/golden/composition.txt`):
 
@@ -1766,7 +1882,7 @@ Each of the six lines, on each of the four cores, is such a stepper, wired to th
 
 ### The proof by propagation
 
-**Theorem 12.** For each of the 16 problems, the satisfying assignments of its formula, read as programs by their first 12 variables, are exactly the programs that decide it. With the lines past N forced to `nada`, the formula is satisfiable exactly when N is at least the problem's shortest length (Theorem 4).
+**Theorem 14.** For each of the 16 problems, the satisfying assignments of its formula, read as programs by their first 12 variables, are exactly the programs that decide it. With the lines past N forced to `nada`, the formula is satisfiable exactly when N is at least the problem's shortest length (Theorem 4).
 
 *Proof.* `tests/test_sat.c` proves the encoding by itself. For every problem it sets the program bits to each of the 4,096 programs and unit-propagates them through the formula. Each gate's inputs come before it, so propagation alone decides every Tseitin variable. The assignments that survive are exactly the programs the machine says decide the problem, 4,096 over the 16 problems (`every_puzzles_models_are_exactly_its_solving_programs`), and with a length bound, exactly those that short (`a_length_bound_admits_the_solving_programs_that_short`).
 
