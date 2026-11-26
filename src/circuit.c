@@ -357,7 +357,28 @@ static void dot_text(FILE *f, const char *s) {
     }
 }
 
-void net_dot(const Net *net, const char *part, const char *rankdir, FILE *f) {
+// The first `words` words of a gate's part past the scope, into `to`.
+static void cluster_of(const char *part, const char *scope, int words, char *to) {
+    size_t n = strlen(scope);
+    const char *s = part + n;
+    if (n > 0 && *s == ' ') s++;
+    size_t len = 0;
+    int seen = 0;
+    while (s[len] != '\0') {
+        if (s[len] == ' ' && ++seen == words) break;
+        len++;
+    }
+    memcpy(to, s, len);
+    to[len] = '\0';
+}
+
+static void dot_gate(const Net *net, int i, const char *indent, FILE *f) {
+    fprintf(f, "%sw%d [label=\"%s\\n", indent, i, kind_word(net->wires[i].kind));
+    dot_text(f, net->wires[i].name);
+    fprintf(f, "\"];\n");
+}
+
+void net_dot(const Net *net, const char *part, DotStyle style, FILE *f) {
     static char drawn[CIRCUIT_MAX_WIRES];
     static char outside[CIRCUIT_MAX_WIRES];
     memset(drawn, 0, sizeof drawn);
@@ -376,29 +397,54 @@ void net_dot(const Net *net, const char *part, const char *rankdir, FILE *f) {
         const Port *p = &net->ports[i];
         if (strcmp(p->part, part) == 0 && !drawn[p->wire]) outside[p->wire] = 1;
     }
-    fprintf(f, "digraph {\n  rankdir=%s;\n  node [shape=box, style=rounded];\n", rankdir);
-    fprintf(f, "  { rank=source;");
-    for (int i = 0; i < net->num_wires; i++) {
-        if (outside[i]) fprintf(f, " w%d;", i);
+    fprintf(f, "digraph {\n  rankdir=%s;\n", style.rankdir);
+    if (style.full_size) fprintf(f, "  class=\"fullsize\";\n");
+    fprintf(f, "  node [shape=box, style=rounded];\n");
+    if (style.pin_ends) {
+        fprintf(f, "  { rank=source;");
+        for (int i = 0; i < net->num_wires; i++) {
+            if (outside[i]) fprintf(f, " w%d;", i);
+        }
+        fprintf(f, " }\n");
     }
-    fprintf(f, " }\n");
     for (int i = 0; i < net->num_wires; i++) {
         if (!outside[i]) continue;
         fprintf(f, "  w%d [shape=plaintext, label=\"", i);
         dot_text(f, net->wires[i].name);
         fprintf(f, "\"];\n");
     }
-    for (int i = 0; i < net->num_wires; i++) {
-        if (!drawn[i]) continue;
-        fprintf(f, "  w%d [label=\"%s\\n", i, kind_word(net->wires[i].kind));
-        dot_text(f, net->wires[i].name);
-        fprintf(f, "\"];\n");
+    if (style.cluster_words > 0) {
+        static char done[CIRCUIT_MAX_WIRES];
+        memset(done, 0, sizeof done);
+        int clusters = 0;
+        char key[CIRCUIT_NAME], other[CIRCUIT_NAME];
+        for (int i = 0; i < net->num_wires; i++) {
+            if (!drawn[i] || done[i]) continue;
+            cluster_of(net->wires[i].part, part, style.cluster_words, key);
+            fprintf(f, "  subgraph cluster_%d {\n    label=\"", ++clusters);
+            dot_text(f, key);
+            fprintf(f, "\";\n");
+            for (int j = i; j < net->num_wires; j++) {
+                if (!drawn[j] || done[j]) continue;
+                cluster_of(net->wires[j].part, part, style.cluster_words, other);
+                if (strcmp(key, other) != 0) continue;
+                dot_gate(net, j, "    ", f);
+                done[j] = 1;
+            }
+            fprintf(f, "  }\n");
+        }
+    } else {
+        for (int i = 0; i < net->num_wires; i++) {
+            if (drawn[i]) dot_gate(net, i, "  ", f);
+        }
     }
-    fprintf(f, "  { rank=sink;");
-    for (int i = 0; i < net->num_ports; i++) {
-        if (strcmp(net->ports[i].part, part) == 0) fprintf(f, " p%d;", i);
+    if (style.pin_ends) {
+        fprintf(f, "  { rank=sink;");
+        for (int i = 0; i < net->num_ports; i++) {
+            if (strcmp(net->ports[i].part, part) == 0) fprintf(f, " p%d;", i);
+        }
+        fprintf(f, " }\n");
     }
-    fprintf(f, " }\n");
     for (int i = 0; i < net->num_ports; i++) {
         if (strcmp(net->ports[i].part, part) != 0) continue;
         fprintf(f, "  p%d [shape=plaintext, label=\"", i);

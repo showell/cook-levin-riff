@@ -137,7 +137,19 @@ int net_port_wire(const Net *net, const char *part, const char *name);
 
 // A Graphviz drawing of the gates of `part` (as net_count reads it), with
 // the wires they read from outside as inputs and the part's own ports as
-// outputs. `rankdir` is "LR" or "TB".
-void net_dot(const Net *net, const char *part, const char *rankdir, FILE *f);
+// outputs. `rankdir` is "LR" or "TB". With `cluster_words` above 0, the
+// gates are boxed by the first that many words of their part's name past
+// `part` ("step 3" of "step 3 decoder" at 2); at 0 they are drawn unboxed.
+// `full_size` gives the drawing the class `fullsize`, which the book's
+// stylesheet shows at its own size in a box that scrolls. `pin_ends` puts
+// the inputs in the first rank and the outputs in the last; without it,
+// Graphviz places each input beside the gates that read it.
+typedef struct {
+    const char *rankdir;
+    int cluster_words;
+    int full_size;
+    int pin_ends;
+} DotStyle;
+void net_dot(const Net *net, const char *part, DotStyle style, FILE *f);
 
 #endif
