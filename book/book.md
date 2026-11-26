@@ -1397,6 +1397,51 @@ all 16: mod2, half, zero
 
 `mod2` folds every input onto 0 or 1, so it buys the most on large sets: all 16 inputs cost 31 lines with {zero, decr} and 4 with `mod2` added. Both opcodes together buy little on the hardest formal languages, near-full sets with an isolated gap: everything but 13 costs 30 lines with {zero, decr, mod2} and 28 with all four. A formal language's cost tracks its boundaries, the places where membership flips between neighbours, more than its size: all 16 inputs cost 3 lines.
 
+### The hardest
+
+Three formal languages need 28 lines, the census's longest, against the toy's {0, 2, 3} and its six-line program 1689 ({{chapter Programs as formal languages}}):
+
+| The formal languages of 28 lines | Left out |
+|---|---|
+| {0, ..., 10, 12, 15} | 11, 13, 14 |
+| {0, ..., 13, 15} | 14 |
+| {0, ..., 12, 14, 15} | 13 |
+
+The census's witness for the last, all but 13:
+
+```text
+zero
+decr
+zero
+decr
+zero
+decr
+zero
+decr
+zero
+decr
+zero
+decr
+zero
+decr
+zero
+decr
+zero
+decr
+zero
+decr
+zero
+decr
+zero
+decr
+zero
+half
+decr
+zero
+```
+
+Inputs 0 to 12 take a `zero` each, with a `decr` between, 25 lines, because `half` and `mod2` merge inputs: run while 12, 13 and 14 are all live, either gives 13 the same `AX` as a member, and from then on the two share every verdict. With 13, 14 and 15 left, `half` sends 13 to 0 and 14 and 15 to 1, so one `decr` rejects 13 and one `zero` accepts the pair.
+
 ## Two theorems about Nibble++
 
 With `zero` and `decr` alone, a short proof gives every formal language's shortest length and the count of formal languages at each length. The census of {{chapter Nibble++}} checks both, and `tests/test_census.c` holds them.

@@ -3,7 +3,9 @@
 // book's source to each block it prints, a blank line between blocks:
 // the four opcode sets side by side, the histogram of shortest lengths with
 // all four ops, the {zero, decr} counts beside the Fibonacci numbers, and
-// some languages' shortest lengths under each set, with witnesses.
+// some languages' shortest lengths under each set, with witnesses, and the
+// hardest languages, of the longest shortest length, with one witness in
+// full.
 // A unity build: this file includes the C it needs, so it is one compile.
 
 #include "plus.c"
@@ -44,6 +46,31 @@ static void print_set_name(unsigned ops) {
         } else {
             putchar(*p);
         }
+    }
+    printf("}");
+}
+
+// A formal language's members, `{0, ..., 10, 12, 15}`: a run of three or
+// more as its ends, as book/book.shale's members_named writes them.
+static void print_members(uint32_t lang) {
+    printf("{");
+    int first = 1;
+    int n = 0;
+    while (n < PLUS_INPUTS) {
+        if (!(lang >> n & 1)) {
+            n++;
+            continue;
+        }
+        int end = n;
+        while (end + 1 < PLUS_INPUTS && (lang >> (end + 1) & 1)) end++;
+        printf("%s", first ? "" : ", ");
+        first = 0;
+        if (end - n >= 2) {
+            printf("%d, ..., %d", n, end);
+        } else {
+            for (int k = n; k <= end; k++) printf("%s%d", k == n ? "" : ", ", k);
+        }
+        n = end + 1;
     }
     printf("}");
 }
@@ -133,6 +160,32 @@ int main(void) {
         for (int i = 0; i < len; i++) printf("%s %s", i == 0 ? "" : ",", plus_op_name(ops[i]));
         printf("\n");
     }
+    printf("```\n\n");
+
+    // The hardest formal languages, those of the longest shortest length,
+    // each with the inputs it leaves out; then the witness of the last of
+    // them, all but 13, in full, one opcode a line.
+    int hardest = longest[ALL_FOUR];
+    printf("| The formal languages of %d lines | Left out |\n|---|---|\n", hardest);
+    uint32_t last = 0;
+    for (uint32_t w = 0; w < PLUS_LANGUAGES; w++) {
+        if (census.shortest[w] != hardest) continue;
+        printf("| ");
+        print_members(w);
+        printf(" | ");
+        int first = 1;
+        for (int n = 0; n < PLUS_INPUTS; n++) {
+            if (w >> n & 1) continue;
+            printf("%s%d", first ? "" : ", ", n);
+            first = 0;
+        }
+        printf(" |\n");
+        last = w;
+    }
+    printf("\n```text\n");
+    PlusOp ops[CENSUS_MAX_LENGTH];
+    int len = census_witness(&census, last, ops);
+    for (int i = 0; i < len; i++) printf("%s\n", plus_op_name(ops[i]));
     printf("```\n");
     census_free(&census);
     return fflush(stdout) == 0 ? 0 : 1;
