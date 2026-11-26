@@ -1,2 +1,4 @@
 # Build outputs: build.shale writes every binary under out/.
 /out/
+# Python's bytecode cache, written when python/fourteen_cnf.py imports steps.py.
+__pycache__/
