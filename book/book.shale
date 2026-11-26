@@ -89,21 +89,25 @@ function compose_polynomials()
   return nil
 end
 
--- The two tableaux in "The Cook-Levin machine" are src/tableau_main.c's
--- output, which the book's source must hold byte for byte.
-function check_tableau()
-  must(run({"gcc", "-O2", "-std=c11", "-Wall", "-Wextra", "-Werror", "-o", real(COMPOSED) .. "/tableau_main", "src/tableau_main.c"}, {timeout_ms = 120000, tail = 20}))
-  local r = must(run({real(COMPOSED .. "/tableau_main")}, {timeout_ms = 60000, whole = 20000, want = "book: tableau_main, just built from src/ for the book"}))
+-- A program of src/ that prints the book's tables, `count` of them, each
+-- a block apart: the book's source must hold each byte for byte. The
+-- tableaux in "The tableau, filled in" are src/tableau_main.c's, and the
+-- 16 languages as Boolean expressions in "Some history of the approach",
+-- and the step's expressions, the counts and two sums of products in "Six
+-- expressions, composed", are src/boolean_main.c's.
+function check_tables(name, count)
+  must(run({"gcc", "-O2", "-std=c11", "-Wall", "-Wextra", "-Werror", "-o", real(COMPOSED) .. "/" .. name, "src/" .. name .. ".c"}, {timeout_ms = 120000, tail = 20}))
+  local r = must(run({real(COMPOSED .. "/" .. name)}, {timeout_ms = 60000, whole = 40000, want = "book: " .. name .. ", just built from src/ for the book"}))
   local tables = split(trim(r.out), "\n\n")
-  if #tables ~= 2 then fail("book: tableau_main printed " .. #tables .. " tables, not 2") end
+  if #tables ~= count then fail("book: " .. name .. " printed " .. #tables .. " tables, not " .. count) end
   local source = read("book/book.md")
   for t in tables do
     if find(source, t) == nil then
       print(t)
-      fail("book: book/book.md lacks tableau_main's table above, so /" .. DEST_NAME .. "/ is left as it was")
+      fail("book: book/book.md lacks " .. name .. "'s table above, so /" .. DEST_NAME .. "/ is left as it was")
     end
   end
-  print("book: both tableaux in book/book.md are tableau_main's output")
+  print("book: the " .. count .. " tables of " .. name .. " are in book/book.md as it prints them")
   return nil
 end
 
@@ -296,7 +300,8 @@ function main()
     if starts_with(l, "draw_diagrams: ") then print("book: " .. sub(l, 16) .. " in " .. drawn.ms .. " ms") end
   end
   compose_polynomials()
-  check_tableau()
+  check_tables("tableau_main", 2)
+  check_tables("boolean_main", 5)
   check_hand()
   check_solver_files()
 

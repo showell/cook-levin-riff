@@ -2,7 +2,10 @@
 --
 --   shale build.shale          the fast tier: tcc runs every test file and
 --                              the main program, the program's stdout held
---                              to tests/golden/find_solutions.txt.
+--                              to tests/golden/find_solutions.txt, and
+--                              python3 runs python/decides.py, the
+--                              book's machine-free Python, which checks
+--                              itself.
 --   shale build.shale full=1   the fast tier, then gcc twice: -std=c11 -O2
 --                              -Wall -Wextra -Werror, and -O0 with
 --                              -fsanitize=address,undefined; each builds and
@@ -16,12 +19,15 @@
 -- Run from the repository's root.
 
 const OUT = "out"
-const TESTS = {"tests/test_vm.c", "tests/test_reference.c", "tests/test_golden.c", "tests/test_ring_int.c", "tests/test_poly.c", "tests/test_stepper.c", "tests/test_cross_check.c", "tests/test_boolring.c", "tests/test_compose.c", "tests/test_sat.c", "tests/test_drat.c", "tests/test_theorems.c"}
+const TESTS = {"tests/test_vm.c", "tests/test_reference.c", "tests/test_golden.c", "tests/test_ring_int.c", "tests/test_poly.c", "tests/test_stepper.c", "tests/test_cross_check.c", "tests/test_boolring.c", "tests/test_compose.c", "tests/test_sat.c", "tests/test_drat.c", "tests/test_theorems.c", "tests/test_boolean.c"}
 -- The command lines the oracles and the book run, compiled in each tier.
-const CLIS = {"src/sat_main.c", "src/drat_main.c"}
+const CLIS = {"src/sat_main.c", "src/drat_main.c", "src/boolean_main.c", "src/sat_hand_main.c"}
 const GOLDEN = "tests/golden/find_solutions.txt"
 -- Why `run` may start a binary git does not track: this build just made it.
 const RAN = "build: a test binary this build just compiled"
+-- The book's Python, and why `run` may start python3 for it.
+const PYTHON = "python/decides.py"
+const PYTHON_WANT = "build: python/decides.py, the book's Python, checks itself"
 const GCC_WARN = {"-std=c11", "-Wall", "-Wextra", "-Werror"}
 
 -- Says a check's line; gives 1 when it failed, else 0.
@@ -121,6 +127,10 @@ for build in builds do
   end
   failures = failures + run_golden(build)
 end
+
+local py = run({"python3", PYTHON}, {timeout_ms = 30000, tail = 10, want = PYTHON_WANT})
+local py_said = trim(py.out)
+failures = failures + check(exited_0(py) and re_find(py_said, "^python/decides.py: [0-9]+ checks passed$") ~= nil, "python3: " .. py_said .. ", " .. how_it_ended(py))
 
 if failures > 0 then fail(failures .. " check(s) failed") end
 print("all checks passed: " .. join(builds, ", "))
