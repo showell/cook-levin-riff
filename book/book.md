@@ -796,7 +796,7 @@ Twenty-four steppers of 34 gates would be 816. The top row's constants fold many
 
 ## One formula for the whole machine
 
-**Mathematics. The machine shown another way; it needs {{chapter The Boolean view}}.** We write the entire machine, every program on every input, as one formula of 14 bits, and watch it grow past half a million characters on paper while it stays 174 gates as a graph.
+**Mathematics. The machine shown another way; it needs {{chapter The Boolean view}}.** We write the entire machine, every program on every input, as one formula of 14 bits: 174 gates as a graph, which written out as text would run past half a million characters, so we show its first two lines and count the rest.
 
 {{chapter The Boolean view}} ran the machine as gates on known bits. Its four step functions never ask what their bits are, so they can be handed something else: formulas. The machine is then one function of 14 bits, f, the input's two and the program's twelve, true where the program accepts the input, and running the step functions on formulas writes f down. The Roc port states f directly, in `roc/Fourteen.roc`:
 
@@ -844,7 +844,7 @@ Written out as text, each line's formula repeats the last line's state bits wher
 | 5 | 139 | 89,478 |
 | 6 | 174 | 566,784 |
 
-The last row is f: 174 gates, or more than half a million characters, for a machine whose register holds 2 bits. {{chapter Checking a claim}} works with the graph, and {{chapter The step's encodings}} says why its CNF names 146 of the 174.
+The last row is f: 174 gates, or 566,784 characters written out, for a machine whose register holds 2 bits. The two excerpts above are all of the text this book prints; the count is the point. {{chapter Checking a claim}} works with the graph, and {{chapter The step's encodings}} says why its CNF names 146 of the 174.
 
 ```text 1689, here: f at its four points
 v1 .. v12          v13 v14  f
