@@ -1615,7 +1615,7 @@ The census agrees. The last column is {zero, decr, mod2}, for contrast:
 | 16 | 987 | 987 | 1595 |
 | 17 | 1596 | 1597 | 2556 |
 
-With `mod2` the counts follow the Fibonacci numbers one place on, F(L + 1), from length 1 to 15, apart from length 4, which has 6 where F(5) is 5. At 16 the count is 1,595, two below F(17). `mod2` breaks the lockstep that Theorem 10 rests on, since it merges inputs, and a formula for these counts is open here.
+With `mod2` the counts follow the Fibonacci numbers one place on, F(L + 1), from length 1 to 15, apart from length 4, which has 6 where F(5) is 5. At 16 the count is 1,595, two below F(17). `mod2` breaks the lockstep that Theorem 10 rests on, since it merges inputs, and {{chapter Shortest programs with mod2 and half}} counts these lengths another way, in Theorem 15.
 
 ## Shortest programs with mod2 and half
 
@@ -2055,7 +2055,7 @@ Each step's term counts, from `roc/golden/composition.txt` and `out/tcc/compose_
 | 5 | 143 | 727 | 878 | 2,568 |
 | 6 | 319 | 2,185 | 2,732 | 10,324 |
 
-The final `hb` has degree 9 and its largest coefficient is 6; `lb` has degree 14 and 21; `halted` 14 and 20; `accepted` 14 and 63. Sixty-three is the largest coefficient of the four final polynomials, so int64 holds each with room to spare. {{chapter The polynomials, in full}} prints the four. Built with `gcc -O2` for this book, `compose_main` composed all six in 233 ms, 199 of them in step 6, at a peak of 4,224 KiB resident.
+The final `hb` has degree 9 and its largest coefficient is 6; `lb` has degree 14 and 21; `halted` 14 and 20; `accepted` 14 and 63. Sixty-three is the largest coefficient of the four final polynomials, so int64 holds each with room to spare. {{chapter The polynomials, in full}} prints the four. Built with `gcc -O2` and run three times while this chapter was written, on 2026-11-27, `compose_main` composed all six in 44 to 50 ms, 30 to 35 of them in step 6, at a peak of 4,224 KiB resident.
 
 ### The proof
 
@@ -2493,7 +2493,7 @@ Each pair shares only the machine's rule. The interpreter branches on opcodes, t
 
 ## The Roc port
 
-**The tools; it needs {{chapter Why composing blew up}}.** We show the mathematics written so that it reads like mathematics, and running about nine times faster than the C.
+**The tools; it needs {{chapter Why composing blew up}}.** We show the mathematics written so that it reads like mathematics, and how a race against it made the C four times faster.
 
 `roc/` is the same machine and the same mathematics in Roc, at the compiler that `roc/roc-version` pins (`6206236`). Its point is that the mathematics reads like mathematics.
 
