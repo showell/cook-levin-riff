@@ -33,6 +33,7 @@ A sharp programmer, new to complexity theory, who wants to follow every step and
 - **Unseen work:** every result whose work the reader never saw ("the search found…" with no search on the page), and every program or tool named but never met.
 - **Definitions:** every term used before it is defined (par, frame, census, state). Every number the reader is asked to trust: how could the reader check it?
 - **The playground:** every place the text and the playground disagree, such as a board size, a numbering or a feature.
+- **Earned claims:** every claim that leans on something the reader hasn't met by that sentence. That covers notation not yet taught (a tile's name like d4), a program they couldn't yet have played, and any pointer to a later chapter's idea ("the state flood of a later chapter"). Read strictly in order, and never let a later page excuse an earlier one.
 - **Reports:** the exact sentence where they got lost, what they expected and what was missing.
 
 ### The Theorist

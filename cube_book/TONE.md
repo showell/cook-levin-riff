@@ -89,3 +89,7 @@ toy, and it should be a pleasure to read cover to cover. A writer adding to
   the prose to positive statements; a negative stays only where the "no" is
   a theorem's or the state of knowledge.
 - **Vivid and warm, never hype.** One metaphor per idea, used once.
+
+## Earn every sentence in order
+
+A sentence may use only what the reader has met by then: no notation before it is taught (a tile's name such as d4), no program the reader couldn't yet have played, and no leaning on a later chapter's idea. A forward pointer may promise a later chapter, but it never carries an argument. The first chapter sends the reader to the playground before it asks them to believe anything about programs.
