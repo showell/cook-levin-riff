@@ -37,7 +37,7 @@ After this part, which teaches the cube, the book defines P and NP precisely and
 
 ## A programming language with four words
 
-RollScript, the cube's programming language, has four instructions and one rule, and its whole definition is a short Roc program that also runs the playground.
+RollScript, the cube's programming language, has four instructions and one rule, and its whole definition is a short Roc program.
 
 ### The rules
 
@@ -385,7 +385,9 @@ The programs live in this repository:
 
 ### The rest of the rules in Roc
 
-`play` runs a whole program. Roc lets a local variable change inside a function when its name starts with `$`, and the loop uses that to keep the state, the frames (the state after each roll made), and whether the program has halted. A program longer than the cap is refused as `TooLong`.
+`play` runs a whole program. Roc lets a local variable change inside a function when its name starts with `$`, and the loop uses that to keep the state, the frames (the state after each roll made), and whether the program has halted. A program longer than the cap is refused as `TooLong`. A run is its frames and how it ended:
+
+{{lines roc/Cube.roc from "## How a run ended" to "Run : { frames"}}
 
 {{function roc/Cube.roc play}}
 
