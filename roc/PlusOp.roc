@@ -17,6 +17,17 @@ PlusOp := [Half, Zero, Decr, Mod2].{
 			Mod2 => 3
 		}
 
+	## The op whose code is `digit`; a digit past 3 is a caller's bug.
+	from_code : U64 -> PlusOp
+	from_code = |digit|
+		match digit {
+			0 => PlusOp.Half
+			1 => PlusOp.Zero
+			2 => PlusOp.Decr
+			3 => PlusOp.Mod2
+			_ => crash "PlusOp.from_code: a line's code is 0 to 3"
+		}
+
 	name : PlusOp -> Str
 	name = |op|
 		match op {
