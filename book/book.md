@@ -9,7 +9,7 @@ The book is meant to be skimmed. Each chapter opens with a guidepost, in bold. I
 - **New results**: theorems, counts and answers worked out for this book, each checked by a run.
 - **The machine in a new form**: the same machine seen as something new, and the guidepost names what: the machine as a puzzle, as gates, as a grid, as clauses or as polynomials, with program 1689 shown in each.
 - **Big output to skim**: a monstrosity, printed whole because its size is the point.
-- **Tools and history**: the languages, the solver, the cross-checks, the story, and what is still open.
+- **Tools and history**: the programming languages, the solver, the cross-checks, the story, and what is still open.
 
 This list is the whole book in one line a chapter, the kind in italics:
 
@@ -18,12 +18,12 @@ This list is the whole book in one line a chapter, the kind in italics:
 **Part I, the toy:**
 
 - {{chapter The machine}}: Steve's whole machine in one page. *Start here.*
+- {{chapter Nibble, the puzzle page}}: sixteen puzzles to play in the browser. *The machine as a puzzle.*
 - {{chapter Deciding in plain Python}}: every answer as a one-line Python lookup. *Tools and history.*
-- {{chapter The languages in this book}}: the languages studied, from Nibble to polynomials, and the languages used, Roc above all. *Tools and history.*
+- {{chapter The languages in this book}}: the notations studied, from Nibble to polynomials, and the programming languages used, Roc above all. *Tools and history.*
 - {{chapter Formal languages and machines}}: formal languages and Turing's machine in six rules. *A review.*
 - {{chapter Programs as formal languages}}: all 4,096 programs run, and the problem with one answer. *New results.*
 - {{chapter Which instructions are needed}}: one instruction is dead weight. *New results.*
-- {{chapter Nibble, the puzzle page}}: sixteen puzzles to play in the browser. *The machine as a puzzle.*
 
 **Part II, P, NP and Cook-Levin:**
 
@@ -35,13 +35,13 @@ This list is the whole book in one line a chapter, the kind in italics:
 
 - {{chapter The Boolean view}}: the toy as a chip sees it. *The machine as gates.*
 - {{chapter The problems, seen from outside}}: the 16 puzzles are the 16 two-input gates. *New results.*
-- {{chapter One formula for the whole machine}}: the whole machine as one formula of 14 bits. *The machine as one formula.*
-- {{chapter The SAT solver}}: rocsat, DIMACS in a readable form, and the two questions we ask it. *Tools and history.*
-- {{chapter Checking a claim}}: a claim about a program, checked by a solver. *The machine as clauses.*
 - {{chapter Parts for a small computer}}: each instruction drawn as a circuit. *The machine as parts you could buy.*
 - {{chapter The machine as a circuit}}: one step of the machine as 59 gates. *The machine's step as a circuit.*
 - {{chapter The circuit, in full}}: the whole machine, and one wire that says "solved". *The machine as one chip.*
 - {{chapter The circuit as equations}}: all 1,439 gates, to skim. *Big output to skim.*
+- {{chapter One formula for the whole machine}}: the whole machine as one formula of 14 bits. *The machine as one formula.*
+- {{chapter The SAT solver}}: rocsat, DIMACS in a readable form, and the two questions we ask it. *Tools and history.*
+- {{chapter Checking a claim}}: a claim about a program, checked by a solver. *The machine as clauses.*
 - {{chapter From equations to CNF}}: why naming gates beats multiplying them out. *New results.*
 - {{chapter The Cook-Levin machine}}: the circuit run backwards. *The machine run backwards.*
 - {{chapter The tableau, filled in}}: Cook's grid, printed twice. *The machine as a grid.*
@@ -77,7 +77,7 @@ This list is the whole book in one line a chapter, the kind in italics:
 - {{chapter Appendix: the step's encodings}}: every version of the step, side by side, a reference table. *The machine in every form at once.*
 - {{chapter Appendix: two DRAT proofs}}: two of those proofs, printed lemma by lemma. *Big output to skim.*
 
-**The monstrosities.** Here they all are, each shown because its size is the point:
+**The monstrosities.** Each is printed because its size is the point, and each is meant to be skimmed:
 
 - Monstrosity 1: the decider as 1,448 lines of equations, in {{chapter The circuit as equations}}.
 - Monstrosity 2: the proof that five lines are too few for {0, 2, 3}, in {{chapter Appendix: two DRAT proofs}}.
@@ -88,7 +88,7 @@ This list is the whole book in one line a chapter, the kind in italics:
 
 ## Introduction
 
-**Every frame. Start here; it stands alone.** Some problems are easy to check and hard to solve: an answer can be confirmed in moments, but finding one can mean a search that doubles with every step. That gap is what makes computation feel intractable, and it is the question at the heart of P versus NP. This book doesn't answer that question. It makes the gap visible on a machine small enough to hold in your head, a toy designed by Steve Howell (six-line programs on four inputs, 4,096 programs in all), and along the way it tries a few ways around it, which sometimes help and sometimes only show how wide the gap is. Then we grow the machine into Nibble++ and find out what surprises.
+**Every frame. Start here; it stands alone.** Some problems are easy to check and hard to solve: an answer can be confirmed in moments, but finding one can mean a search that doubles with every step. That gap is what makes computation feel intractable, and it is the question at the heart of P versus NP. This book doesn't answer that question. It makes the gap visible on a machine small enough to hold in your head, a toy designed by Steve Howell (six-line programs on four inputs, 4,096 programs in all), and along the way it tries a few ways around it, which sometimes help and sometimes only show how wide the gap is. Then we grow the machine into Nibble++, where brute force starts to strain.
 
 **The thesis.** The Cook-Levin theorem turns any fast checker into one Boolean formula, so that a question about the checker becomes a question about the formula. This book does that to a toy machine, all the way through, and checks every step. **Its thesis: the machine and its Cook-Levin translation answer every question the same way**, whether the machine runs as a program, is wired as gates, is written as clauses for a SAT solver or is composed into polynomials, so the gap you see belongs to the problem itself. The method is a developer's: brute force first, since the toy is small enough to run everything, and refinement after, once the brute force has shown what is there. Steve's 2023 Python first checked that agreement on a handful of programs; this repository checks it on all of them, and finishes the composition he stopped short of ({{chapter Six steps composed}}).
 
@@ -100,7 +100,7 @@ This list is the whole book in one line a chapter, the kind in italics:
 
 **The monstrosities.** This machine fits on an index card: one two-bit register, four instructions, six lines. Yet it keeps producing monsters, and we have numbered them proudly, like theorems. The question "does this program accept this input?", composed through six steps, becomes one polynomial of 510,387 characters (Monstrosity 5). Wiring the same machine as gates takes 1,439 equations (Monstrosity 1). Ask whether the 4-bit Nibble++ can decide is_not_14 in 27 lines, and the answer, that every 27-line program fails, comes backed by a proof of 17,192,870 bytes that our own checker replays line by line (Monstrosity 6), while the answer at 28 lines is a program of 56 bits that you check by running it. That gap is NP's in miniature: a yes has a short certificate, and the best known evidence the other way can be enormous. Skim them, marvel, and move on: each is the hidden complexity in simple things.
 
-Steve wrote the first version by hand in Python, in [virtual-machine](https://github.com/showell/virtual-machine): the machine (`virtual_machine.py`), a general polynomial library (`poly.py`) and a stepper that writes one step of the machine as polynomials (`stepper.py`). The machine is Steve's invention; the code in this repository, written by AI coding agents (Claude) with human supervision, departs from the 2023 Python wherever a cleaner choice turned up, and its choices are this book's own. Each language has one role, which {{chapter The languages in this book}} sets out.
+Steve wrote the first version by hand in Python, in [virtual-machine](https://github.com/showell/virtual-machine): the machine (`virtual_machine.py`), a general polynomial library (`poly.py`) and a stepper that writes one step of the machine as polynomials (`stepper.py`). The machine is Steve's invention; the code in this repository, written by AI coding agents (Claude) with human supervision, departs from the 2023 Python wherever a cleaner choice turned up, and its choices are this book's own. Each programming language has one role, which {{chapter The languages in this book}} sets out.
 
 ### Why the name fits
 
@@ -110,7 +110,7 @@ The Cook-Levin theorem says that satisfiability of Boolean formulas is NP-comple
 
 Each number here comes from the repository, a commit, a golden file or a program run, named where it is used. Code is quoted as it stands when the book is built. Under each theorem a "Run it" box gives the command that checks it, from the repository's root once `shale build.shale` has built the tests, and the line it prints; the book's build holds each line to its test file.
 
-So every claim in this book comes with a run that checks it, on a machine small enough to hold in your head.
+So every claim in this book comes with a run that checks it.
 
 ## The machine
 
@@ -217,9 +217,9 @@ That's the whole machine. Every chapter after this is the same six lines, seen f
 
 ## Nibble, the puzzle page
 
-**Ordinary computation, in the browser. The machine in a new form, as a puzzle; it stands alone.** This is where you play the machine yourself: sixteen puzzles, one for each problem, ramped so that a newcomer gets through all of them.
+**Ordinary computation, in the browser. The machine in a new form, as a puzzle; it stands alone.** This is where you play the machine yourself: sixteen puzzles, one for each problem, ramped from four one-opcode lessons to the one problem only a six-line program solves.
 
-[Nibble](https://roc.lynrummy.com/nibble/) is a puzzle page with one puzzle for each of the 16 problems: pick instructions until the program accepts exactly the puzzle's inputs and rejects the rest. The search of {{chapter Programs as formal languages}} says every puzzle has an answer, and how many programs are answers.
+[Nibble](https://roc.lynrummy.com/nibble/) is a puzzle page with one puzzle for each of the 16 problems: pick instructions until the program accepts exactly the puzzle's inputs and rejects the rest. Every puzzle has an answer; {{chapter Programs as formal languages}}, later in this part, proves it by running every program.
 
 ### What runs in the page
 
@@ -275,7 +275,7 @@ The last puzzle, `is_not_tiny`, also gives its `mod2` on line 2, the line where 
 
 ### Help for a newcomer
 
-The page's intro, behind a Help link after puzzle 1, says what a formal language is here (the page's word for a problem), how the machine runs a program four times to find the language it recognizes, and works `decr, zero` through to {1}.
+The page's intro, behind a Help link after puzzle 1, says what a formal language is here (the page's word for a problem), how the machine runs a program four times to find the formal language it recognizes, and works `decr, zero` through to {1}.
 
 ### The sandbox
 
@@ -290,7 +290,7 @@ Play a few puzzles before reading on; the rest of the book asks how hard they re
 
 ## Deciding in plain Python
 
-**Ordinary computation. Tools and history; it stands alone.** You will see that every question the toy answers is a one-line lookup in Python, and that is exactly why the machine is worth taking apart.
+**Ordinary computation. Tools and history; it stands alone.** Every question the toy answers is a one-line lookup in Python. The machine earns its place as the thing being taken apart: a checker small enough to turn, whole, into a formula.
 
 A problem is four answers, one per input, so deciding one takes a line of ordinary code. The code here is `python/decides.py`, which `build.shale` runs on every build: it holds its two versions to each other on all 16 problems and all four inputs, and each one-line test below to its problem.
 
@@ -318,19 +318,19 @@ The want code already says everything about a problem. The Nibble machine takes 
 
 ## The languages in this book
 
-**Ordinary computation. Tools and history; it needs {{chapter The machine}}.** The languages that matter most here are four instructions long; here they are, and the languages we study them with, each with its job.
+**Ordinary computation. Tools and history; it needs {{chapter The machine}}.** The programming language that matters most here has four instructions. Here it is, with the notations the book rewrites it into and the programming languages we study it with, each with its job.
 
-In this book you will see code from languages like Roc, Python, C, and JS. But these are the tools, not the subject, of this book. The subject is a different set of languages: the toy's own, the formal languages its programs decide, and the notations the machine is rewritten into, from formulas to polynomials.
+In this book you will see code in programming languages like Roc, Python, C and JS. But these are the tools, not the subject, of this book. The subject is the toy's own programming languages, the formal languages their programs decide, and the notations the machine is rewritten into, from formulas to polynomials.
 
 ### The languages studied
 
-Nibble and Nibble++ are Steve's toy languages. They are specifically designed to be small in scope. Nibble fits in your hand. Nibble++ pushes just past brute force. Both come to life in playgrounds that accompany the book, and the machine you click there is the same Roc code this book quotes, compiled to run in your browser. Try [Nibble's puzzles](https://roc.lynrummy.com/nibble/) and the [Nibble++ playground](https://roc.lynrummy.com/nibble/plus.html).
+Nibble and Nibble++ are Steve's toy programming languages, designed to be small. Nibble fits in your hand, and Nibble++ reaches just past what brute force can list. Both come to life in playgrounds that accompany the book, and the machine you click there is the same Roc code this book quotes, compiled to run in your browser. Try [Nibble's puzzles](https://roc.lynrummy.com/nibble/) and the [Nibble++ playground](https://roc.lynrummy.com/nibble/plus.html).
 
 Each program decides a *formal language*, the set of inputs it accepts, and that is the sense in which a program "is" a formal language ({{chapter Formal languages and machines}}). Nibble's programs decide the 16 subsets of {0, 1, 2, 3}; Nibble++'s decide the 65,536 subsets of 0 to 15.
 
-Chapter by chapter, the machine is rewritten into four more languages:
+Chapter by chapter, the machine is rewritten into four notations:
 
-| language | what it says about the machine | where |
+| notation | what it says about the machine | where |
 |---|---|---|
 | Boolean formulas | every run as AND, OR and NOT of the program's and the input's bits | {{chapter One formula for the whole machine}} |
 | CNF clauses, in the DIMACS files rocsat reads | a puzzle as clauses whose solutions are exactly its programs | {{chapter Cook-Levin as SAT}} |
@@ -339,13 +339,13 @@ Chapter by chapter, the machine is rewritten into four more languages:
 
 ### The languages used
 
-Roc is our lingua franca in this book. This is not a book about type systems, but Roc's clear type annotations help us express mathematical concepts. It's also simply a good working language. It has the horsepower for computation and versatility to live in the browser.
+Roc is our lingua franca in this book. This is not a book about type systems, but Roc's clear type annotations help us express mathematical concepts. It is also a good working programming language, with the horsepower for computation and the versatility to run in the browser.
 
 Python is the programming language that inspired the book. We use Python mostly as a historical relic, but it remains an oracle to Roc and occasionally shines as a mainstream programming language whose syntax most programmers understand.
 
 C is our utility infielder. We use it for its raw speed and easy linkability. And when rocsat says no program exists, it's a small C program that checks the proof, so the book never has to take Roc's word for Roc's answers.
 
-Finally, JS does what JS does best. JS runs the skin of our toys. It also serves as a final oracle: the same machine, written in plain JavaScript, gives the same answers in the book's last chapter, and runs there on a compiler we happen to have written ourselves (in Roc!).
+Finally, JS does what JS does best. JS runs the skin of our toys. It also serves as a final oracle: the same machine, written in plain JavaScript, gives the same answers in {{chapter What comes next}}, and runs there on a compiler we happen to have written ourselves (in Roc!).
 
 ## Formal languages and machines
 
