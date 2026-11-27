@@ -71,16 +71,15 @@ Rolling north tips the cube over its north bottom edge: the top swings north, th
 
 ESSWNN runs like this:
 
-```text
-roll   the cube on  the paint  lit cells  lit set
-start  a1, 0        up         —          0
-1: E   b1, 1        east       —          0
-2: S   b2, 5        east       —          0
-3: S   b3, 9        east       —          0
-4: W   a3, 8        up         —          0
-5: N   a2, 4        north      —          0
-6: N   a1, 0        down       0          1
-```
+| Roll | The cube on | The paint | Lit cells | Lit set |
+|---|---|---|---|---:|
+| start | a1, 0 | up | — | 0 |
+| 1: E | b1, 1 | east | — | 0 |
+| 2: S | b2, 5 | east | — | 0 |
+| 3: S | b3, 9 | east | — | 0 |
+| 4: W | a3, 8 | up | — | 0 |
+| 5: N | a2, 4 | north | — | 0 |
+| 6: N | a1, 0 | down | 0 | 1 |
 
 The rolls east and south swing the paint east and keep it there. Rolling west brings it back up, and the rolls north swing it north and then down onto a1.
 
@@ -88,15 +87,14 @@ The rolls east and south swing the paint east and keep it there. Rolling west br
 
 Here is ESENNSSS:
 
-```text
-roll   the cube on    the paint  lit cells  lit set
-start  a1, 0          up         —          0
-1: E   b1, 1          east       —          0
-2: S   b2, 5          east       —          0
-3: E   c2, 6          down       6          64
-4: N   c1, 2          south      6          64
-5: N   off the board  halted     6          64
-```
+| Roll | The cube on | The paint | Lit cells | Lit set |
+|---|---|---|---|---:|
+| start | a1, 0 | up | — | 0 |
+| 1: E | b1, 1 | east | — | 0 |
+| 2: S | b2, 5 | east | — | 0 |
+| 3: E | c2, 6 | down | 6 | 64 |
+| 4: N | c1, 2 | south | 6 | 64 |
+| 5: N | off the board | halted | 6 | 64 |
 
 The fifth roll would carry the cube north off c1, so the program halts with c2 lit and skips the rolls south. A halted program lights exactly what its rolls before the halt light.
 
@@ -142,23 +140,22 @@ The playground knows every par ahead of time, because a program worked out one t
 
 Try each one in the playground before you read its row.
 
-```text
-question       lit cells                  lit set  par  a shortest program
-is_zero        0                          1        6    ESSWNN
-is_one         1                          2        7    EEEWSWN
-is_two         2                          4        2    EE
-is_five        5                          32       8    ESENSNWS
-is_fifteen     15                         32,768   8    ESWSEEES
-is_tiny        0, 1, 2, 3                 15       12   EESENSWWNSWN
-is_small_even  0, 2, 4, 6                 85       12   EEESWNWWSENW
-is_power_of_2  1, 2, 4, 8                 278      13   EESWNSESWWENW
-is_square      0, 1, 4, 9                 531      13   SESENNWSWNESW
-is_huge        12, 13, 14, 15             61,440   14   ESWSSNESNESNES
-is_prime       2, 3, 5, 7, 11, 13         10,412   20   EESENWSEWSENNWSWESSW
-is_small       0, 1, 2, 3, 4, 5, 6, 7     255      23   EESENWSENWSNWSNWSENWSEN
-is_even        0, 2, 4, 6, 8, 10, 12, 14  21,845   24   EEESWESWESWNWWSENWENWENW
-is_odd         1, 3, 5, 7, 9, 11, 13, 15  43,690   26   SESENWENWSEENWSEWSEWSENWWS
-```
+| Question | Lit cells | Lit set | Par | A shortest program |
+|---|---|---:|---:|---|
+| is_zero | 0 | 1 | 6 | `ESSWNN` |
+| is_one | 1 | 2 | 7 | `EEEWSWN` |
+| is_two | 2 | 4 | 2 | `EE` |
+| is_five | 5 | 32 | 8 | `ESENSNWS` |
+| is_fifteen | 15 | 32,768 | 8 | `ESWSEEES` |
+| is_tiny | 0, 1, 2, 3 | 15 | 12 | `EESENSWWNSWN` |
+| is_small_even | 0, 2, 4, 6 | 85 | 12 | `EEESWNWWSENW` |
+| is_power_of_2 | 1, 2, 4, 8 | 278 | 13 | `EESWNSESWWENW` |
+| is_square | 0, 1, 4, 9 | 531 | 13 | `SESENNWSWNESW` |
+| is_huge | 12, 13, 14, 15 | 61,440 | 14 | `ESWSSNESNESNES` |
+| is_prime | 2, 3, 5, 7, 11, 13 | 10,412 | 20 | `EESENWSEWSENNWSWESSW` |
+| is_small | 0, 1, 2, 3, 4, 5, 6, 7 | 255 | 23 | `EESENWSENWSNWSNWSENWSEN` |
+| is_even | 0, 2, 4, 6, 8, 10, 12, 14 | 21,845 | 24 | `EEESWESWESWNWWSENWENWENW` |
+| is_odd | 1, 3, 5, 7, 9, 11, 13, 15 | 43,690 | 26 | `SESENWENWSEENWSEWSEWSENWWS` |
 
 Other programs of the same length may answer the same question. is_even and is_odd each light eight tiles and differ by two rolls, so where the tiles are matters as well as how many.
 
@@ -178,18 +175,17 @@ the par of each tile lit alone
 
 is_five, b2 alone, takes 8 rolls, and its shortest program lights an unwanted tile on the way:
 
-```text
-roll   the cube on  the paint  lit cells  lit set
-start  a1, 0        up         —          0
-1: E   b1, 1        east       —          0
-2: S   b2, 5        east       —          0
-3: E   c2, 6        down       6          64
-4: N   c1, 2        south      6          64
-5: S   c2, 6        down       —          0
-6: N   c1, 2        south      —          0
-7: W   b1, 1        south      —          0
-8: S   b2, 5        down       5          32
-```
+| Roll | The cube on | The paint | Lit cells | Lit set |
+|---|---|---|---|---:|
+| start | a1, 0 | up | — | 0 |
+| 1: E | b1, 1 | east | — | 0 |
+| 2: S | b2, 5 | east | — | 0 |
+| 3: E | c2, 6 | down | 6 | 64 |
+| 4: N | c1, 2 | south | 6 | 64 |
+| 5: S | c2, 6 | down | — | 0 |
+| 6: N | c1, 2 | south | — | 0 |
+| 7: W | b1, 1 | south | — | 0 |
+| 8: S | b2, 5 | down | 5 | 32 |
 
 The first three rolls put the paint down on c2, which lights. Roll 4, north to c1, turns the paint south, which is what the cube needs to drop it onto b2. But c2 is still lit, and `ESENWS` lights b2 and c2 both. So roll 5 goes back south and lands on c2 face down a second time, which puts it out, and roll 6 returns to c1 with the paint south again. Rolls 7 and 8 carry the cube west and south onto b2, paint down. A flip is its own undo, so a program may light a tile on the way and put it out again.
 
@@ -273,25 +269,24 @@ Theorem 3: on the 4 × 4 board, for every m from 1 to 16, some lit set of m tile
 
 What we look for is one lit set of each size m with par exactly 3m − 1. The state flood's pars hold it, and here is the lowest-numbered such set for each m:
 
-```text
-m   3m − 1  lit set  a shortest program
-1   2       4        EE
-2   5       6        EESWN
-3   8       7        EESWNSWN
-4   11      23       EESWNSWNESW
-5   14      55       EESWNESWNWSENW
-6   17      119      EEESWNWSNWSENWSEN
-7   20      239      EESENWSENWSNWSENWSWN
-8   23      255      EESENWSENWSNWSNWSENWSEN
-9   26      511      EESENWSENWSNWSENWSWNESWESW
-10  29      1,023    EESENWSENWSNWSENWSWNESWESWNES
-11  32      2,047    EESENWSENWSNWSENWSWNESWESWNESNES
-12  35      4,095    EEESWNWSENWSWNESWESWNESNESNESWNEWNE
-13  38      12,287   EESENWSEWSENWSENWNWSENWSWNESWESWNESESW
-14  41      16,383   EEESWNWSENWSWNESWESWESWNESENWNESNESWNEWNE
-15  44      49,151   EESENWSENWSNWSENWSWNESWESWESWNESENWNESNESWSE
-16  47      65,535   EEESWNWSENWSWNESWESWESWNESENWNESESWNESWNEWNEWNE
-```
+| m | 3m − 1 | Lit set | A shortest program |
+|---:|---:|---:|---|
+| 1 | 2 | 4 | `EE` |
+| 2 | 5 | 6 | `EESWN` |
+| 3 | 8 | 7 | `EESWNSWN` |
+| 4 | 11 | 23 | `EESWNSWNESW` |
+| 5 | 14 | 55 | `EESWNESWNWSENW` |
+| 6 | 17 | 119 | `EEESWNWSNWSENWSEN` |
+| 7 | 20 | 239 | `EESENWSENWSNWSENWSWN` |
+| 8 | 23 | 255 | `EESENWSENWSNWSNWSENWSEN` |
+| 9 | 26 | 511 | `EESENWSENWSNWSENWSWNESWESW` |
+| 10 | 29 | 1,023 | `EESENWSENWSNWSENWSWNESWESWNES` |
+| 11 | 32 | 2,047 | `EESENWSENWSNWSENWSWNESWESWNESNES` |
+| 12 | 35 | 4,095 | `EEESWNWSENWSWNESWESWNESNESNESWNEWNE` |
+| 13 | 38 | 12,287 | `EESENWSEWSENWSENWNWSENWSWNESWESWNESESW` |
+| 14 | 41 | 16,383 | `EEESWNWSENWSWNESWESWESWNESENWNESNESWNEWNE` |
+| 15 | 44 | 49,151 | `EESENWSENWSNWSENWSWNESWESWESWNESENWNESNESWSE` |
+| 16 | 47 | 65,535 | `EEESWNWSENWSWNESWESWESWNESENWNESESWNESWNEWNEWNE` |
 
 Each program has exactly 3m − 1 rolls, and Theorem 2 says nothing shorter lights its set, so each is a par. The last row, every tile lit, is two rolls past RollScript's cap of 45.
 
@@ -358,13 +353,12 @@ The flood reaches every one of the 27,648 states, and the one pattern at par 26 
 
 ### How far the flood goes
 
-```text
-board  tiles  lit sets    states
-2 × 2  4      16          384
-3 × 3  9      512         27,648
-4 × 4  16     65,536      6,291,456
-5 × 5  25     33,554,432  5,033,164,800
-```
+| Board | Tiles | Lit sets | States |
+|---|---:|---:|---:|
+| 2 × 2 | 4 | 16 | 384 |
+| 3 × 3 | 9 | 512 | 27,648 |
+| 4 × 4 | 16 | 65,536 | 6,291,456 |
+| 5 × 5 | 25 | 33,554,432 | 5,033,164,800 |
 
 A C version of the flood, keeping each state's distance in an array, reaches all 6,291,456 states of the 4 × 4 board, and the playground's pars are its answers. The 5 × 5 board's five billion states are where visiting every state runs out of road. Later chapters bring in a SAT solver there, which may be just as slow in the worst case, but is often fast on formulas with structure, like the cube's.
 

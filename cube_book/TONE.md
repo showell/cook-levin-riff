@@ -8,9 +8,8 @@ toy, and it should be a pleasure to read cover to cover. A writer adding to
 ## One lesson a chapter
 
 - **At most 500 words of prose a chapter.** The build holds it
-  (`word_limit` in `cube_book/app/main.roc`); the book builder counts a
-  table's cells as prose, so a big table goes in a ```text fence. A
-  chapter that can't fit its lesson is cut first, and split only when the
+  (`word_limit` in `cube_book/app/main.roc`). Code, tables and diagrams
+  don't count, and a table stays a Markdown table. A chapter that can't fit its lesson is cut first, and split only when the
   lesson itself won't fit.
 - **The chapters keep their order.** A chapter is revised where it stands
   and never moved. An idea a later chapter needs is introduced, briefly,

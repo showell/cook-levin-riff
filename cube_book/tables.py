@@ -46,17 +46,18 @@ def commas(k):
     return f"{k:,}"
 
 
-def fence(rows):
-    """Rows as a text fence, each column as wide as its widest cell."""
-    widths = [max(len(row[c]) for row in rows) for c in range(len(rows[0]))]
-    out = ["  ".join(cell.ljust(w) for cell, w in zip(row, widths)).rstrip() for row in rows]
-    return "```text\n" + "\n".join(out) + "\n```"
+def table(rows, right=()):
+    """Rows as a Markdown table, the first its header; the columns numbered
+    in `right` align right."""
+    rule = "|" + "|".join("---:" if c in right else "---" for c in range(len(rows[0]))) + "|"
+    out = ["| " + " | ".join(row) + " |" for row in rows]
+    return "\n".join([out[0], rule] + out[1:])
 
 
 def trace(rolls):
     """A program's run on 4 x 4, a line a roll: where the cube is, where the
     paint points, the lit cells and the lit set as a number."""
-    rows = [("roll", "the cube on", "the paint", "lit cells", "lit set")]
+    rows = [("Roll", "The cube on", "The paint", "Lit cells", "Lit set")]
     state = START
     rows.append(("start", "a1, 0", "up", "—", "0"))
     for k, r in enumerate(rolls, 1):
@@ -67,7 +68,7 @@ def trace(rolls):
         state = after
         i = state[0] * N + state[1]
         rows.append((f"{k}: {r}", f"{tile(N, i)}, {i}", state[2], cells(state[3]), str(state[3])))
-    return fence(rows)
+    return table(rows, right=(4,))
 
 
 # The challenges: questions about the numbers 0 to 15, each lit set the
@@ -91,12 +92,12 @@ CHALLENGES = [
 
 
 def challenges(pars):
-    rows = [("question", "lit cells", "lit set", "par", "a shortest program")]
+    rows = [("Question", "Lit cells", "Lit set", "Par", "A shortest program")]
     for name, numbers in CHALLENGES:
         lit = lit_of(numbers)
         par, rolls = pars[lit]
-        rows.append((name, cells(lit), commas(lit), str(par), rolls))
-    return fence(rows)
+        rows.append((name, cells(lit), commas(lit), str(par), f"`{rolls}`"))
+    return table(rows, right=(2, 3))
 
 
 def corners(n):
@@ -113,21 +114,21 @@ def corners(n):
 def floors(pars):
     """For each count of lit tiles, the least par, which must be the floor
     3m - 1, and the lowest-numbered lit set at it."""
-    rows = [("m", "3m − 1", "lit set", "a shortest program")]
+    rows = [("m", "3m − 1", "Lit set", "A shortest program")]
     for m in range(1, N * N + 1):
         sized = [p for p in pars if bin(p).count("1") == m]
         least = min(pars[p][0] for p in sized)
         assert least == 3 * m - 1, (m, least)
         p = min(q for q in sized if pars[q][0] == least)
-        rows.append((str(m), str(3 * m - 1), commas(p), pars[p][1]))
-    return fence(rows)
+        rows.append((str(m), str(3 * m - 1), commas(p), f"`{pars[p][1]}`"))
+    return table(rows, right=(0, 1, 2))
 
 
 def sizes():
-    rows = [("board", "tiles", "lit sets", "states")]
+    rows = [("Board", "Tiles", "Lit sets", "States")]
     for n in (2, 3, 4, 5):
         rows.append((f"{n} × {n}", str(n * n), commas(2 ** (n * n)), commas(n * n * len(FACES) * 2 ** (n * n))))
-    return fence(rows)
+    return table(rows, right=(1, 2, 3))
 
 
 def read_pars(path):
