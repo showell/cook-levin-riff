@@ -37,10 +37,11 @@
 --    roc-apps' site names them: the wasm, the table, the shared stylesheet
 --    nibble.css, the shared module machine.js and each page's script,
 --    nibble.js, sandbox.js and plus.js, and plus.js's wasm, plus.wasm, and
---    its names table, plus_names.bin, and cube.js with cube.wasm and
---    cube_pars.bin. Each
+--    its names table, plus_names.bin, and cube.js with cube.wasm,
+--    cube_pars.bin and the same names table. Each
 --    name a file holds is rewritten to its hashed one before that file is
---    hashed: machine.js's wasm and table, plus.js's wasm and names, the two Nibble
+--    hashed: machine.js's wasm and table, plus.js's and cube.js's wasm and
+--    tables, the two Nibble
 --    scripts' import of machine.js, the pages' script and stylesheet.
 -- 4. web/page_check.mjs holds the wasm to the C's table on all 4,096 x 4
 --    runs and to its 16-puzzle table and order, then loads the page in
@@ -61,10 +62,12 @@
 -- 5. web/cube_check.mjs holds cube.wasm to cube.c on the 400 sample runs,
 --    frame by frame, rolls every census solution through it, holds
 --    cube_pars.bin and L to the census, and plays cube.html in headless
---    Chromium: halting, L, clicks on the tiles, three panes with no scroll
---    at 1366 x 650 and 1920 x 700, one column at a phone's width, and the
---    help page; screenshots out/web/cube.png, cube-rolling.png,
---    cube-halt.png, cube-wide.png and cube-phone.png.
+--    Chromium: halting, L, clicks on the tiles, the lit set's names (held
+--    to out/web/plus_names.tsv), the listing's lines and opcodes, the glow,
+--    the compass and the landings, three panes with no scroll at 1366 x 650
+--    and 1920 x 700, one column at a phone's width, and the help page;
+--    screenshots out/web/cube.png, cube-rolling.png, cube-halt.png,
+--    cube-glow.png, cube-landing.png, cube-wide.png and cube-phone.png.
 --
 -- One line a stage. Exits 0 only when every check passes.
 
@@ -223,7 +226,7 @@ copy(OUT .. "/cube.wasm", SITE .. "/" .. cube_wasm)
 local cube_bin = hashed_name("cube_pars", "bin")
 copy(OUT .. "/cube_pars.bin", SITE .. "/" .. cube_bin)
 local cube_js = hashed_copy("cube", "js", {{"fetched(\"cube.wasm\")", "fetched(\"" .. cube_wasm .. "\")"},
-  {"fetched(\"cube_pars.bin\")", "fetched(\"" .. cube_bin .. "\")"}})
+  {"fetched(\"cube_pars.bin\")", "fetched(\"" .. cube_bin .. "\")"}, {"fetched(\"plus_names.bin\")", "fetched(\"" .. plus_names .. "\")"}})
 replace(SITE .. "/cube.html", rename_in(rename_in(read("web/cube.html"), "src=\"cube.js\"", "src=\"" .. cube_js .. "\"", "web/cube.html"),
   sheet[1], sheet[2], "web/cube.html"))
 replace(SITE .. "/cube_help.html", rename_in(read("web/cube_help.html"), sheet[1], sheet[2], "web/cube_help.html"))
@@ -234,7 +237,7 @@ local check = run({"node", "web/page_check.mjs", real(SITE), real(OUT .. "/puzzl
 print(trim(check.out))
 if check.code ~= 0 then fail("web/page_check.mjs exited " .. check.code) end
 
-local cube_check = run({"node", "web/cube_check.mjs", real(SITE), real(OUT .. "/cube_runs.txt"), real(OUT .. "/cube_pars4.txt"), real("cube/golden/census4.txt"), real(OUT) .. "/cube.png"},
+local cube_check = run({"node", "web/cube_check.mjs", real(SITE), real(OUT .. "/cube_runs.txt"), real(OUT .. "/cube_pars4.txt"), real("cube/golden/census4.txt"), real(OUT) .. "/cube.png", real(OUT .. "/plus_names.tsv")},
   {timeout_ms = 120000, tail = 30, want = WANT_NODE})
 print(trim(cube_check.out))
 if cube_check.code ~= 0 then fail("web/cube_check.mjs exited " .. cube_check.code) end

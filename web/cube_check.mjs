@@ -1,6 +1,6 @@
 // cube_check: the rolling cube's page, held to the C.
 //
-//   node web/cube_check.mjs <site-dir> <cube_runs.txt> <cube_pars4.txt> <census4.txt> <screenshot.png>
+//   node web/cube_check.mjs <site-dir> <cube_runs.txt> <cube_pars4.txt> <census4.txt> <screenshot.png> <plus_names.tsv>
 //
 // web/build.shale runs it on what it built. It:
 //
@@ -19,9 +19,15 @@
 //   scroll, and the canvas draw the cube with its painted face up; plays
 //   the "b2 alone" sample to its end and reads par 8, yours 8 and b2 lit,
 //   the lit set 32 in decimal and binary, with lit tiles on the canvas;
-//   holds the page's ten questions, and the help's table of them, to
-//   QUESTIONS below, their pars to the table, and chooses is_mult_of_5 and
-//   answers it with the diagonal sample; steps forward and back and resets; types
+//   holds the lit set's name to NAMES below and NAMES to <plus_names.tsv>
+//   (Nibble++'s names, cost 4 or less), playing each one's census solution,
+//   and a set past the table showing its number alone, and the help's table
+//   of names to NAMES and the census's pars; holds the listing's lines (a
+//   line a roll: its opcode, its roll, the paint after it and its landing
+//   or halt) and the machine code to the wasm's run, the current line
+//   highlighted and in view; the paint's compass and the floor's glow, by
+//   the page's state, along ESWN; and a landing's flash and its stamp,
+//   which stays on the tile; steps forward and back and resets; types
 //   programs (one with a letter that is not a roll, one that halts, one
 //   longer than L, refused); rolls by the arrow keys, the button lighting,
 //   north from a1 halting the machine; rolls by clicking the tiles next to
@@ -29,9 +35,10 @@
 //   nothing; plays the halt sample to its halt; refuses a roll past L; sees
 //   three panes and no scroll at 1920 x 700 too; at a phone's width one
 //   column, nothing sideways and nothing stored; and the help page, its L
-//   the census's, its tile numbering and its questions. It saves screenshots to <screenshot.png> (1366 x 650),
-//   and beside it `-rolling` (mid-roll), `-halt`, `-wide` (1920 x 700) and
-//   `-phone`.
+//   the census's, its tile numbering and its names. It saves screenshots to
+//   <screenshot.png> (1366 x 650), and beside it `-rolling` (mid-roll),
+//   `-halt`, `-glow` (the paint east, its glow and the compass), `-landing`
+//   (a landing's flash), `-wide` (1920 x 700) and `-phone`.
 //
 // The browser is started as web/page_check.mjs starts it.
 import { spawn } from "node:child_process";
@@ -40,9 +47,9 @@ import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { extname, join } from "node:path";
 
-const [site, runsFile, parsFile, censusFile, shotFile] = process.argv.slice(2);
-if (!shotFile) {
-  console.error("usage: node web/cube_check.mjs <site-dir> <cube_runs.txt> <cube_pars4.txt> <census4.txt> <screenshot.png>");
+const [site, runsFile, parsFile, censusFile, shotFile, namesFile] = process.argv.slice(2);
+if (!namesFile) {
+  console.error("usage: node web/cube_check.mjs <site-dir> <cube_runs.txt> <cube_pars4.txt> <census4.txt> <screenshot.png> <plus_names.tsv>");
   process.exit(2);
 }
 
@@ -56,6 +63,7 @@ function expect(ok, why) {
 const files = readdirSync(site);
 const wasmFile = files.find((f) => /^cube\.[0-9a-f]{16}\.wasm$/.test(f));
 const binFile = files.find((f) => /^cube_pars\.[0-9a-f]{16}\.bin$/.test(f));
+expect(files.some((f) => /^plus_names\.[0-9a-f]{16}\.bin$/.test(f)), `no hashed plus_names.bin in ${site}`);
 if (!wasmFile || !binFile) { console.error(`cube_check: no hashed cube wasm or pars table in ${site}`); process.exit(1); }
 
 // ── the wasm against the C ────────────────────────────────────────────
@@ -94,8 +102,10 @@ expect(table.length === 65536, `${binFile} has ${table.length} bytes`);
 const parLines = readFileSync(parsFile, "utf8").trim().split("\n");
 expect(parLines.length === 65536, `${parsFile} has ${parLines.length} lines`);
 let solutions = 0;
+const solutionOf = [];
 parLines.forEach((line, p) => {
   const [pattern, par, sol] = line.split(" ");
+  solutionOf[p] = sol === "-" ? "" : sol;
   if (Number(pattern) !== p || table[p] !== Number(par)) { expect(false, `pattern ${p}: the table says ${table[p]}, the census ${line}`); return; }
   const program = sol === "-" ? "" : sol;
   const { out, word } = framesOf(program);
@@ -117,12 +127,15 @@ const L = lLine ? Number(lLine[1]) : NaN;
 expect(lLine && instance.exports.max_length(0) === L, `the wasm's max_length() is ${instance.exports.max_length(0)}, the census's L ${lLine?.[1]}`);
 expect(decided && Number(decided[1]) === table.filter((b) => b <= L).length, `the census decides ${decided?.[1]} sets within L, the table ${table.filter((b) => b <= L).length}`);
 
-// The page's questions: each name, the tiles it wants, its number and its
-// par, held here so that a change to a rule or to the census shows.
-const QUESTIONS = [
+// The lit set's names: Nibble++'s, from its table, a set's cheapest name of
+// cost 4 or less (docs/NIBBLE_PLUS_NAMES.md). NAMES holds some by hand,
+// each its set's tiles, its number, its name and its par, so that a change
+// to the naming or to the census shows; <plus_names.tsv> holds every name.
+const NAMES = [
+  ["grumpy", [], 0, 0],
+  ["is_5", [5], 32, 8],
+  ["is_6", [6], 64, 3],
   ["is_even", [0, 2, 4, 6, 8, 10, 12, 14], 21845, 24],
-  ["is_odd", [1, 3, 5, 7, 9, 11, 13, 15], 43690, 26],
-  ["is_small", [0, 1, 2, 3, 4, 5, 6, 7], 255, 23],
   ["is_small_even", [0, 2, 4, 6], 85, 12],
   ["is_mult_of_4", [0, 4, 8, 12], 4369, 12],
   ["is_mult_of_5", [0, 5, 10, 15], 33825, 18],
@@ -131,11 +144,44 @@ const QUESTIONS = [
   ["is_fib", [1, 2, 3, 5, 8, 13], 8494, 20],
   ["is_not_14", [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15], 49151, 44],
 ];
-for (const [name, tiles, number, par] of QUESTIONS) {
+const tsv = new Map(readFileSync(namesFile, "utf8").trim().split("\n").map((l) => { const [code, cost, name] = l.split("\t"); return [Number(code), { cost: Number(cost), name }]; }));
+expect(tsv.size === 65536, `${namesFile} names ${tsv.size} sets, not 65,536`);
+// The name the page shows for a set: its name of cost 4 or less, else its number.
+const shownName = (set) => (tsv.get(set)?.cost ?? 99) <= 4 ? tsv.get(set).name : String(set);
+for (const [name, tiles, number, par] of NAMES) {
   expect(tiles.reduce((s, n) => s + 2 ** n, 0) === number, `${name}'s tiles ${tiles} make ${tiles.reduce((s, n) => s + 2 ** n, 0)}, not ${number}`);
   expect(table[number] === par, `${name}, ${number}, has par ${table[number]} in the census, not ${par}`);
+  expect(shownName(number) === name, `the set ${number} is named ${shownName(number)} by ${namesFile}, not ${name}`);
 }
-const questionRows = QUESTIONS.map(([name, , number, par]) => `${name} ${number} ${par}`).join("; ");
+const nameRows = NAMES.map(([name, , number, par]) => `${name} ${number} ${par}`).join("; ");
+// A set past the table: the one of smallest par whose cheapest name costs 5 or more.
+const unnamed = Array.from({ length: 65536 }, (_, s) => s).filter((s) => shownName(s) === String(s)).sort((a, b) => table[a] - table[b] || a - b)[0];
+expect(unnamed !== undefined && tsv.get(unnamed).cost >= 5, `no set past the names table: ${unnamed}`);
+
+// The listing's lines a program should show, from the wasm alone: line 0
+// the start, then a line a roll, its opcode, its roll, the paint after it
+// and its mark (lit or unlit for a landing, halt, dead after a halt).
+const PAINT = "UDNSEW";
+function listingOf(program) {
+  const rows = ["0 - U -"];
+  let word = 0, halted = false;
+  for (let i = 0; i < program.length; i++) {
+    const r = ROLLS.indexOf(program[i]);
+    const bits = r.toString(2).padStart(2, "0");
+    if (halted) { rows.push(`${i + 1} ${bits}${program[i]} - dead`); continue; }
+    const next = roll(word, r);
+    if (next & OFF) { halted = true; rows.push(`${i + 1} ${bits}${program[i]} ${PAINT[(word >> 20) & 7]} halt`); continue; }
+    const face = (next >> 20) & 7, cell = (next >> 16) & 15;
+    const mark = face === 1 ? ((next >> cell) & 1 ? "lit" : "unlit") : "-";
+    rows.push(`${i + 1} ${bits}${program[i]} ${PAINT[face]} ${mark}`);
+    word = next;
+  }
+  return rows.join(" | ");
+}
+const machineCodeOf = (program) => `#${Array.from(program).reduce((s, c) => s * 4n + BigInt(ROLLS.indexOf(c)), 0n)}  ${Array.from(program, (c) => ROLLS.indexOf(c).toString(2).padStart(2, "0")).join(" ")}`;
+expect(machineCodeOf("ESE") === "#25  01 10 01", `ESE's machine code is ${machineCodeOf("ESE")}`);
+expect(listingOf("ESWN") === "0 - U - | 1 01E E - | 2 10S E - | 3 11W U - | 4 00N N -", `ESWN's listing from the wasm: ${listingOf("ESWN")}`);
+expect(listingOf("ESE") === "0 - U - | 1 01E E - | 2 10S E - | 3 01E D lit", `ESE's listing from the wasm: ${listingOf("ESE")}`);
 
 // ── the page in Chromium ──────────────────────────────────────────────
 const TYPES = { ".html": "text/html", ".css": "text/css", ".js": "text/javascript", ".wasm": "application/wasm", ".json": "application/json" };
@@ -259,6 +305,15 @@ const pixels = () => evaluate(`(() => {
 })()`);
 const litCells = () => evaluate(`Array.from(document.querySelectorAll("#lit-map div")).map((d, i) => d.classList.contains("lit") ? d.dataset.name : null).filter(Boolean).join(",")`);
 const number = async () => `${await text("decimal")} ${await text("binary")}`;
+// The listing as the page shows it, in listingOf's form, and its current line.
+const listing = () => evaluate(`Array.from(document.querySelectorAll("#listing li")).map((li) =>
+  [li.dataset.line, (li.querySelector(".code").textContent + li.dataset.roll) || "-", li.dataset.paint || "-", li.dataset.mark || "-"].join(" ")).join(" | ")`);
+const nowLine = () => evaluate(`(() => { const n = document.querySelectorAll("#listing li.now"); return n.length === 1 ? Number(n[0].dataset.line) : -n.length; })()`);
+// The shown state's views: the canvas's paint, glow, stamps and flash, and the compass.
+const views = () => evaluate(`(() => { const c = document.getElementById("scene").dataset, k = document.getElementById("compass");
+  return { paint: c.paint, glow: c.glow, stamped: c.stamped, flash: c.flash, flashes: Number(c.flashes), compass: k.dataset.points,
+    lit: Array.from(k.querySelectorAll("[data-dir].on")).map((m) => m.dataset.dir).join("") }; })()`);
+const named = () => evaluate(`(() => { const n = document.getElementById("name"); return n.textContent + (n.dataset.named === "1" ? "" : " (unnamed)"); })()`);
 async function screenshot(file) {
   await evaluate("window.scrollTo(0, 0)");
   const { data } = await page("Page.captureScreenshot", { format: "png", captureBeyondViewport: true });
@@ -309,8 +364,11 @@ try {
   expect((await evaluate("document.querySelector('label[for=program]').textContent")).includes("RollScript"), "the program's label does not name RollScript");
   expect((await evaluate("Array.from(document.querySelectorAll('#lit-map div')).map((d) => d.textContent + d.dataset.name).join(' ')")) ===
     Array.from({ length: 16 }, (_, n) => `${n}${"abcd"[n % 4]}${Math.floor(n / 4) + 1}`).join(" "), "the lit map's tiles are not numbered 0 to 15 row by row, a1 first");
-  const shownQuestions = await evaluate("Array.from(document.querySelectorAll('#questions button')).map((b) => `${b.dataset.question} ${b.dataset.target} ${b.dataset.par}`).join('; ')");
-  expect(shownQuestions === questionRows, `the page's questions are ${shownQuestions}, not ${questionRows}`);
+  expect((await evaluate("document.querySelectorAll('#questions, #question, #answers').length")) === 0, "the page still has the questions");
+  expect((await named()) === "grumpy" && (await listing()) === "0 - U -" && (await nowLine()) === 0 && (await text("machine-code")) === "",
+    `the start's name, listing and code: ${await named()} / ${await listing()} / ${await nowLine()} / ${await text("machine-code")}`);
+  const start0 = await views();
+  expect(start0.paint === "U" && start0.glow === "" && start0.compass === "U" && start0.lit === "U" && start0.stamped === "", `the start's views: ${JSON.stringify(start0)}`);
 
   await click('#samples button[data-program="ESENSNWS"]');
   expect(await settled(8), "the b2 sample did not play to its 8th frame");
@@ -318,25 +376,81 @@ try {
   expect((await litCells()) === "b2", `b2 alone lights ${await litCells()}`);
   expect((await text("length")) === `8 of ${L} rolls`, `b2 alone's length: ${await text("length")}`);
   expect((await number()) === "32 0000 0000 0010 0000", `b2 alone's number: ${await number()}`);
-  expect((await text("answers")) === "" && (await text("question")) === "", `b2 alone answers ${await text("answers")} / ${await text("question")}`);
-  // A question chosen: its four tiles ringed on the map, then answered by
-  // the diagonal. b2's tile is under the cube, which ends on it; the
+  expect((await named()) === "is_5", `b2 alone is named ${await named()}`);
+  expect((await listing()) === listingOf("ESENSNWS") && (await nowLine()) === 8, `b2 alone's listing: ${await listing()}, the current line ${await nowLine()}`);
+  expect((await text("machine-code")) === machineCodeOf("ESENSNWS"), `b2 alone's machine code: ${await text("machine-code")}`);
+  // The diagonal: b2's tile is under the cube, which ends on it; the
   // diagonal's three other lit tiles show.
-  await click('#questions button[data-question="is_mult_of_5"]');
-  expect((await text("question")).startsWith("The question is_mult_of_5: light n % 5 == 0, the set 33825, in par 18") &&
-    (await evaluate("document.querySelectorAll('#lit-map div.want').length")) === 4, `is_mult_of_5 chosen: ${await text("question")}`);
   await click('#samples button[data-program="ESSENNWWESESESNNWW"]');
   expect(await settled(18), "the diagonal sample did not play to its end");
   expect((await text("par")) === "par 18; yours is 18" && (await litCells()) === "a1,b2,c3,d4", `the diagonal: ${await text("par")}, lit ${await litCells()}`);
   expect((await number()) === "33825 1000 0100 0010 0001", `the diagonal's number: ${await number()}`);
-  expect((await text("answers")) === "It answers is_mult_of_5: n % 5 == 0." && (await text("question")) === "Answered is_mult_of_5 in 18 rolls; its par is 18." &&
-    (await evaluate("document.querySelector('#questions button[data-question=is_mult_of_5]').classList.contains('answered')")),
-    `the diagonal: ${await text("answers")} / ${await text("question")}`);
+  expect((await named()) === "is_mult_of_5", `the diagonal is named ${await named()}`);
+  expect((await listing()) === listingOf("ESSENNWWESESESNNWW"), `the diagonal's listing: ${await listing()}, the wasm's ${listingOf("ESSENNWWESESESNNWW")}`);
+  // Each landing's tile stays stamped: the diagonal's, from the wasm.
+  const diagStamps = [...new Set(listingOf("ESSENNWWESESESNNWW").split(" | ").filter((r) => / (lit|unlit)$/.test(r)).map((r) => {
+    let w = 0; for (const c of "ESSENNWWESESESNNWW".slice(0, Number(r.split(" ")[0]))) w = roll(w, ROLLS.indexOf(c)); return (w >> 16) & 15; }))].sort((a, b) => a - b).join(",");
+  expect((await views()).stamped === diagStamps, `the diagonal's stamps are ${(await views()).stamped}, its landings' tiles ${diagStamps}`);
   const diagonal = await pixels();
   expect(diagonal.amber > 600, `after the diagonal the canvas shows ${diagonal.amber} lit pixels`);
   await screenshot(shotFile);
-  await click('#questions button[data-question="is_mult_of_5"]');
-  expect((await text("question")) === "" && (await evaluate("document.querySelectorAll('#lit-map div.want').length")) === 0, `is_mult_of_5 let go: ${await text("question")}`);
+
+  // The names: each of NAMES played by its census solution, and a set past
+  // the table, which shows its number alone.
+  for (const [name, , set] of NAMES) {
+    await typeProgram(solutionOf[set]);
+    expect(await settled(solutionOf[set].length), `${name}'s solution did not show its end`);
+    expect((await named()) === name && (await text("decimal")) === String(set), `${solutionOf[set]} lights ${await text("decimal")}, named ${await named()}, not ${name}`);
+  }
+  await typeProgram(solutionOf[unnamed]);
+  expect(await settled(solutionOf[unnamed].length), "the unnamed set's solution did not show its end");
+  expect((await named()) === `${unnamed} (unnamed)`, `the set ${unnamed}, past the table (${tsv.get(unnamed).name}, cost ${tsv.get(unnamed).cost}), shows ${await named()}`);
+
+  // The compass and the glow along ESWN, by the page's state: the paint
+  // east, east, up, north; the floor glows on its side, none when it is up.
+  await typeProgram("ESWN");
+  expect(await settled(4), "ESWN did not show its end");
+  expect((await listing()) === listingOf("ESWN"), `ESWN's listing: ${await listing()}`);
+  await click("#reset");
+  expect(await settled(0), "Reset did not go back to ESWN's start");
+  const along = [];
+  for (let f = 1; f <= 4; f++) {
+    await click("#forward");
+    expect(await settled(f), `Forward did not step ESWN to ${f}`);
+    const v = await views();
+    along.push(`${v.paint}${v.compass}${v.lit}${v.glow || "-"}${await nowLine()}`);
+    if (f === 2) await screenshot(shotFile.replace(/\.png$/, "-glow.png"));
+  }
+  expect(along.join(" ") === "EEEE1 EEEE2 UUU-3 NNNN4", `ESWN's paint, compass, lit mark, glow and current line: ${along.join(" ")}`);
+  await click("#back");
+  expect(await settled(3) && (await nowLine()) === 3 && (await views()).compass === "U", `Back on ESWN: line ${await nowLine()}, the compass ${(await views()).compass}`);
+  // A click on a line shows the run there.
+  await click('#listing li[data-line="1"]');
+  expect(await settled(1) && (await nowLine()) === 1 && (await views()).glow === "E", `a click on line 1: line ${await nowLine()}, the glow ${(await views()).glow}`);
+
+  // A landing: ESE puts the paint down on c2. The tile flashes, once, and
+  // stays stamped; Back takes the stamp away, and Forward lands it again.
+  await typeProgram("ES");
+  expect(await settled(2), "ES did not show its end");
+  const before0 = (await views()).flashes;
+  await evaluate("document.activeElement.blur()");
+  await key("ArrowRight");
+  for (let k = 0; k < 40 && (await views()).flash !== "6"; k++) await sleep(15);
+  await sleep(60);
+  await screenshot(shotFile.replace(/\.png$/, "-landing.png"));
+  const land = await views();
+  expect(land.flash === "6" && land.flashes === before0 + 1 && land.stamped === "6" && land.paint === "D" && land.compass === "D" && land.glow === "",
+    `the landing on c2: ${JSON.stringify(land)}`);
+  expect((await listing()) === listingOf("ESE") && (await nowLine()) === 3 && (await evaluate("document.querySelector('#listing li.now .mark').textContent")) === "lights c2",
+    `ESE's listing: ${await listing()}`);
+  expect((await text("machine-code")) === "#25  01 10 01", `ESE's machine code: ${await text("machine-code")}`);
+  await sleep(800);
+  expect((await views()).flash === "" && (await views()).stamped === "6", `after the flash: ${JSON.stringify(await views())}`);
+  await click("#back");
+  expect(await settled(2) && (await views()).stamped === "", `Back from the landing: ${JSON.stringify(await views())}`);
+  await click("#forward");
+  expect(await settled(3) && (await views()).flashes === before0 + 2 && (await views()).stamped === "6", `Forward onto the landing: ${JSON.stringify(await views())}`);
+
   await click('#samples button[data-program="ESENSNWS"]');
   expect(await settled(8), "the b2 sample did not play to its 8th frame again");
 
@@ -414,7 +528,9 @@ try {
   expect(await settled(5), "the halt sample did not play to its halt, frame 5");
   expect((await text("status")).startsWith("Halted at roll 5") && (await litCells()) === "c2" && (await text("par")) === "par 3; yours is 8",
     `the halt sample: ${await text("status")} / ${await litCells()} / ${await text("par")}`);
-  expect((await evaluate("document.querySelectorAll('#rolls span.dead').length")) === 3 && (await evaluate("document.querySelectorAll('#rolls span.halt').length")) === 1, "the halt sample's rolls line does not mark the halt and the three dead rolls");
+  expect((await listing()) === listingOf("ESENNSSS") && (await nowLine()) === 5 &&
+    (await evaluate("document.querySelectorAll('#listing li.dead').length")) === 3 && (await evaluate("document.querySelectorAll('#listing li.halt').length")) === 1,
+    `the halt sample's listing does not mark the halt and the three dead rolls: ${await listing()}, the current line ${await nowLine()}`);
   await screenshot(shotFile.replace(/\.png$/, "-halt.png"));
 
   // The longest sample is L rolls; one more roll is refused.
@@ -423,6 +539,11 @@ try {
   await typeProgram(longest);
   expect(await settled(L), "the longest program did not show its end");
   expect((await text("par")) === `par ${L}; yours is ${L}` && (await text("length")) === `${L} of ${L} rolls`, `the longest: ${await text("par")} / ${await text("length")}`);
+  // The listing scrolls in its own pane, its current line, the last, in view.
+  const scroll = await evaluate(`(() => { const l = document.getElementById("listing"), n = l.querySelector("li.now"), a = l.getBoundingClientRect(), b = n.getBoundingClientRect();
+    return { scrolls: l.scrollHeight > l.clientHeight, top: l.scrollTop, inView: b.top >= a.top - 1 && b.bottom <= a.bottom + 1, line: Number(n.dataset.line) }; })()`);
+  expect(scroll.scrolls && scroll.top > 0 && scroll.inView && scroll.line === L, `the longest's listing: ${JSON.stringify(scroll)}`);
+  expect((await listing()) === listingOf(longest), "the longest's listing is not the wasm's");
   await evaluate("document.activeElement.blur()");
   await key("ArrowLeft");
   expect((await text("said")).includes(`at most ${L}`) && (await programValue()) === longest, `a roll past L: ${await text("said")}`);
@@ -454,8 +575,8 @@ try {
   expect((await evaluate("document.body.textContent")).includes("RollScript"), "the help page does not name RollScript");
   const numbering = await evaluate("Array.from(document.querySelectorAll('#numbering td')).map((d) => d.textContent).join(' ')");
   expect(numbering === Array.from({ length: 16 }, (_, n) => `${n} ${"abcd"[n % 4]}${Math.floor(n / 4) + 1}`).join(" "), `the help's numbering: ${numbering}`);
-  const helpQuestions = await evaluate("Array.from(document.querySelectorAll('#question-table tr')).slice(1).map((r) => { const c = r.querySelectorAll('td'); return `${c[0].textContent} ${c[2].textContent} ${c[3].textContent}`; }).join('; ')");
-  expect(helpQuestions === questionRows, `the help's questions are ${helpQuestions}, not ${questionRows}`);
+  const helpNames = await evaluate("Array.from(document.querySelectorAll('#name-table tr')).slice(1).map((r) => { const c = r.querySelectorAll('td'); return `${c[0].textContent} ${c[2].textContent} ${c[3].textContent}`; }).join('; ')");
+  expect(helpNames === nameRows, `the help's names are ${helpNames}, not ${nameRows}`);
   const help = await evaluate("(() => { const s = document.scrollingElement; return { page: s.scrollWidth, box: s.clientWidth }; })()");
   expect(help.page <= help.box, `at 390px the help page scrolls sideways: ${JSON.stringify(help)}`);
   expect(thrown.length === 0, `the page threw: ${thrown.join("; ")}`);
@@ -469,4 +590,4 @@ try {
 }
 
 if (failures > 0) { console.error(`cube_check: ${failures} of ${checks} checks failed`); process.exit(1); }
-console.log(`ok   cube_check: the wasm matches cube.c on ${runLines.length} programs (${frames} frames, ${offs} halted) and rolls all ${solutions} census solutions to their patterns; the table's 65,536 pars and L = ${L} are the census's; in Chromium the page fit with no scroll (${measured.join("; ")}), played the samples, stepped, took typed programs, the arrow keys and clicks and a drag on the tiles, halted off the board (typed, by key, the halt sample), refused a non-roll and programs past L, numbered its tiles, showed the lit set as a number, chose and answered a question, and its help page says L, the numbering and the ${QUESTIONS.length} questions with their pars (${checks} checks)`);
+console.log(`ok   cube_check: the wasm matches cube.c on ${runLines.length} programs (${frames} frames, ${offs} halted) and rolls all ${solutions} census solutions to their patterns; the table's 65,536 pars and L = ${L} are the census's; in Chromium the page fit with no scroll (${measured.join("; ")}), played the samples, stepped, took typed programs, the arrow keys and clicks and a drag on the tiles, halted off the board (typed, by key, the halt sample), refused a non-roll and programs past L, numbered its tiles, showed the lit set as a number and named it (${NAMES.length} names held to plus_names.tsv, and ${unnamed}, past the table, as its number), listed the run a line a roll with its opcodes and machine code, showed the compass and the glow along ESWN and a landing's flash and stamp, and its help page says L, the numbering and the ${NAMES.length} names with their pars (${checks} checks)`);
