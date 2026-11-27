@@ -27,7 +27,7 @@ static int language_code(Program p) {
 // Each language's shortest length, by code: the book's table.
 static const int SHORTEST[NUM_LANGUAGES] = {0, 1, 2, 3, 3, 2, 4, 5, 4, 5, 3, 4, 5, 6, 5, 4};
 
-TEST(each_language_has_the_shortest_length_the_book_states) {
+TEST(each_formal_language_has_the_shortest_length_the_book_states) {
     int shortest[NUM_LANGUAGES];
     for (int y = 0; y < NUM_LANGUAGES; y++) shortest[y] = MAX_STEPS + 1;
     for (int n = 0; n < NUM_PROGRAMS; n++) {
@@ -65,7 +65,7 @@ TEST(every_shortest_program_ends_in_zero) {
 }
 
 // No shortest program uses `nada` among its lines: taking one out would
-// leave a program a line shorter that decides the same problem. Longer
+// leave a program a line shorter that decides the same formal language. Longer
 // programs with a `nada` among their lines are counted, so the check is seen
 // to find them.
 TEST(no_shortest_program_uses_nada) {
@@ -125,7 +125,7 @@ static int language_of_ops(const Op *ops, int count) {
     return code;
 }
 
-TEST(the_analytical_solution_decides_every_language) {
+TEST(the_analytical_solution_decides_every_formal_language) {
     Op ops[2 * NUM_INPUTS];
     for (int y = 0; y < NUM_LANGUAGES; y++) {
         int n = solve(y, ops);
@@ -147,7 +147,7 @@ TEST(the_analytical_solution_decides_every_language) {
 
 // The 3^6 = 729 programs over nada, zero and decr decide 15 languages: all
 // but {0, 1, 2, 3}.
-TEST(without_mod2_fifteen_languages_are_decided) {
+TEST(without_mod2_fifteen_formal_languages_are_decided) {
     int found[NUM_LANGUAGES] = {0};
     int programs = 0;
     for (int n = 0; n < NUM_PROGRAMS; n++) {
@@ -228,7 +228,7 @@ static int language_of_instructions(const Instruction *fs, int count) {
 // The program for a language is four lines, line i + 1 the twin when input
 // i is in the language and decr otherwise: input n reaches 0 on line n + 1,
 // where that line's verdict is the language's.
-TEST(decr_and_its_accepting_twin_decide_every_language_in_four_lines) {
+TEST(decr_and_its_accepting_twin_decide_every_formal_language_in_four_lines) {
     const Instruction decr = {{REJECT, 0, 1, 2}};
     const Instruction twin = {{ACCEPT, 0, 1, 2}};
     for (int y = 0; y < NUM_LANGUAGES; y++) {
@@ -244,7 +244,7 @@ TEST(decr_and_its_accepting_twin_decide_every_language_in_four_lines) {
 // 6^4 values, so a longer program repeats an earlier state. An accept is
 // for good, so each length's language holds the one before it: 5 is the
 // longest such chain of subsets of four inputs.)
-TEST(one_instruction_decides_at_most_five_languages_at_any_length) {
+TEST(one_instruction_decides_at_most_five_formal_languages_at_any_length) {
     int most = 0;
     for (int code = 0; code < NUM_INSTRUCTIONS; code++) {
         Instruction f = instruction(code);
@@ -272,7 +272,7 @@ TEST(one_instruction_decides_at_most_five_languages_at_any_length) {
 // language's expression is 1 at the bits of its members alone, the 16
 // expressions' truth tables are 16 different ones, and each language is the
 // one some program accepts.
-TEST(the_16_languages_are_the_16_boolean_functions_of_two_bits) {
+TEST(the_16_formal_languages_are_the_16_boolean_functions_of_two_bits) {
     int seen[NUM_LANGUAGES] = {0};
     int decided[NUM_LANGUAGES] = {0};
     for (int n = 0; n < NUM_PROGRAMS; n++) decided[language_code(disassemble((uint32_t)n))] = 1;
@@ -289,12 +289,12 @@ TEST(the_16_languages_are_the_16_boolean_functions_of_two_bits) {
     EXPECT_EQ(language_of_expression("hb OR lb AND 0"), 12);
 }
 
-TEST_MAIN(TEST_CASE(each_language_has_the_shortest_length_the_book_states),
+TEST_MAIN(TEST_CASE(each_formal_language_has_the_shortest_length_the_book_states),
           TEST_CASE(every_shortest_program_ends_in_zero),
           TEST_CASE(no_shortest_program_uses_nada),
-          TEST_CASE(the_analytical_solution_decides_every_language),
-          TEST_CASE(without_mod2_fifteen_languages_are_decided),
+          TEST_CASE(the_analytical_solution_decides_every_formal_language),
+          TEST_CASE(without_mod2_fifteen_formal_languages_are_decided),
           TEST_CASE(zero_decr_and_mod2_are_each_needed_and_together_suffice),
-          TEST_CASE(decr_and_its_accepting_twin_decide_every_language_in_four_lines),
-          TEST_CASE(one_instruction_decides_at_most_five_languages_at_any_length),
-          TEST_CASE(the_16_languages_are_the_16_boolean_functions_of_two_bits))
+          TEST_CASE(decr_and_its_accepting_twin_decide_every_formal_language_in_four_lines),
+          TEST_CASE(one_instruction_decides_at_most_five_formal_languages_at_any_length),
+          TEST_CASE(the_16_formal_languages_are_the_16_boolean_functions_of_two_bits))

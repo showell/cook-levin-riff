@@ -1,12 +1,12 @@
 # A claim about the decider as a CNF, in DIMACS. The claim is "program P
-# decides the problem W": the decider's equations (`circuit_main equations`)
+# decides the formal language W": the decider's equations (`circuit_main equations`)
 # encoded by Cnf.roc, with unit clauses fixing the 16 inputs to P's and W's
 # bits and one asking `decides` = 1. sat/claims.shale hands it to rocsat.
 #
-#   claim-cnf <program, 0 to 4095> <problem, 0 to 15> <equation line>...
+#   claim-cnf <program, 0 to 4095> <formal language, 0 to 15> <equation line>...
 #
 # The equations come one line an argument, as the echo platform reads no
-# file. The problem is its code: input n is in it when bit n is 1, so 13 is
+# file. The formal language is its code: input n is in it when bit n is 1, so 13 is
 # {0, 2, 3}. The program's number is the book's, line 1 its highest base-4
 # digit.
 import Cnf
@@ -28,7 +28,7 @@ main! = |arguments| {
 				}
 			}
 		_ => {
-			echo!("usage: claim-cnf <program, 0 to 4095> <problem, 0 to 15> <equation line>...")
+			echo!("usage: claim-cnf <program, 0 to 4095> <formal language, 0 to 15> <equation line>...")
 			Err(Exit(2))
 		}
 	}
@@ -69,7 +69,7 @@ refusal = |e|
 
 ## The claim's units, in the order of the decider's inputs: line k's two
 ## bits are the program's k-th base-4 digit, line 1 the highest; want n is bit
-## n of the problem; and decides = 1.
+## n of the formal language; and decides = 1.
 units : U64, U64 -> List({ name : Str, bit : Bool })
 units = |program, problem| {
 	wants = List.from_iter(U64.until(0, 4)).map(|n| { name: "want${n.to_str()}", bit: bit_at(problem, n) })
@@ -90,7 +90,7 @@ bit_at = |n, index| (n // power(2, index)) % 2 == 1
 power : U64, U64 -> U64
 power = |base, exponent| List.repeat(base, exponent).fold(1, |product, b| product * b)
 
-## A problem's set of inputs, `{0, 2, 3}`.
+## A formal language's set of inputs, `{0, 2, 3}`.
 set_text : U64 -> Str
 set_text = |problem| {
 	members = List.from_iter(U64.until(0, 4)).keep_if(|n| bit_at(problem, n)).map(|n| n.to_str())

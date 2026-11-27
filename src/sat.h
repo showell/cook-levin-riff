@@ -1,4 +1,4 @@
-// sat.h: a problem as a SAT formula, in DIMACS CNF.
+// sat.h: a formal language's decision problem as a SAT formula, in DIMACS CNF.
 //
 // This is the Cook-Levin construction, on a machine small enough to see
 // whole: "some program of six instructions accepts exactly language L" is
