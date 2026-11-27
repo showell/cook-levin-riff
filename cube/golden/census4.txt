@@ -1,0 +1,126 @@
+cube 4x4: start at row 1, column 1 (the north-west corner), painted face up; the cube may end anywhere
+states: 6291456 reached of 6291456 (cell, painted face, pattern), 51 levels
+patterns: 65536, reachable 65536, unreachable 0
+
+par  patterns
+  0         1
+  1         0
+  2         2
+  3         2
+  4         1
+  5        10
+  6        14
+  7        20
+  8        35
+  9        65
+ 10        96
+ 11       122
+ 12       232
+ 13       344
+ 14       407
+ 15       654
+ 16       867
+ 17      1236
+ 18      1310
+ 19      2105
+ 20      2209
+ 21      2930
+ 22      3084
+ 23      4006
+ 24      3801
+ 25      4706
+ 26      4388
+ 27      4802
+ 28      4457
+ 29      4443
+ 30      3836
+ 31      3598
+ 32      2948
+ 33      2378
+ 34      2039
+ 35      1375
+ 36      1115
+ 37       738
+ 38       466
+ 39       309
+ 40       186
+ 41        94
+ 42        60
+ 43        28
+ 44         8
+ 45         8
+ 46         0
+ 47         1
+
+lit  patterns  reachable  min par  max par  mean par
+  0         1          1        0        0      0.00
+  1        16         16        2        8      5.12
+  2       120        120        5       14      8.73
+  3       560        560        8       17     12.06
+  4      1820       1820       11       21     15.19
+  5      4368       4368       14       25     18.16
+  6      8008       8008       17       28     21.01
+  7     11440      11440       20       30     23.77
+  8     12870      12870       23       33     26.46
+  9     11440      11440       26       34     29.09
+ 10      8008       8008       29       36     31.68
+ 11      4368       4368       32       37     34.26
+ 12      1820       1820       35       39     36.81
+ 13       560        560       38       41     39.38
+ 14       120        120       41       43     41.97
+ 15        16         16       44       45     44.50
+ 16         1          1       47       47     47.00
+
+rolls over the floor 3 * lit - 1, for the patterns with a tile lit
+over  patterns
+   0      1472
+   1      6717
+   2     13361
+   3     15771
+   4     13010
+   5      8336
+   6      4353
+   7      1761
+   8       570
+   9       154
+  10        28
+  11         2
+
+the largest par, 47, has 1 pattern(s); the first:
+  hardest: par 47, EEESWNWSENWSWNESWESWESWNESENWNESESWNESWNEWNEWNE
+    ####
+    ####
+    ####
+    ####
+
+sample levels:
+  the start tile: par 6, ESSWNN
+    #...
+    ....
+    ....
+    ....
+  the far corner: par 8, ESWSEEES
+    ....
+    ....
+    ....
+    ...#
+  the diagonal: par 18, ESSENNWWESESESNNWW
+    #...
+    .#..
+    ..#.
+    ...#
+  the border: par 35, EESENWSEWSEWSENWSNWSNWSENWENWENWSEN
+    ####
+    #..#
+    #..#
+    ####
+  the checkerboard: par 32, EEESSWNNWWESSWNENESENWWSEESSNWWS
+    #.#.
+    .#.#
+    #.#.
+    .#.#
+  every tile: par 47, EEESWNWSENWSWNESWESWESWNESENWNESESWNESWNEWNEWNE
+    ####
+    ####
+    ####
+    ####

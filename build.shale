@@ -25,6 +25,11 @@
 --                              and cheap search cases, and its verdicts
 --                              are held to sat/plus/verdicts.txt; it needs
 --                              rocsat built at build:rocsat/src/rocsat.
+--                              The rolling cube's census, cube/census.c,
+--                              is held to cube/golden/census3.txt and
+--                              census4.txt, and cube/oracle.py checks
+--                              its every par and solution by two
+--                              searches and a simulator of its own.
 --                              sat/check_readable.shale round-trips
 --                              every committed CNF and model in sat/
 --                              through the readable form, and holds the
@@ -146,6 +151,22 @@ function run_census(build)
   return check(same, build .. ": census_main's stdout is " .. CENSUS_GOLDEN .. ": " .. #r.out .. " bytes of " .. #want .. ", " .. r.ms .. " ms, " .. how_it_ended(r))
 end
 
+-- The rolling cube's census on 3 x 3 and 4 x 4, its report held to its
+-- golden and its pars written for cube/oracle.py.
+function run_cube(build)
+  local bin = compiled(build, "cube/census.c")
+  if bin == nil then return 1 end
+  local bad = 0
+  for n in {3, 4} do
+    local pars = OUT .. "/" .. build .. "/cube_pars" .. n .. ".txt"
+    local r = run({real(bin), "" .. n, real(pars)}, {timeout_ms = 120000, whole = 65536, want = RAN})
+    local golden = "cube/golden/census" .. n .. ".txt"
+    local want = read(golden)
+    bad = bad + check(exited_0(r) and r.out == want, build .. ": cube census " .. n .. "'s stdout is " .. golden .. ": " .. #r.out .. " bytes of " .. #want .. ", " .. r.ms .. " ms, " .. how_it_ended(r))
+  end
+  return bad
+end
+
 local failures = 0
 local builds = {"tcc"}
 if arg("full", false) then builds = {"tcc", "release", "asan"} end
@@ -162,6 +183,18 @@ for build in builds do
   end
   failures = failures + run_golden(build)
   failures = failures + run_census(build)
+  failures = failures + run_cube(build)
+end
+
+-- The cube's census once more, by Python that shares no code with the C:
+-- every par and solution the tier's first census wrote.
+for n in {3, 4} do
+  local pars = OUT .. "/" .. builds[1] .. "/cube_pars" .. n .. ".txt"
+  local py = run({"python3", "cube/oracle.py", "" .. n, real(pars)}, {timeout_ms = 120000, tail = 10, want = PYTHON_WANT, nice = 10})
+  local said = trim(py.out)
+  local want_said = "cube/oracle.py: 4x4: 65536 solutions rolled, 65536 pars by 1 search"
+  if n == 3 then want_said = "cube/oracle.py: 3x3: 512 solutions rolled, 512 pars by 2 searches" end
+  failures = failures + check(exited_0(py) and said == want_said, "python3: cube " .. n .. ": " .. said .. ", " .. py.ms .. " ms, " .. how_it_ended(py))
 end
 
 for file in PYTHON do
