@@ -111,6 +111,7 @@ parts = [
 	{ before: "Six expressions, composed", level: Part, title: "Part IV: expanding, the polynomials" },
 	{ before: "Nibble++", level: Part, title: "Part V: Nibble++, a bigger machine" },
 	{ before: "The oracles", level: Part, title: "Part VI: the cross-checks, and the history" },
+	{ before: "What the toy taught us", level: Category, title: "Closing" },
 ]
 
 default_look : Pages.Look

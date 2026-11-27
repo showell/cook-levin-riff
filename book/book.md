@@ -71,6 +71,7 @@ This list is the whole book in one line a chapter, the kind in italics:
 - {{chapter The oracles}}: five ways to the same answers. *Tools and history.*
 - {{chapter The Roc port}}: the mathematics as Roc writes it. *Tools and history.*
 - {{chapter How it got here}}: the toy in four days of 2023, and its polynomials composed in 2026. *Tools and history.*
+- {{chapter What the toy taught us}}: Cook-Levin as it looks from inside the toy, in one page. *A review.*
 - {{chapter What comes next}}: the steps still open. *Tools and history.*
 - {{chapter Appendix: two DRAT proofs}}: two proofs of impossibility, whole. *Big output to skim.*
 
@@ -2774,6 +2775,24 @@ The Go port lives in a repository of its own, outside this record. By Steve's ac
 ### The finish, 2026-11-25
 
 The cook-levin-riff log opens on 2026-11-25 with the C port of the machine and the search, stamped 15:32 (`8051ce2`), then the general polynomial (`ccde4f8`) and the stepper (`5b14d74`). The Boolean ring, where x² = x, came at 15:59 (`0c233e3`), reached for to make the calculation tractable, and all six steps composed, proved on all 2^14 points, at 16:23 (`1146d43`). The Nibble page (`b1fe11f`), the Roc port (`6206236`), the SAT encoding (`8de51b7`) and rocsat as an oracle (`f977bcc`) followed the same day.
+
+## What the toy taught us
+
+**Every frame. A review; it stands alone.** Here is what Cook-Levin looks like from inside a machine with a two-bit register, in one page, each paragraph pointing back to the chapters it gathers.
+
+**A checker is a circuit unrolled in time.** The toy's checker runs a program on four inputs and compares the verdicts with a problem. Wired as hardware it is 24 copies of one 59-gate stepper and four comparators ({{chapter The circuit, in full}}); drawn as Cook's tableau it is seven rows by four cores ({{chapter The tableau, filled in}}). The size of the grid is the running time times the width, which is why a fast checker gives a small formula.
+
+**Leave the certificate free and the checker becomes a question.** Fix the problem, leave the program's twelve bits unknown, and require the output: the circuit now asks which programs fit ({{chapter The Cook-Levin machine}}). As clauses that is 416 variables and 1,216 clauses a puzzle, and its satisfying assignments are exactly the programs that decide it, by propagation alone (Theorem 10). That is the theorem, at the size of a puzzle page.
+
+**Naming beats expanding.** Tseitin's encoding gives each gate a variable and grows one stepper's clauses a step. Multiplying the same logic out grows by a factor a step: 3,869 clauses for the decider by distribution ({{chapter From equations to CNF}}), 10,324 terms for `accepted` as a polynomial even with x² = x ({{chapter Six steps composed}}), and about 10^54 terms in the general ring, where x² stays x² ({{chapter Arithmetization}}). Cook and Levin's formula stays polynomial because it names.
+
+**A yes is short; a refutation can be long.** A yes comes with a certificate you check by running it: twelve bits for {0, 2, 3}, 56 bits for is_not_14 at 28 lines. A refutation takes 9,012 bytes to show that five lines are too few for {0, 2, 3}, and 17,192,870 bytes that 27 lines are too few for is_not_14 ({{chapter is_not_14 needs 28 lines}}). That asymmetry is the one NP is built on ({{chapter P and NP}}).
+
+**Brute force first, and it wins while everything fits in a list.** Running all 4,096 programs settles the toy, and one search of 374,003 states settles all 65,536 problems of Nibble++ in 0.67 s, where rocsat took 17.0 s to refute one length of one of them ({{chapter Guided search}}). SAT earns its keep when the states outgrow any list and the circuit stays small; a theorem, where one exists, beats both.
+
+**Complexity lives in growth.** For a fixed machine every question is a table lookup. P and NP have something to say only once the register and the program are given sizes that grow ({{chapter Nibble, sized}}), and that is where the open questions are ({{chapter What comes next}}).
+
+**And every road agrees.** The interpreter, the gates, the circuit, the clauses, the solver and the polynomials give the same answer at every point they share: the book's thesis, checked at all 16,384 points ({{chapter The oracles}}).
 
 ## What comes next
 
