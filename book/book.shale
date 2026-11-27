@@ -104,7 +104,7 @@ end
 -- A program of src/ that prints the book's tables, `count` of them, each
 -- a block apart: the book's source must hold each byte for byte. The
 -- tableaux in "The tableau, filled in" are src/tableau_main.c's, and the
--- 16 languages as Boolean expressions in "Some history of the approach",
+-- 16 languages as Boolean expressions in "The problems, seen from outside",
 -- and the step's expressions, the counts and two sums of products in "Six
 -- expressions, composed", are src/boolean_main.c's. The census tables and
 -- witnesses in "Nibble++" and "Two theorems about Nibble++" are
