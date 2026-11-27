@@ -1,0 +1,41 @@
+-- tools/chapter_intros.shale: each chapter of the book and its first
+-- paragraph, exactly as book/book.md has them, with no rewrites. A chapter is
+-- a `## ` heading; its first paragraph is the first run of non-blank lines
+-- after it that isn't a heading or inside a code fence. From the repository's
+-- root:
+--
+--   shale tools/chapter_intros.shale
+--
+-- It prints `## <chapter>`, a blank line, the paragraph, a blank line, and so
+-- on for every chapter.
+
+function main()
+  local out = {}
+  local title = nil
+  local para = {}
+  local in_code = false
+  for line in lines(read("book/book.md")) do
+    if starts_with(line, "```") then in_code = not in_code end
+    if not in_code and starts_with(line, "## ") then
+      title = sub(line, 4, #line)
+      para = {}
+    elseif title ~= nil and not in_code then
+      if trim(line) == "" then
+        if #para > 0 then
+          push(out, "## " .. title)
+          push(out, "")
+          push(out, join(para, "\n"))
+          push(out, "")
+          title = nil
+          para = {}
+        end
+      elseif not starts_with(line, "#") then
+        push(para, line)
+      end
+    end
+  end
+  print(join(out, "\n"))
+  return nil
+end
+
+main()
