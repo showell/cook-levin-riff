@@ -713,7 +713,7 @@ Everything so far ran the machine as a program, an interpreter reading its lines
 
 What the gates add is uniformity: one bank serves every program and every input, so the machine becomes a function of bits, the form a formula, a solver or a polynomial can take in.
 
-Part III builds the machine from gates twice, for two jobs: this chapter's track writes one run, input and program both free, as a single formula f of 174 gates, about 35 a line ({{chapter One formula for the whole machine}}), while the hardware track, from {{chapter Parts for a small computer}} on, builds a chip of 59-gate steppers, six to a core of 354 gates, with four cores, one an input, and their comparators making the 1,439-gate decider.
+Part III builds the machine from gates twice, for two jobs. The hardware track, from {{chapter Parts for a small computer}} on, builds a chip from parts you could buy. This chapter's track leads to {{chapter One formula for the whole machine}}, which writes one run, input and program both free, as a single formula.
 
 ### One step, four functions
 
@@ -800,7 +800,7 @@ So the 16 problems, the 16 puzzles of Nibble, are the 16 two-input connectives.
 
 ## Parts for a small computer
 
-**Circuit design. The machine in a new form, as parts you could buy; it stands alone.** Here we help you visualize Steve's toy as an actual physical machine, built from gates you could buy, starting with each instruction drawn as a circuit.
+**Circuit design. The machine in a new form, as parts you could buy; it stands alone.** Here Steve's toy becomes a physical machine, built from gates you could buy, starting with each instruction drawn as a circuit.
 
 This chapter and the two after it build the machine as hardware, a plain digital circuit, from the bottom up. The Boolean view's gates were Python operators; here each one is a part you could buy and solder, so the machine becomes a thing of wires. Each part is drawn once with all its gates, and from then on it is a box with named wires in and out. {{chapter The machine as a circuit}} wires the boxes into a stepper, and {{chapter The circuit, in full}} chains the steppers into the whole machine.
 
@@ -1040,7 +1040,7 @@ The SAT chapters build the same step another way, `sat_step` in `src/sat.c`, in 
 
 ### A stepper as equations
 
-Each gate is one equation: its output named on the left, its gate and inputs on the right, in the order the simulator evaluates them, so each name is defined before it is read. A wire is named for the outermost box that hands it out (`hb'` is the stepper's own output, `decr.hb'` the decrementer's), else for its gate inside its box (`hb_mux.low.pick0`). Here are a stepper's 59, as `circuit_main` prints them. One step of a machine that only counts down and checks for zero already takes a page of gates; skim it and feel the weight, since the next chapter copies it 24 times.
+Each gate is one equation: its output named on the left, its gate and inputs on the right, in the order the simulator evaluates them, so each name is defined before it is read. A wire is named for the outermost box that hands it out (`hb'` is the stepper's own output, `decr.hb'` the decrementer's), else for its gate inside its box (`hb_mux.low.pick0`). Here are a stepper's 59, as `circuit_main` prints them. One step of a machine that only counts down and checks for zero already takes a page of gates. Skim it for its length, since the next chapter copies it 24 times.
 
 ```text
 inputs: hb lb halted accepted op_hb op_lb
@@ -1238,7 +1238,7 @@ One wire, `decides`, carries the whole answer.
 
 ## The circuit as equations
 
-**Circuit design. Big output to skim; it needs {{chapter The circuit, in full}}.** You get the whole decider as 1,439 equations, every gate of it, because here seeing is believing.
+**Circuit design. Big output to skim; it needs {{chapter The circuit, in full}}.** You get the whole decider as 1,439 equations, every gate of it, printed so you can see how much circuit a two-bit machine's checker takes.
 
 {{chapter The circuit, in full}} draws the decider as boxes. This chapter writes every gate of it as one Boolean equation, 1,439 in all. Boxes hide their gates; equations show every one as a line of text that a separate program can read back and run. The names are those of {{chapter The machine as a circuit}}, led by the core and the step: `core2.step3.hb'` is core 2's high bit of `AX` after line 3. The 16 inputs come first, then each core's input as two constants, `core2.in_hb = 1`, and the last line is `decides`.
 
@@ -1313,7 +1313,7 @@ v1 .. v12          v13 v14  f
 01 10 10 01 10 01   1   1  1
 ```
 
-Half a million characters for a two-bit machine, as Boolean text. The polynomial `accepted` of {{chapter The delightful monstrosity}} also runs past half a million characters, 510,387, and it is a different object: a sum of 10,324 terms with integer coefficients, like terms already summed. Keep that number in mind when the formula goes to a solver.
+That is half a million characters of Boolean text for a machine with a two-bit register. The polynomial `accepted` of {{chapter The delightful monstrosity}} also runs past half a million characters, 510,387, and it is a different object: a sum of 10,324 terms with integer coefficients, like terms already summed. Keep that number in mind when the formula goes to a solver.
 
 ## The SAT solver
 
@@ -1489,7 +1489,7 @@ Every bit here was given, so the check only computes: a tool that knows clauses 
 
 **Circuit design, then SAT solving. New results; it needs {{chapter Checking a claim}} and {{chapter The circuit as equations}}.** We show why naming gates beats multiplying them out: 1,400 clauses against 3,869, the first growing in a straight line with the steps and the second exponentially.
 
-{{chapter The circuit as equations}} writes the decider as 1,439 gates. This chapter turns those equations into CNF with a small Roc library, `roc/Cnf.roc`, and hands claims about the decider to rocsat, which evaluates them. What this adds is the decider in a solver's own language, and a first look at how big the two ways of writing it get. The encoding is the one {{chapter Checking a claim}} uses on the 14-bit machine, now applied to the whole decider.
+{{chapter The circuit as equations}} writes the decider as 1,439 gates. This chapter turns those equations into CNF with a small Roc library, `roc/Cnf.roc`, and hands claims about the decider to rocsat, which evaluates them. What this adds is the decider in a solver's own format, and a first look at how big the two ways of writing it get. The encoding is the one {{chapter Checking a claim}} uses on the 14-bit machine, now applied to the whole decider.
 
 ### The library
 
@@ -1857,7 +1857,7 @@ Each of the six lines, on each of the four cores, is such a stepper, wired to th
 
 Unit propagation is the formula run as a program: once the 12 program bits are given, each gate's clauses compute its output, the way a spreadsheet recomputes its cells.
 
-*Proof.* The proof uses propagation alone. For every problem, set the program bits to each of the 4,096 programs in turn and unit-propagate them through the formula. Each gate's inputs come before it, so propagation alone decides every Tseitin variable. The assignments that survive are exactly the programs the machine says decide the problem, 4,096 over the 16 problems, and with a length bound, exactly those that short.
+*Proof.* For every problem, set the program bits to each of the 4,096 programs in turn and unit-propagate them through the formula. Each gate's inputs come before it, so propagation alone decides every Tseitin variable. The assignments that survive are exactly the programs the machine says decide the problem, 4,096 over the 16 problems, and with a length bound, exactly those that short.
 
 ```text Run it
 $ out/tcc/test_sat
@@ -2064,7 +2064,7 @@ The second is rocsat's answer, its statistics line, its verdict and a value for 
 
 So the two boxes below and the two proofs in the appendix hold 1,216 clauses, 416 values and 776 lemmas to settle three facts that each fit in a sentence: program 1689 solves {0, 2, 3}, every program of five lines fails it, and every program of four lines fails {2, 3}.
 
-**Monstrosity 4: one puzzle as 1,216 clauses.** The CNF of {0, 2, 3}, 15,994 bytes on 1,243 lines, written by `src/sat_main.c` at the book's build: 416 variables, to ask which of 4,096 six-line programs solves one puzzle with four inputs.
+**Monstrosity 4: one puzzle as 1,216 clauses.** The CNF of {0, 2, 3}, 15,994 bytes on 1,243 lines, written by `src/sat_main.c` at the book's build: 416 variables, to ask which of 4,096 six-line programs solves one puzzle with four inputs. Skim it and rocsat's answer after it, glance at the first 12 values of the answer, and move on.
 
 ### The formula of {0, 2, 3}
 
