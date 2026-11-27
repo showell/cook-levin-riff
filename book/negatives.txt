@@ -35,7 +35,6 @@ logic: Each AND and OR becomes a Tseitin variable, tied to its inputs by three c
 logic: NOT
 guarantee: No program of five or fewer lines decides {0, 2, 3}.
 guarantee: Nothing is padded, nothing is added and taken away again, and no polynomial is squared to grow it.
-guarantee: - the run **rejects implicitly** when it gets past the sixth instruction with neither of them having seen 00.
 logic: Three kinds of gate are allowed, AND, OR and NOT, and every part is made of them alone.
 logic: The drawings use the standard symbols: AND is a D, OR a shield, NOT a triangle with a bubble.
 logic: An OR followed by a NOT is drawn as one shield with a bubble, a NOR; it still counts as two gates.

@@ -2,8 +2,6 @@
 
 A small book about [cook-levin-riff](https://github.com/showell/cook-levin-riff): a toy machine whose every program is a polynomial and a Boolean formula, the six-step composition that took three years to arrive, and five independent ways of computing the same answers that all agree.
 
-Some problems are easy to check and hard to solve: an answer can be confirmed in moments, but finding one can mean a search that doubles with every step. That gap is what makes computation feel intractable, and it is the question at the heart of P versus NP. This book doesn't answer that question. It makes the gap visible on a machine small enough to hold in your head, and along the way it tries a few ways around it, which sometimes help and sometimes only show how wide the gap is.
-
 The book is meant to be skimmed. Each chapter opens with a guidepost, in bold, saying what kind of chapter it is and what earlier chapter it needs, so you can jump in anywhere. The guidepost starts with the chapter's frame, the way it looks at the machine: ordinary computation, circuit design, mathematics, complexity theory or SAT solving. Where a chapter changes frame partway through, a line in italics says so. This list is the whole book in one line a chapter, the kind in italics:
 
 **Part I, the toy:**
@@ -66,9 +64,7 @@ The book is meant to be skimmed. Each chapter opens with a guidepost, in bold, s
 - {{chapter What comes next}}: the steps still open. *Open steps.*
 - {{chapter Appendix: two DRAT proofs}}: two proofs of impossibility, whole. *Big output to skim.*
 
-**The monstrosities.** This machine fits on an index card: one two-bit register, four instructions, six lines. Yet it keeps producing monsters, and we have numbered them proudly, like theorems. The question "does this program accept this input?", composed through six steps, becomes one polynomial of 510,387 characters (Monstrosity 6). Wiring the same machine as gates takes 1,439 equations (Monstrosity 1). Ask whether the 4-bit Nibble++ can decide is_not_14 in 27 lines, and the answer, that every 27-line program fails, comes backed by a proof of 17,192,870 bytes that our own checker replays line by line (Monstrosity 7), while the answer at 28 lines is a program of 56 bits that you check by running it. That gap is NP's in miniature: a yes has a short certificate, and the best known evidence the other way can be enormous. Skim the monsters, marvel, and move on: each one is the hidden complexity in simple things.
-
-Here they all are, each shown because its size is the point:
+**The monstrosities.** Here they all are, each shown because its size is the point:
 
 - Monstrosity 1: the decider as 1,448 lines of equations, in {{chapter The circuit as equations}}.
 - Monstrosity 2: the proof that five lines are too few for {0, 2, 3}, in {{chapter Appendix: two DRAT proofs}}.
@@ -80,68 +76,19 @@ Here they all are, each shown because its size is the point:
 
 ## Introduction
 
-Steve Howell devised a virtual machine with a single two-bit register, `AX`, and four instructions: `nada`, `zero`, `decr` and `mod2`. Every program is exactly six of those instructions. A run starts with `AX` holding the input, a number from 0 to 3, and ends in one of three ways:
+**Every frame. Start here; it stands alone.** Some problems are easy to check and hard to solve: an answer can be confirmed in moments, but finding one can mean a search that doubles with every step. That gap is what makes computation feel intractable, and it is the question at the heart of P versus NP. This book doesn't answer that question. It makes the gap visible on a machine small enough to hold in your head, and along the way it tries a few ways around it, which sometimes help and sometimes only show how wide the gap is.
 
-- **`zero` accepts** the input, the moment it finds `AX` at 00;
-- **`decr` rejects** it, the moment it finds `AX` at 00 (otherwise it takes 1 from `AX`);
-- the run **rejects implicitly** when it gets past the sixth instruction with neither of them having seen 00.
+**The thesis.** The Cook-Levin theorem turns any fast checker into one Boolean formula, so that a question about the checker becomes a question about the formula. This book does that to a toy machine, all the way through, and checks every step. **Its thesis: the machine and its Cook-Levin translation answer every question the same way**, whether the machine runs as a program, is wired as gates, is written as clauses for a SAT solver or is composed into polynomials. The method is a developer's: brute force first, since the toy is small enough to run everything, and refinement after, once the brute force has shown what is there. Steve's 2023 Python first checked that agreement on a handful of programs; this repository checks it on all of them, and finishes the composition he stopped short of ({{chapter Six steps composed}}).
 
-`nada` leaves `AX` as it is, and `mod2` takes 2 from `AX` when it is 2 or 3. So each program sorts the four inputs into accepted and rejected, and the accepted ones are the set the program decides. Complexity theory calls such a set a *formal language* or a *decision problem*; this book calls each of the 16 subsets of {0, 1, 2, 3} a *problem*. The machine is small enough that every program, every input and every step can be listed, 4,096 programs, so every claim about it can be checked by running all of them.
+**The machine is called Nibble.** Steve Howell invented it in March 2023: one two-bit register, `AX`, four instructions, `nada`, `zero`, `decr` and `mod2`, and programs exactly six lines long. Nibble is also the name of its assembly language and of the puzzle page where you can play it. A program accepts some of the inputs 0 to 3 and rejects the rest, so it decides one of 16 problems, and there are only 4,096 programs, so every claim about the machine can be checked by running all of them. Its bigger sibling, Nibble++, has a four-bit `AX` and programs of any length: 65,536 problems, and far too many programs to list, which is where brute force starts to strain. {{chapter The machine}} gives the rules in one page.
 
-Once the plain machine worked, Steve used techniques inspired by the Cook-Levin proof to answer the same questions with polynomials. Each step of the machine becomes four polynomials in the state's bits and the instruction's bits, so that evaluating them at 0s and 1s gives the next state. Chained through all six steps, they become polynomials that answer "does this program accept this input?" for every program and every input at once.
+**A fair objection, answered early.** A fixed, finite machine answers every question by a table lookup, in constant time, so where does asymptotic theory get a grip? {{chapter Nibble, sized}} answers it: it gives the machine two sizes, a register of n bits and a program of k lines, and lets them grow, so that P and NP have something to measure.
 
-Then Steve proved that the Cook-Levin machinery matches the toy. His Python's search runs each problem's example program twice, once on the interpreter and once through the step polynomials, and checks that the two give the same verdicts. Three pieces of his Python, quoted as they stand in [virtual-machine](https://github.com/showell/virtual-machine) at commit [94c3d31](https://github.com/showell/virtual-machine/commit/94c3d31), carry the whole idea. First, logic becomes arithmetic ([stepper.py, lines 8 to 17](https://github.com/showell/virtual-machine/blob/94c3d31/stepper.py#L8-L17)):
+**Program 1689 is your guide.** It is `zero, decr, decr, zero, decr, zero`, the one program that decides {0, 2, 3}. In base 4, 1689 is 122121, one digit a line, with `zero` as 1 and `decr` as 2: the number is the program. Each chapter that shows the machine in a new form shows 1689 in it too, in a box headed "1689, here", so a reader who follows the boxes alone sees the whole reduction, from a run to a satisfying assignment. The Nibble++ chapters follow is_not_14's 28-line program the same way, in boxes headed "is_not_14, here".
 
-```python
-def NOT(x):
-    return 1 - x
-
-
-def AND(x, y):
-    return x * y
-
-
-def OR(x, y):
-    return (x + y) - (x * y)
-```
-
-Second, a program runs through the step polynomials instead of the interpreter, each step evaluating them at the state's 0s and 1s ([stepper.py, lines 147 to 158](https://github.com/showell/virtual-machine/blob/94c3d31/stepper.py#L147-L158)):
-
-```python
-def test_with_stepper(program, ax):
-    AX = ax
-    halted = False
-    accepted = False
-    for cmd in program:
-        (AX, halted, accepted) = step(
-            AX=AX,
-            halted=halted,
-            accepted=accepted,
-            op=OPS[cmd],
-        )
-    return accepted
-```
-
-Third, the assertions, in `find_solutions` ([virtual_machine.py, lines 159 to 160 and 178 to 180](https://github.com/showell/virtual-machine/blob/94c3d31/virtual_machine.py#L159-L180)). After running all 4,096 programs on the interpreter, every one of the 16 problems must have a program, and each problem's example program, run through the polynomials on each input, must accept exactly the problem's inputs:
-
-```python
-    for y in range(16):
-        assert len(solutions[y]) > 0
-```
-
-```python
-        for i in range(4):
-            accepted = stepper.test_with_stepper(example_program, i)
-            assert accepted == (i in lang)
-```
-
-**That agreement is the thesis of this book: the machine and its Cook-Levin translation answer every question the same way.** Everything after it widens the check. The C runs both on all 4,096 programs and all four inputs; the six steps are chained into four polynomials that agree with the machine on all 2^14 points; a SAT solver, given the same machine as a formula, finds exactly the machine's programs; and the Python, the C and the Roc compute the same answers. His Python evaluated the step polynomials one step at a time and stopped short of composing all six into one polynomial; this repository finishes the composition ({{chapter Six steps composed}}).
+**The monstrosities.** This machine fits on an index card: one two-bit register, four instructions, six lines. Yet it keeps producing monsters, and we have numbered them proudly, like theorems. The question "does this program accept this input?", composed through six steps, becomes one polynomial of 510,387 characters (Monstrosity 6). Wiring the same machine as gates takes 1,439 equations (Monstrosity 1). Ask whether the 4-bit Nibble++ can decide is_not_14 in 27 lines, and the answer, that every 27-line program fails, comes backed by a proof of 17,192,870 bytes that our own checker replays line by line (Monstrosity 7), while the answer at 28 lines is a program of 56 bits that you check by running it. That gap is NP's in miniature: a yes has a short certificate, and the best known evidence the other way can be enormous. Skim the monsters, marvel, and move on: each one is the hidden complexity in simple things, and the front page lists all seven.
 
 Steve wrote the first version by hand in Python, in [virtual-machine](https://github.com/showell/virtual-machine): the machine (`virtual_machine.py`), a general polynomial library (`poly.py`) and a stepper that writes one step of the machine as polynomials (`stepper.py`). The machine is Steve's invention; the code in this repository, written by AI coding agents (Claude) with human supervision, departs from the 2023 Python wherever a cleaner choice turned up, and its choices are this book's own. Each language has one role, which {{chapter Roc is our lingua franca}} sets out.
-
-One program runs through the book as its guide: program 1689 (`zero, decr, decr, zero, decr, zero`), the one program that decides {0, 2, 3}. Each chapter that shows the machine in a new form shows 1689 in it too, in a box headed "1689, here", so a reader who follows the boxes alone sees the whole reduction, from a run to a satisfying assignment. The Nibble++ chapters follow is_not_14's 28-line program the same way, in boxes headed "is_not_14, here".
-
-The theorems are numbered through the book, each checked by a run that its proof names.
 
 ### Why the name fits
 
@@ -203,7 +150,7 @@ Every behaviour of the machine is in those 26 lines. The rest of this part only 
 - **`decr`** takes 1 from `AX`, and rejects when `AX` is already 0.
 - **`mod2`** takes 2 from `AX` when it is 2 or 3, leaving its last bit.
 
-A run that reaches the end of its six instructions rejects. So a program accepts some of the four inputs and rejects the rest, and the set it accepts is the problem it decides.
+A run that reaches the end of its six instructions rejects. So a program accepts some of the four inputs and rejects the rest, and the set it accepts is the problem it decides. Complexity theory calls such a set a *formal language* or a *decision problem*; this book calls each of the 16 subsets of {0, 1, 2, 3} a *problem*.
 
 ### One program, input by input
 
@@ -313,7 +260,7 @@ This machine only reads and moves right, so it is also a finite automaton; Turin
 
 ### This book's machine
 
-The machine here is Turing's idea at its smallest. Its tape is one 2-bit register, its inputs are the four strings 0, 1, 2 and 3, and every run halts within six steps, so every question about it is decidable by trying everything. Its formal languages are the 16 subsets of {0, 1, 2, 3}, the problems of the Introduction, which a program, a circuit and a SAT formula each decide alike. A program decides exactly one of them, the set of inputs it accepts. {{chapter Programs as formal languages}} asks which programs decide which problems, by running all of them. {{chapter P and NP}} asks what deciding costs when trying everything is out of reach, and {{chapter P, NP and Cook-Levin}} gives Cook and Levin's answer.
+The machine here is Turing's idea at its smallest. Its tape is one 2-bit register, its inputs are the four strings 0, 1, 2 and 3, and every run halts within six steps, so every question about it is decidable by trying everything. Its formal languages are the 16 subsets of {0, 1, 2, 3}, the problems of {{chapter The machine}}, which a program, a circuit and a SAT formula each decide alike. A program decides exactly one of them, the set of inputs it accepts. {{chapter Programs as formal languages}} asks which programs decide which problems, by running all of them. {{chapter P and NP}} asks what deciding costs when trying everything is out of reach, and {{chapter P, NP and Cook-Levin}} gives Cook and Levin's answer.
 
 ## Deciding in plain Python
 
@@ -2007,7 +1954,22 @@ The stepper writes one step of the machine as polynomials, the first of the two 
 - x AND y is x·y;
 - x OR y is x + y - x·y.
 
-On 0/1 values each of these gives 0 or 1, and the right one. In Roc (`roc/Stepper.roc`) the first and third read as they are written:
+On 0/1 values each of these gives 0 or 1, and the right one. Steve's 2023 stepper wrote them first, as three Python functions ([stepper.py, lines 8 to 17](https://github.com/showell/virtual-machine/blob/94c3d31/stepper.py#L8-L17)):
+
+```python
+def NOT(x):
+    return 1 - x
+
+
+def AND(x, y):
+    return x * y
+
+
+def OR(x, y):
+    return (x + y) - (x * y)
+```
+
+ In Roc (`roc/Stepper.roc`) the first and third read as they are written:
 
 {{function roc/Stepper.roc complement}}
 
@@ -2057,12 +2019,42 @@ Evaluated at the bits of a state and an instruction, the four polynomials give t
 
 **Theorem 11.** On every one of the 4,096 programs and each of the four inputs, the stepper, evaluating the step polynomials one step at a time, accepts exactly when `run_progam` does.
 
-*Proof.* Run all 16,384 pairs both ways, on the general ring's polynomials: the two agree on every pair, and 5,596 pairs accept. The Python's `find_solutions` makes the same check on each problem's example program alone, 16 programs on 4 inputs.
+*Proof.* Run all 16,384 pairs both ways, on the general ring's polynomials: the two agree on every pair, and 5,596 pairs accept.
 
 ```text Run it
 $ out/tcc/test_cross_check
 tests/test_cross_check.c: 1 tests passed
 the test: every_program_on_every_input_the_stepper_agrees_with_run_progam
+```
+
+The check began as Steve's. His `test_with_stepper` runs a program through the step polynomials, each step evaluating them at the state's 0s and 1s ([stepper.py, lines 147 to 158](https://github.com/showell/virtual-machine/blob/94c3d31/stepper.py#L147-L158)):
+
+```python
+def test_with_stepper(program, ax):
+    AX = ax
+    halted = False
+    accepted = False
+    for cmd in program:
+        (AX, halted, accepted) = step(
+            AX=AX,
+            halted=halted,
+            accepted=accepted,
+            op=OPS[cmd],
+        )
+    return accepted
+```
+
+Then `find_solutions` asserts, after running all 4,096 programs on the interpreter, that every problem has a program and that each problem's example program, run through the polynomials on each input, accepts exactly the problem's inputs ([virtual_machine.py, lines 159 to 160 and 178 to 180](https://github.com/showell/virtual-machine/blob/94c3d31/virtual_machine.py#L159-L180)), 16 programs on 4 inputs:
+
+```python
+    for y in range(16):
+        assert len(solutions[y]) > 0
+```
+
+```python
+        for i in range(4):
+            accepted = stepper.test_with_stepper(example_program, i)
+            assert accepted == (i in lang)
 ```
 
 ```text 1689, here: the step polynomials, evaluated once a line
@@ -2173,7 +2165,7 @@ Every polynomial here comes from the machine's logic by the three rules of {{cha
 
 ### Why six
 
-A program is six lines, and each line is one step of the machine, so the whole program is the step composed six times: step 1's four polynomials substituted into step 2's, and on to step 6. Fewer substitutions describe only the first lines of a run; six reach every run's end. Steve's Python took the same six steps by evaluating the step polynomials once a line (`test_with_stepper`, quoted in the Introduction). The composition takes them by algebra, before any input or program is known, so its 14 variables are the input's two bits, `h0` and `l0`, and the program's twelve, `op1_hb` to `op6_lb`.
+A program is six lines, and each line is one step of the machine, so the whole program is the step composed six times: step 1's four polynomials substituted into step 2's, and on to step 6. Fewer substitutions describe only the first lines of a run; six reach every run's end. Steve's Python took the same six steps by evaluating the step polynomials once a line (`test_with_stepper`, quoted in {{chapter Arithmetization}}). The composition takes them by algebra, before any input or program is known, so its 14 variables are the input's two bits, `h0` and `l0`, and the program's twelve, `op1_hb` to `op6_lb`.
 
 ### The check, first
 
