@@ -209,7 +209,10 @@ ranges, {0–13, 15}) and its code of the 65,536. The names are predicates,
 its set exactly; `web/plus_names.c` names all 65,536 ahead of time, the
 page's table `plus_names.bin` keeps the 54,461 of cost 4 or less, and
 `web/plus_names_check.c` parses every name back to its set
-(`docs/NIBBLE_PLUS_NAMES.md`).
+(`docs/NIBBLE_PLUS_NAMES.md`). Under the box, an elegance rating, a joke
+with a rule: five stars for a name of cost 1 down to two for cost 4, one
+for a language the table doesn't name, and a dry line to go with them
+(`docs/NIBBLE_PLUS_NAMES.md`, "The elegance rating").
 Its number is two bits a line, line 1 first, up to 60 bits, so the page
 keeps it as a BigInt; a number typed in loads into the lines there are.
 Its machine is `roc/PlusWasm.roc`, `roc/Plus.roc` behind `status(n, code,

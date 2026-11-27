@@ -116,6 +116,37 @@ is `is_mult_of_4_or_small_prime_or_at_least_14`; {0, 2, 4, 5, 7, 8, 11}
 costs 5 (`is_medium_prime_or_mult_of_8_or_2_or_4`), so the page doesn't
 name it.
 
+## The elegance rating
+
+Under the language, the page rates how elegant the program is. It is a
+joke, but a joke with a rule: the rating is the cost of the language's
+name, and nothing else. How long the program is, or how many of its lines
+do nothing, doesn't count.
+
+| the name's cost | stars | its lines |
+|---|---|---|
+| 1 | ★★★★★ | "Dijkstra would nod." "Says it in one word." "Clean as a whistle." |
+| 2 | ★★★★☆ | "Clean enough to frame." "Two words, no wasted breath." "Neat, with a little flourish." |
+| 3 | ★★★☆☆ | "It works, and it knows it." "Respectable. Mostly." "Fine print, but legible." |
+| 4 | ★★☆☆☆ | "A program only its author could love." "Reads like a tax form." "Has strong opinions about some numbers." |
+| no name on the page | ★☆☆☆☆ | "Spaghetti, al dente." "There's no short way to say this." "A list pretending to be a rule." |
+
+A language gets the line its number picks (the number mod 3), so it
+always reads the same. Six languages have a line of their own, with the
+stars their cost gives (all cost 1):
+
+- `grumpy`: "Accepts nothing. Commitment issues? No: standards."
+- `always_true`: "Accepts everything. Not picky, just kind."
+- `is_even`: "Every other number, starting at zero. Textbook."
+- `is_odd`: "Odd, in the best possible way."
+- `is_prime`: "Prime real estate."
+- a single number, `is_9`: "Only 9 will do. Picky, and proud of it."
+
+The page reads the cost from the table: a name's tokens but `and`, `or`
+and `except` (whose number counts instead). `plus_names_check` holds that
+count to the tsv's cost for every name, and the page check pins ratings
+of five, three, two and one star, three of the specials among them.
+
 ## The page's table
 
 `plus_names.bin`, 389,985 bytes (151 KB gzipped): first its 197 tokens,
