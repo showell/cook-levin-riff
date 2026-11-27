@@ -1560,6 +1560,8 @@ Nibble++ keeps `zero`, `decr` and `mod2` with their rules, and gives `nada`'s co
 
 `mod2` stays for two reasons: the four codes fill the two bits exactly, and the machine stays continuous with the toy.
 
+Try it in the [Nibble++ playground](https://roc.lynrummy.com/nibble/plus.html): seven lines on all 16 inputs, opening on `zero, decr, zero, decr, zero, decr, decr`, which decides {0, 1, 2}.
+
 ### Searching states
 
 The longest shortest program has 28 lines, and there are 4^28 = 2^56 programs of that length. The census searches states instead. A state is the whole machine on all 16 inputs at once: each input's `AX`, or accepted, or rejected. Two programs that reach the same state have the same futures, so the search keeps each state once, at the length that first reaches it, and grows the states a line at a time, breadth first. A state's formal language is the set of its accepted inputs, so a formal language's shortest length is the first level where a state with that language appears, and following a state back to its parents gives a witness program. `tests/test_census.c` runs every witness on the interpreter, and checks the census against every program of up to 9 lines. The four censuses below took 0.67 seconds together, run by `src/plus_book_main.c` while this chapter was written:
