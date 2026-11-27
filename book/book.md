@@ -740,7 +740,7 @@ step 6  zero 01  0  0      0        1
 
 Whether a program decides a problem is more gates of the same kind. Run the six ticks once for each input, four copies side by side, and each copy leaves one `accepted` bit. The problem enters only here, as four more bits, the *want* bits: input n's bit is 1 when n is in the problem. Each `accepted` bit is compared with its want bit, a gate that gives 1 when the two agree, and one AND of the four comparisons is the verdict. For the program above and the problem {1, 2, 3}, the four `accepted` bits are 0, 1, 1, 1, the want bits are 0, 1, 1, 1, and the verdict is 1. The gates matched bits; what {1, 2, 3} is stayed outside them.
 
-{{chapter One formula for the whole machine}} keeps the same gates and the same six ticks, and leaves every bit unknown.
+Seen from outside the gates, though, each problem turns out to be a two-input gate of its own.
 
 ## The problems, seen from outside
 
@@ -1631,7 +1631,7 @@ The stepper's gates as the SAT encoding builds them, in `sat_step` (`src/sat.c`)
 
 `tests/test_sat.c` holds these gates to the machine's step on all 64 settings of the stepper's six input wires. The whole circuit comes to 404 gates over the 12 unknown program bits, fewer than 24 steppers' 816, for the reasons {{chapter The step's encodings}} gives.
 
-{{chapter Cook-Levin as SAT}} takes the last step: each gate becomes three clauses, the required output becomes four more, and the circuit becomes one formula for a SAT solver.
+The tableau is still empty here; filling it in, for one program and then for all of them, comes next.
 
 ## The tableau, filled in
 
