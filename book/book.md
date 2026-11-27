@@ -209,6 +209,8 @@ start        AX=0    AX=1    AX=2    AX=3
 decides {0, 2, 3}
 ```
 
+That's the whole machine. Every chapter after this is the same six lines, seen from somewhere new.
+
 ## Roc is our lingua franca
 
 **Ordinary computation. Tools and history; it needs {{chapter The machine}}.** Here is which programming language does which job in this book, and why Roc does most of them.
@@ -464,6 +466,8 @@ the test: decr_and_its_accepting_twin_decide_every_language_in_four_lines
 the test: one_instruction_decides_at_most_five_languages_at_any_length
 ```
 
+So the toy carries one instruction more than it needs, and a different design would settle every problem in four lines.
+
 ## Nibble, the puzzle page
 
 **Ordinary computation, in the browser. The machine shown another way; it stands alone.** This is where you play the machine yourself: sixteen puzzles, one for each problem, ramped so that a newcomer gets through all of them.
@@ -534,6 +538,8 @@ A second page, the [sandbox](https://roc.lynrummy.com/nibble/sandbox.html), drop
 01 10 10 01 10 01  (#1689) | is_not_one {0, 2, 3}
 accept | reject | accept | accept
 ```
+
+Play a few puzzles before reading on: the next part asks how hard they really are.
 
 ## P and NP
 
@@ -855,6 +861,8 @@ v1 .. v12          v13 v14  f
 01 10 10 01 10 01   1   1  1
 ```
 
+Half a million characters for a two-bit machine. Keep that number in mind when the formula goes to a solver.
+
 ## The SAT solver
 
 **SAT solving. Tools and history; it stands alone.** We introduce rocsat, the outside oracle this book trusts least and checks most, and the only two questions we ever ask it.
@@ -922,6 +930,8 @@ The script stops at the first answer other than the one it expects. Each script 
 | {{chapter From equations to CNF}} | `solve`, with every input fixed, so the search only evaluates the circuit | program 1689 deciding {0, 2}: UNSATISFIABLE |
 | {{chapter Cook-Levin as SAT}} | `solve`, with the program's bits free: find the programs | UNSATISFIABLE once every program is found, and one line below each shortest length |
 | {{chapter Solved by hand}}, {{chapter The solver's work, in full}} | `solve`, with a DRAT proof | the proofs behind those UNSATISFIABLE answers |
+
+Every claim the solver confirms here comes paired with its opposite, refused.
 
 ## Checking a claim
 
@@ -1135,6 +1145,8 @@ The latches: two ORs
 | 1 | 0 | 1 |
 | 1 | 1 | 1 |
 
+Those are all the parts. Next we wire them into one step of the machine.
+
 ## The machine as a circuit
 
 **Circuit design. The machine shown another way; it needs {{chapter Parts for a small computer}}.** We wire the parts into one step of the machine, a 59-gate stepper you can trace with a finger, and print every one of its gates.
@@ -1309,6 +1321,8 @@ halted' = halted OR halts_mux.out
 accepted' = accepted OR accepts_mux.out
 ```
 
+Fifty-nine gates make one step; six steps make the machine.
+
 ## The circuit, in full
 
 **Circuit design. The machine shown another way; it needs {{chapter The machine as a circuit}}.** We chain six steppers into the whole machine and set four machines side by side, so that one wire lights up exactly when a program solves a puzzle.
@@ -1436,6 +1450,8 @@ core  accepted  want  same?
 decides = 1
 ```
 
+One wire, `decides`, carries the whole answer.
+
 ## The circuit as equations
 
 **Circuit design. Big output to skim; it needs {{chapter The circuit, in full}}.** You get the whole decider as 1,439 equations, every gate of it, because here seeing is believing.
@@ -1450,6 +1466,8 @@ decides = 1
 circuit_main equations: every gate of the decider, in evaluation order
 1439
 ```
+
+That is every gate. From here on, only their count matters.
 
 ## From equations to CNF
 
@@ -1719,6 +1737,8 @@ read two bits a line:     01 10 10 01 10 01, program 1689
 sat 13 len=5: UNSATISFIABLE, its DRAT proof 286 lemmas
 ```
 
+Next we solve the smallest of these formulas with a pencil.
+
 ## Solved by hand
 
 **SAT solving, on paper. The machine shown another way; it needs {{chapter Cook-Levin as SAT}}.** We solve the smallest puzzle's formula on paper and read the first lemmas of the hardest one's proof as plain statements about programs.
@@ -1780,7 +1800,7 @@ The first two restate the length bound, and the next four decode line 6 as `nada
 
 ## The solver's work, in full
 
-**SAT solving. Big output to skim; it needs {{chapter Cook-Levin as SAT}}.** Here is one puzzle as rocsat saw it, whole: the formula of {0, 2, 3} and rocsat's answer, with all 15 of its proofs of impossibility measured and checked again at every build; the appendix prints two of those proofs line by line.
+**SAT solving. Big output to skim; it needs {{chapter Cook-Levin as SAT}}.** Here is one puzzle as rocsat saw it, whole: the formula of {0, 2, 3} and rocsat's answer, with all 15 proofs of impossibility measured and checked at every build; the appendix prints two of those proofs line by line.
 
 ### Where the files come from
 
@@ -1843,6 +1863,8 @@ the CNF of {0, 2, 3}, written by src/sat_main.c at the book's build
 rocsat's answer to that CNF, as sat/oracle.shale kept it
 416
 ```
+
+That is one puzzle, whole.
 
 ## The program left unknown
 
@@ -2087,6 +2109,8 @@ input  accepted after line 1 2 3 4 5 6  test_with_stepper
 3                           0 0 0 0 0 1  accepts
 ```
 
+One step is four small polynomials. The next chapter chains six of them.
+
 ## Six steps composed
 
 **Mathematics. New results, the book's thesis; it needs {{chapter Arithmetization}}.** We compose all six steps into four polynomials, describe the one that answers every question at once, and prove that they agree with the machine at all 16,384 points.
@@ -2161,6 +2185,8 @@ input  hb  lb  halted  accepted
 3      0   0   0       1
 ```
 
+Those are the polynomials at work. The next chapter shows one of them in full.
+
 ## The delightful monstrosity
 
 **Mathematics. Big output to skim; it needs {{chapter Six steps composed}}.** Here is the polynomial in full view: `accepted`, 10,324 terms and 510,387 characters that answer every question about a two-bit machine at once, and then the same polynomial evaluated by hand at program 1689.
@@ -2200,6 +2226,8 @@ input  terms of the 10,324 that are 1 there  their coefficients' sum
 2      76                                     1
 3      157                                    1
 ```
+
+Four verdicts from ten thousand terms, and each one matches the machine.
 
 ## Nibble++
 
@@ -2338,6 +2366,8 @@ lines 22 to 28: decr zero decr zero decr mod2 zero
 input          0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
 accepted at    1  3  5  7  9 11 13 15 17 19 21 23 25 28  - 28
 ```
+
+Programs this long invite a question: is there a formula for the shortest length? For two of the instructions, there is.
 
 ## Two theorems about Nibble++
 
@@ -2660,6 +2690,8 @@ Four methods have now answered the same questions, and each wins somewhere:
 | Guided search | a few inputs settle the question | 2 to 4 inputs settled the short cases; the long ones needed nearly all 16 |
 | A theorem | one exists | Theorem 13 gives every shortest length for {zero, decr}, for any number of inputs, by a formula, and says why |
 
+Each method earns its place here, and the census stays the judge the others answer to.
+
 ## The oracles
 
 **Ordinary computation. Tools and history; it stands alone.** We show you five separate ways of computing the same answers, which is why you can believe the numbers in this book.
@@ -2742,6 +2774,8 @@ The C's CPU time, best of five runs on 2026-11-27, the polynomials byte for byte
 | with the overflow builtin | 99 ms |
 | with both | 52 ms |
 
+The C learned the Roc port's trick and ran four times faster for it.
+
 ## How it got here
 
 **Every frame. Tools and history, safe to skip; it stands alone.** We tell how Steve built the toy in four days of March 2023, how far his polynomials got, and the afternoon in 2026 when all six steps finally composed.
@@ -2823,3 +2857,5 @@ rocsat's DRAT proof that the CNF of {0, 2, 3} at length 5 is unsatisfiable
 rocsat's DRAT proof that the CNF of {2, 3} at length 4 is unsatisfiable
 490
 ```
+
+That is the last lemma, and the end of the book.
