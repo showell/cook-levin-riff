@@ -35,7 +35,6 @@ This list is the whole book in one line a chapter, the kind in italics:
 
 - {{chapter The Boolean view}}: the toy as a chip sees it. *The machine shown another way.*
 - {{chapter The problems, seen from outside}}: the 16 puzzles are the 16 two-input gates. *New results.*
-- {{chapter The step's encodings}}: every version of the step, side by side. *The machine shown another way.*
 - {{chapter One formula for the whole machine}}: the whole machine as one formula of 14 bits. *The machine shown another way.*
 - {{chapter The SAT solver}}: rocsat and the two questions we ask it. *Tools and history.*
 - {{chapter Checking a claim}}: a claim about a program, checked by a solver. *The machine shown another way.*
@@ -73,6 +72,7 @@ This list is the whole book in one line a chapter, the kind in italics:
 - {{chapter How it got here}}: the toy in four days of 2023, and its polynomials composed in 2026. *Tools and history.*
 - {{chapter What the toy taught us}}: Cook-Levin as it looks from inside the toy, in one page. *A review.*
 - {{chapter What comes next}}: the steps still open. *Tools and history.*
+- {{chapter Appendix: the step's encodings}}: every version of the step, side by side, a reference table. *The machine in every form at once.*
 - {{chapter Appendix: two DRAT proofs}}: two of those proofs, printed lemma by lemma. *Big output to skim.*
 
 **The monstrosities.** Here they all are, each shown because its size is the point:
@@ -794,58 +794,6 @@ the test: the_16_languages_are_the_16_boolean_functions_of_two_bits
 
 So the 16 problems, the 16 puzzles of Nibble, are the 16 two-input connectives.
 
-## The step's encodings
-
-**Every frame at once. The machine shown another way, as a reference table; it needs {{chapter The Boolean view}}.** We put every version of the machine's step side by side, from Python to polynomials, with its gate count and its variables, so each 34 or 174 in this book has one home; come back to it whenever the counts blur.
-
-The machine's step appears in this book in seven forms, each built for a different job, and each counts its parts its own way. This chapter is the one place they sit side by side. The chapters that introduce them point here.
-
-### The table
-
-| the step as | where | one step | the whole question | variables |
-|---|---|---|---|---|
-| Python on bits | `python/steps.py`, {{chapter The Boolean view}} | complement, AND and OR on known bits | a run of six steps | named: `hb`, `lb`, `halted`, `accepted`, `op_hb`, `op_lb` |
-| a fold on integers | `roc/Fourteen.roc`, {{chapter One formula for the whole machine}} | a `match` on the opcode | f of one 14-bit number | the number is program · 4 + input |
-| a formula graph | `python/steps.py`'s `F`, {{chapter One formula for the whole machine}} | 35 gates: 21 AND, 9 OR, 5 NOT | f: 174 gates, 146 of them AND and OR | v1 to v12 the program, v13 and v14 the input, gates from v15 |
-| the mux circuit | `src/circuit.c`, {{chapter The machine as a circuit}} | 59 gates: 27 AND, 16 OR, 16 NOT | the decider: 1,439 gates, 461 AND and OR once constants fold | wires by name; as CNF, v1 to v12 the program, v13 to v16 the want bits, wires from v17 |
-| `sat_step` | `src/sat.c`, {{chapter The Cook-Levin machine}} | 34 AND and OR gates | a puzzle: 404 gates, 416 variables, 1,216 clauses | v1 to v12 the program, gates from v13 |
-| polynomials | `roc/Stepper.roc`, {{chapter Arithmetization}} | 7, 13, 17 and 33 terms, in the Boolean ring | composed: 319, 2,185, 2,732 and 10,324 terms | named: the six above; composed, `h0`, `l0`, `op1_hb` to `op6_lb` |
-| Nibble++'s step | `src/plus_sat.c`, {{chapter Nibble++ meets rocsat}} | a 4-bit `AX`, four muxes | one run at 28 lines: 1,340 gates | v1 to v56 the program, then the input's four bits |
-
-The formula graph's counts by kind were made by `python/steps.py` while this chapter was written; every other number is held in the chapter the row names.
-
-### One numbering
-
-Wherever a form numbers its variables, v1 to v12 are the program's bits, line k's high bit v(2k − 1) and its low bit v(2k), so a model's first 12 values read as the program's number. What else is free comes next, the input or the want bits, and the gates after that. The polynomials name their variables instead of numbering them, since they are printed as text.
-
-### Why 174 gates become 146
-
-The formula graph counts every node. Tseitin's encoding gives a variable only to an AND or an OR and writes a complement as a literal's minus sign:
-
-| f's formula graph, as CNF | count |
-|---|---:|
-| nodes in the graph | 174 |
-| complements, each a literal's minus sign | 28 |
-| AND and OR gates, each a variable, v15 to v160 | 146 |
-| clauses: three a gate, and one for f = 1 | 439 |
-
-### Why the two steppers differ
-
-The mux circuit is hardware: it keeps `AX` as two bits, chooses each output with a multiplexer, and feeds the flag multiplexers their constant 0s, since a chip has wires there. Its AND and OR gates alone number 43, and the two flag multiplexers spend 18 of them. `sat_step` is written for a formula: it decodes the line and `AX` into one-hot wires, gates each opcode's wires with an enable, folds away every constant and spends one AND on each flag, 34 in all.
-
-### Why the whole is smaller than its parts
-
-Twenty-four steppers of 34 gates would be 816. The top row's constants fold many away, since each core starts with `AX` known and both flags 0, and a gate built once from the same two inputs is reused across cores, so a puzzle's formula has 404. The decider's 1,439 gates shrink the same way under `roc/Cnf.roc`:
-
-| the decider's parts | count | under `roc/Cnf.roc` |
-|---|---:|---|
-| complements | 392 | each becomes a sign |
-| copies | 8 | each becomes a name |
-| AND and OR gates | 1,047 | 586 fold against a constant |
-| AND and OR gates left | 461 | each becomes a variable |
-
-Signs, folded constants and shared gates account for every gate that disappears.
-
 ## One formula for the whole machine
 
 **Mathematics. The machine shown another way; it needs {{chapter The Boolean view}}.** We write the entire machine, every program on every input, as one formula of 14 bits: 174 gates as a graph, which written out as text would run past half a million characters, so we show its first two lines and count the rest.
@@ -896,7 +844,7 @@ Written out as text, each line's formula repeats the last line's state bits wher
 | 5 | 139 | 89,478 |
 | 6 | 174 | 566,784 |
 
-The last row is f: 174 gates, or 566,784 characters written out, for a machine whose register holds 2 bits. The two excerpts above are all of the text this book prints; the count is the point. {{chapter Checking a claim}} works with the graph, and {{chapter The step's encodings}} says why its CNF names 146 of the 174.
+The last row is f: 174 gates, or 566,784 characters written out, for a machine whose register holds 2 bits. The two excerpts above are all of the text this book prints; the count is the point. {{chapter Checking a claim}} works with the graph, and {{chapter Appendix: the step's encodings}} says why its CNF names 146 of the 174.
 
 ```text 1689, here: f at its four points
 v1 .. v12          v13 v14  f
@@ -1297,7 +1245,7 @@ digraph {
 
 ### Another stepper
 
-The SAT chapters build the same step another way, `sat_step` in `src/sat.c`, in 34 AND and OR gates where this one spends 43 (its 59 less its 16 complements). {{chapter The step's encodings}} sets the two side by side and says where each gate goes.
+The SAT chapters build the same step another way, `sat_step` in `src/sat.c`, in 34 AND and OR gates where this one spends 43 (its 59 less its 16 complements). {{chapter Appendix: the step's encodings}} sets the two side by side and says where each gate goes.
 
 ### A stepper as equations
 
@@ -1644,7 +1592,7 @@ The stepper's gates as the SAT encoding builds them, in `sat_step` (`src/sat.c`)
 
 {{lines src/sat.c from "    Lit is_3 = AND(hb, lb);" to "    Lit lb_set = OR(becomes_3, becomes_1);"}}
 
-`tests/test_sat.c` holds these gates to the machine's step on all 64 settings of the stepper's six input wires. The whole circuit comes to 404 gates over the 12 unknown program bits, fewer than 24 steppers' 816, for the reasons {{chapter The step's encodings}} gives.
+`tests/test_sat.c` holds these gates to the machine's step on all 64 settings of the stepper's six input wires. The whole circuit comes to 404 gates over the 12 unknown program bits, fewer than 24 steppers' 816, for the reasons {{chapter Appendix: the step's encodings}} gives.
 
 The tableau is still empty here; filling it in, for one program and then for all of them, comes next.
 
@@ -2119,7 +2067,7 @@ halted+op_hb+(-1)*hb*op_hb+(-1)*lb*op_hb+(-1)*halted*op_hb+(-1)*op_hb*op_lb
 +(-1)*hb*halted*op_hb*op_lb+(-1)*lb*halted*op_hb*op_lb+hb*lb*halted*op_hb*op_lb
 ```
 
-{{chapter The step's encodings}} sets these counts beside the other versions of the step.
+{{chapter Appendix: the step's encodings}} sets these counts beside the other versions of the step.
 
 *The frame switches here back to ordinary computation: the polynomials run as a machine.*
 
@@ -2923,6 +2871,58 @@ A few questions stand open:
 - **Nondeterminism.** The machine is deterministic. The SAT encoding already treats the program as the unknown, which is the theorem's "a certificate exists"; a machine with choice instructions would make the riff closer to the theorem.
 
 You can use any mainstream programming language to study the toy languages. `js/cook_levin.js` is the machine, the search and the six-step composition in plain JavaScript, and it prints the same report and composition byte for byte under node, and also as an x86-64 program compiled by js-x86, a compiler we wrote ourselves, in Roc, in [roc-js-interpreter](https://github.com/showell/roc-js-interpreter).
+
+## Appendix: the step's encodings
+
+**Every frame at once. The machine in every form at once, as a reference table; it needs {{chapter Six steps composed}}.** We put every version of the machine's step side by side, from Python to polynomials, with its gate count and its variables, so each 34 or 174 in this book has one home; come back to it whenever the counts blur.
+
+The machine's step appears in this book in seven forms, each built for a different job, and each counts its parts its own way. This chapter is the one place they sit side by side. The chapters that introduce them point here.
+
+### The table
+
+| the step as | where | one step | the whole question | variables |
+|---|---|---|---|---|
+| Python on bits | `python/steps.py`, {{chapter The Boolean view}} | complement, AND and OR on known bits | a run of six steps | named: `hb`, `lb`, `halted`, `accepted`, `op_hb`, `op_lb` |
+| a fold on integers | `roc/Fourteen.roc`, {{chapter One formula for the whole machine}} | a `match` on the opcode | f of one 14-bit number | the number is program · 4 + input |
+| a formula graph | `python/steps.py`'s `F`, {{chapter One formula for the whole machine}} | 35 gates: 21 AND, 9 OR, 5 NOT | f: 174 gates, 146 of them AND and OR | v1 to v12 the program, v13 and v14 the input, gates from v15 |
+| the mux circuit | `src/circuit.c`, {{chapter The machine as a circuit}} | 59 gates: 27 AND, 16 OR, 16 NOT | the decider: 1,439 gates, 461 AND and OR once constants fold | wires by name; as CNF, v1 to v12 the program, v13 to v16 the want bits, wires from v17 |
+| `sat_step` | `src/sat.c`, {{chapter The Cook-Levin machine}} | 34 AND and OR gates | a puzzle: 404 gates, 416 variables, 1,216 clauses | v1 to v12 the program, gates from v13 |
+| polynomials | `roc/Stepper.roc`, {{chapter Arithmetization}} | 7, 13, 17 and 33 terms, in the Boolean ring | composed: 319, 2,185, 2,732 and 10,324 terms | named: the six above; composed, `h0`, `l0`, `op1_hb` to `op6_lb` |
+| Nibble++'s step | `src/plus_sat.c`, {{chapter Nibble++ meets rocsat}} | a 4-bit `AX`, four muxes | one run at 28 lines: 1,340 gates | v1 to v56 the program, then the input's four bits |
+
+The formula graph's counts by kind were made by `python/steps.py` while this chapter was written; every other number is held in the chapter the row names.
+
+### One numbering
+
+Wherever a form numbers its variables, v1 to v12 are the program's bits, line k's high bit v(2k − 1) and its low bit v(2k), so a model's first 12 values read as the program's number. What else is free comes next, the input or the want bits, and the gates after that. The polynomials name their variables instead of numbering them, since they are printed as text.
+
+### Why 174 gates become 146
+
+The formula graph counts every node. Tseitin's encoding gives a variable only to an AND or an OR and writes a complement as a literal's minus sign:
+
+| f's formula graph, as CNF | count |
+|---|---:|
+| nodes in the graph | 174 |
+| complements, each a literal's minus sign | 28 |
+| AND and OR gates, each a variable, v15 to v160 | 146 |
+| clauses: three a gate, and one for f = 1 | 439 |
+
+### Why the two steppers differ
+
+The mux circuit is hardware: it keeps `AX` as two bits, chooses each output with a multiplexer, and feeds the flag multiplexers their constant 0s, since a chip has wires there. Its AND and OR gates alone number 43, and the two flag multiplexers spend 18 of them. `sat_step` is written for a formula: it decodes the line and `AX` into one-hot wires, gates each opcode's wires with an enable, folds away every constant and spends one AND on each flag, 34 in all.
+
+### Why the whole is smaller than its parts
+
+Twenty-four steppers of 34 gates would be 816. The top row's constants fold many away, since each core starts with `AX` known and both flags 0, and a gate built once from the same two inputs is reused across cores, so a puzzle's formula has 404. The decider's 1,439 gates shrink the same way under `roc/Cnf.roc`:
+
+| the decider's parts | count | under `roc/Cnf.roc` |
+|---|---:|---|
+| complements | 392 | each becomes a sign |
+| copies | 8 | each becomes a name |
+| AND and OR gates | 1,047 | 586 fold against a constant |
+| AND and OR gates left | 461 | each becomes a variable |
+
+Signs, folded constants and shared gates account for every gate that disappears.
 
 ## Appendix: two DRAT proofs
 
