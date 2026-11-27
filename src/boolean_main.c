@@ -7,7 +7,8 @@
 // that decides it; for each problem, how many programs decide it and how
 // many products its sum of products over v1 to v12 takes; and the sums of
 // products of the two problems in SHOWN, each held to the machine's
-// programs exactly. Before them it holds src/decides.c's step expressions
+// programs exactly, {0, 2, 3}'s titled as a "1689, here" box, since its
+// one product is program 1689. Before them it holds src/decides.c's step expressions
 // to src/stepper.c's step on all 64 settings, since the sums of products
 // are built from them; the book shows the step from python/steps.py.
 // book/book.shale holds the book's copies to this output, byte for byte.
@@ -105,7 +106,7 @@ int main(void) {
     }
     for (size_t i = 0; i < sizeof SHOWN / sizeof SHOWN[0]; i++) {
         const Cover *c = &covers[SHOWN[i]];
-        printf("\n```text\n");
+        printf(SHOWN[i] == 13 ? "\n```text 1689, here: the sum of products of {0, 2, 3}, one product\n" : "\n```text\n");
         for (int k = 0; k < c->count; k++) {
             char text[32];
             cube_text(c->cubes[k], text);

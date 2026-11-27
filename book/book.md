@@ -129,6 +129,8 @@ Third, the assertions, in `find_solutions` ([virtual_machine.py, lines 159 to 16
 
 Steve wrote the first version by hand in Python, in [virtual-machine](https://github.com/showell/virtual-machine): the machine (`virtual_machine.py`), a general polynomial library (`poly.py`) and a stepper that writes one step of the machine as polynomials (`stepper.py`). The machine is Steve's invention; the code in this repository, written by AI coding agents (Claude) with human supervision, departs from the 2023 Python wherever a cleaner choice turned up, and its choices are this book's own. Each language has one role: Python was the inspiration; Roc is our lingua franca, for the mathematics, the Nibble page's machine, the SAT solver and the app that builds this book; C is our oracle and speed demon, the port every claim is tested in.
 
+One program runs through the book as its guide: program 1689 (`zero, decr, decr, zero, decr, zero`), the one program that decides {0, 2, 3}. Each chapter that shows the machine in a new form shows 1689 in it too, in a box headed "1689, here", so a reader who follows the boxes alone sees the whole reduction, from a run to a satisfying assignment. The Nibble++ chapters follow is_not_14's 28-line program the same way, in boxes headed "is_not_14, here".
+
 The theorems are numbered through the book, each checked by a run that its proof names.
 
 ### Why the name fits
@@ -224,6 +226,21 @@ Each instruction is one of 4 opcodes, so there are 4^6 = 4,096 programs. Each pr
 ### Program numbers
 
 This book names a program by its number. Read the six lines as the digits of a base-4 number, line 1 first, with `nada` 0, `zero` 1, `decr` 2 and `mod2` 3: the number is op₁·4⁵ + op₂·4⁴ + op₃·4³ + op₄·4² + op₅·4 + op₆. So program 0 (`nada, nada, nada, nada, nada, nada`) is the first, program 4095 (`mod2, mod2, mod2, mod2, mod2, mod2`) is the last, and the number's twelve bits, line 1's two first, are the program's machine code as the puzzle page shows it. A program of fewer than six lines ends in `nada`, so its number ends in base-4 zeros. Steve's Python, and the C that matches it byte for byte, count through the programs in the other order, line 1 as the lowest digit. That order only decides which program the search finds first; the numbers in this book are all of the kind defined here, and the build checks each against the program it names.
+
+Type 1689 into the [sandbox](https://roc.lynrummy.com/nibble/sandbox.html), and its trace shows this run, a row a line and a column an input.
+
+```text 1689, here: the program, and its run from each input
+program 1689: base-4 digits 1 2 2 1 2 1, machine code 01 10 10 01 10 01
+line   op    from 0  from 1  from 2  from 3
+start        AX=0    AX=1    AX=2    AX=3
+1      zero  accept  AX=1    AX=2    AX=3
+2      decr  ·       AX=0    AX=1    AX=2
+3      decr  ·       reject  AX=0    AX=1
+4      zero  ·       ·       accept  AX=1
+5      decr  ·       ·       ·       AX=0
+6      zero  ·       ·       ·       accept
+decides {0, 2, 3}
+```
 
 ## Formal languages and machines
 
@@ -386,6 +403,10 @@ zero
 
 *Proof.* Python's report gives {0, 2, 3} a count of 1 and this program as its example, and Theorem 3's search is exhaustive. `solve` builds the same program.
 
+**1689, here**, in Steve's Python's report:
+
+{{lines tests/golden/find_solutions.txt from "[0, 2, 3] is solved by 1 possible program" to "it accepts [0, 2, 3]"}}
+
 Input 0 is accepted on line 1. Input 1 drops to 0 on line 2 and is rejected by the `decr` on line 3. Input 2 reaches 0 on line 3 and is accepted on line 4. Input 3 reaches 0 on line 5 and is accepted on line 6. The problem skips 1, and the only way past it is to count down past it.
 
 ### The common ones
@@ -476,6 +497,11 @@ The page's intro, behind a Help link after puzzle 1, says what a formal language
 
 A second page, the [sandbox](https://roc.lynrummy.com/nibble/sandbox.html), drops the puzzles. All six lines are open, each starting as `nada`, and the page shows the trace on the four inputs and the problem the program decides, by its set and its name. A program can also be typed in by its number, from 0 to 4095. It runs on the same machine as the puzzles.
 
+```text 1689, here: the sandbox, with 1689 typed in
+01 10 10 01 10 01  (#1689) | is_not_one {0, 2, 3}
+accept | reject | accept | accept
+```
+
 ## The Boolean view
 
 **The machine as logic; it needs {{chapter The machine}}.** We show you the toy the way a chip sees it: one fixed bank of AND, OR and NOT gates, ticking once a line, that sees only bits.
@@ -510,6 +536,17 @@ step 6  nada 00   0  0     0        1
 ```
 
 The last row's `accepted` is 1: the program accepts 2. `python/steps.py` runs each of the 4,096 programs on all four inputs this way and holds every answer to an ordinary interpreter written beside it.
+
+```text 1689, here: one bank of gates, ticked six times from AX = 3
+                hb lb halted accepted
+start            1  1      0        0
+step 1  zero 01  1  1      0        0
+step 2  decr 10  1  0      0        0
+step 3  decr 10  0  1      0        0
+step 4  zero 01  0  1      0        0
+step 5  decr 10  0  0      0        0
+step 6  zero 01  0  0      0        1
+```
 
 ### Four inputs, one verdict
 
@@ -599,6 +636,14 @@ Written out as text, each line's formula repeats the last line's state bits wher
 | 6 | 174 | 566,784 |
 
 The last row is f: 174 gates, or more than half a million characters, for a machine whose register holds 2 bits. {{chapter Checking a claim}} works with the graph, and {{chapter The step's encodings}} says why its CNF names 146 of the 174.
+
+```text 1689, here: f at its four points
+v1 .. v12          v13 v14  f
+01 10 10 01 10 01   0   0  1
+01 10 10 01 10 01   0   1  0
+01 10 10 01 10 01   1   0  1
+01 10 10 01 10 01   1   1  1
+```
 
 ## The SAT solver
 
@@ -736,7 +781,7 @@ v -1 2 3 -4 5 -6 -7 8 9 -10 -11 12 13 -14 15 -16 -17 -18 -19 -20 -21 -22 23 24 -
 
 The question is `rocsat check`'s: does this assignment satisfy the CNF? `sat/fourteen.shale` asks it for each of the four inputs, with program 1689. For inputs 0, 2 and 3, which the program accepts, the answer expected is yes; for input 1, which it rejects, the expected answer is that the assignment breaks the last clause, f = 1, and the script fails on any other answer:
 
-```text
+```text 1689, here: rocsat checks the claim on each input
 input 0, program 1689: exit 0: c model ok
 input 2, program 1689: exit 0: c model ok
 input 3, program 1689: exit 0: c model ok
@@ -1172,6 +1217,15 @@ Load the want register with `0111` and the program register with program 2916 (`
 
 All four comparators say yes, so the AND lights "decides".
 
+```text 1689, here: the decider, want register 1011, program register 01 10 10 01 10 01
+core  accepted  want  same?
+0     1         1     yes
+1     0         0     yes
+2     1         1     yes
+3     1         1     yes
+decides = 1
+```
+
 ## The circuit as equations
 
 **Big output to skim; it needs {{chapter The circuit, in full}}.** You get the whole decider as 1,439 equations, every gate of it, because here seeing is believing.
@@ -1407,6 +1461,14 @@ The pair writes k in unary, as k ones, because polynomial time is measured again
 
 A member's evidence is a program, and the SAT answer beside it is rocsat's own program for the same question. A non-member's evidence is of another kind. The search of all 4,096 programs gives each set's shortest length, and the DRAT file is rocsat's proof that every program of k lines fails, the kind of evidence {{chapter P and NP}} calls out of reach in general.
 
+```text 1689, here: the certificate that ({0, 2, 3}, 6) is in SOLVABLE
+(W, k) as one string:  1011 111111
+the certificate P:     01 10 10 01 10 01
+(P, W) as one string:  01 10 10 01 10 01 1011
+the verifier runs P on 0 to 3: it decides {0, 2, 3}, so (P, W) is in DECIDES: yes
+a false certificate, 10 10 10 01 00 00 (program 2704): it decides {3}, so the verifier refuses it
+```
+
 Finding the program is the costly part. Trying every program tries 4^k of them, exponential in k. For a fixed n, though, SOLVABLE is in P, trivially: the machine has finitely many states, so one search of them, as {{chapter Nibble++}}'s census does, gives every W its shortest length, and a table answers each (W, k). The open question is about n growing: whether SOLVABLE over every n is in P is a question this book leaves open. {{chapter Cook-Levin as SAT}} answers SOLVABLE's questions for the toy, n = 2 and k = 6, by Cook and Levin's route: the verifier becomes a formula, and a SAT solver finds the certificate.
 
 ## Nibble++
@@ -1536,6 +1598,15 @@ zero
 
 Inputs 0 to 12 take a `zero` each, with a `decr` between, 25 lines, because `half` and `mod2` merge inputs: run while 12, 13 and 14 are all live, either gives 13 the same `AX` as a member, and from then on the two share every verdict. With 13, 14 and 15 left, `half` sends 13 to 0 and 14 and 15 to 1, so one `decr` rejects 13 and one `zero` accepts the pair.
 
+```text is_not_14, here: the census's 28-line program for {0, ..., 13, 15}
+lines  1 to  7: zero decr zero decr zero decr zero
+lines  8 to 14: decr zero decr zero decr zero decr
+lines 15 to 21: zero decr zero decr zero decr zero
+lines 22 to 28: decr zero decr zero decr mod2 zero
+input          0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
+accepted at    1  3  5  7  9 11 13 15 17 19 21 23 25 28  - 28
+```
+
 ## Two theorems about Nibble++
 
 **Cool math, new theorems; it needs {{chapter Nibble++}}.** We prove that the shortest programs of two instructions are counted by the Fibonacci numbers, off by exactly one where the inputs run out.
@@ -1545,6 +1616,12 @@ With `zero` and `decr` alone, a short proof gives every formal language's shorte
 **Theorem 10.** With `zero` and `decr` alone, the shortest program for a nonempty set S of inputs has exactly max(S) + |S| lines, and the empty set's has 0.
 
 *Proof.* The inputs move in lockstep: after d `decr`s, an input x still running has `AX` = x − d. The `decr` numbered x + 1 finds input x at 0 and rejects it. A `zero` accepts the inputs whose `AX` is 0 when it runs, so a `zero` after exactly d `decr`s accepts input d, and every other input passes it: those above d hold `AX` above 0, and those below d have halted. Inputs above the last such d run to the end and are rejected. So a program decides the set of counts d at which some `zero` runs. For S it needs a `zero` at each member's count, |S| lines, and max(S) `decr`s before the last of them, max(S) lines more. The program that walks d from 0 to max(S), with a `zero` at each member and a `decr` between counts, has exactly max(S) + |S| lines. The empty program decides the empty set.
+
+```text is_not_14, here: zero and decr alone
+max(S) + |S| = 15 + 15 = 30 lines, by Theorem 10
+the census of {zero, decr}:          30 lines
+the census of all four opcodes:      28 lines
+```
 
 **Theorem 11.** With `zero` and `decr` alone, the number of formal languages whose shortest program has L lines is F(L), the Fibonacci number with F(1) = F(2) = 1, for L from 1 to 16, and F(17) − 1 at L = 17.
 
@@ -1591,6 +1668,16 @@ A formal language S lines up at d for a split line when each block of the inputs
 **Theorem 12.** For every opcode set holding `zero` and `decr`, the shortest program for S is the least of its walk, max(S) + |S| lines, and, for each split line f and each d where S lines up for f, the walk to d, f, and the shortest program for the smaller formal language on the smaller machine.
 
 The smaller machines have 8, 4, 2 and 1 inputs, so `src/theory_plus.c` fills four small tables. Its lengths are the census's for all 65,536 formal languages under each of the four opcode sets, and the programs it builds decide their formal languages on `src/plus.c`'s interpreter.
+
+```text is_not_14, here: the recursion's program, Theorem 12
+its walk alone:       30 lines
+the recursion's best: 28 lines
+lines  1 to  7: zero decr zero decr zero decr zero
+lines  8 to 14: decr zero decr zero decr zero decr
+lines 15 to 21: zero decr zero decr zero decr zero
+lines 22 to 28: decr zero decr zero mod2 decr zero
+its split lines: mod2 at line 26
+```
 
 **Theorem 13.** A shortest program has at most four split lines, at most one `mod2`, and at most one `half` after its `mod2`.
 
@@ -1699,6 +1786,17 @@ rocsat's programs are its own. A solver hands back whichever model it reaches fi
 
 After the second `half`, input 15 holds 3 in both. The census brings it to 0 with `decr, half, decr`, and rocsat with three `decr`s, in the same four lines with `zero`.
 
+```text is_not_14, here: rocsat's answers, from sat/plus/search.txt
+at 28 lines: SATISFIABLE, a model whose program bits read
+lines  1 to  7: zero decr zero decr zero decr zero
+lines  8 to 14: decr zero decr zero decr zero decr
+lines 15 to 21: zero decr zero decr zero decr zero
+lines 22 to 28: decr zero decr zero mod2 decr zero
+the interpreter: it decides {0, ..., 13, 15}: yes
+lines where it differs from the census's program: 26 (mod2, the census decr) 27 (decr, the census mod2)
+at 27 lines: UNSATISFIABLE
+```
+
 Three methods agree on every case: the census, a breadth-first search over states in `src/census.c`; rocsat's search over assignments, in Roc; and `src/drat.c`'s replay of each refutation. Each is its own code, so each shortest length in the table is confirmed three separate ways.
 
 ## is_not_14 needs 28 lines
@@ -1710,6 +1808,12 @@ Steve asked the Roc Zulip, on 2026-11-26: "How do we prove that no 27-line Nibbl
 ### The claim
 
 is_not_14 is the formal language {0, ..., 13, 15}, every input but 14, one of the three in {{chapter Nibble++}}'s section "The hardest". A 28-line program decides it. The claim at 27 lines covers every program of that length, 4^27 = 2^54 of them, about 1.8 × 10^16, past running each one on 16 inputs. Two proofs settle it, in separate code.
+
+```text is_not_14, here: the 27-line question
+programs of 27 lines: 4^27 = 2^54
+plus_sat search 49151 27: 18365 variables, 54949 clauses
+the census: 374003 states, {0, ..., 13, 15} first at level 28
+```
 
 ### rocsat's proof
 
@@ -1843,7 +1947,7 @@ L(n) is the constant 1 or 0, so each of the four comparisons is `accepted(n, v)`
 
 Expanded and simplified, `decides_L` is a sum of products over v1 to v12. `src/boolean_main.c` computes one for every problem: it finds the programs that decide L by running all 4,096, takes the prime implicants of that set, and covers it greedily, the product holding the most programs left taken first. Each product is written as its twelve bits, two a line of the program: 1 for v, 0 for its complement, and - for a bit the product leaves free. For {0, 2, 3} the expression is one product, the conjunction of 12 literals that spells its one program, `zero, decr, decr, zero, decr, zero`:
 
-```text
+```text 1689, here: the sum of products of {0, 2, 3}, one product
 01 10 10 01 10 01
 ```
 
@@ -1952,6 +2056,14 @@ Evaluated at the bits of a state and an instruction, the four polynomials give t
 
 *Proof.* `tests/test_cross_check.c` runs all 16,384 pairs both ways, on the general ring's polynomials, and holds the differences to 0 and the accepting pairs to 5,596. The Python's `find_solutions` makes the same check on each problem's example program alone, 16 programs on 4 inputs.
 
+```text 1689, here: the step polynomials, evaluated once a line
+input  accepted after line 1 2 3 4 5 6  test_with_stepper
+0                           1 1 1 1 1 1  accepts
+1                           0 0 0 0 0 0  rejects
+2                           0 0 0 1 1 1  accepts
+3                           0 0 0 0 0 1  accepts
+```
+
 ## The Boolean ring
 
 **Cool math; it needs {{chapter Arithmetization}}.** We show you the one identity, x² = x, that keeps every polynomial here multilinear, so that composing six steps takes a fraction of a second.
@@ -2024,6 +2136,14 @@ Fourteen 0/1 variables make 2^14 = 16,384 points, and each point is one input wi
 
 The proof is exhaustive: it checks every input with every program. And since a multilinear polynomial is fixed by its values on {0, 1}^14, any implementation whose four polynomials pass it has exactly these four.
 
+```text 1689, here: the four composed polynomials at its four points
+input  hb  lb  halted  accepted
+0      0   0   1       1
+1      0   0   1       0
+2      0   0   1       1
+3      0   0   0       1
+```
+
 ## The Delightful Monstrosity
 
 **Big output to skim, and a deliberate stunt; it needs {{chapter Six steps composed}}.** We describe a two-bit machine by the largest polynomials we could make by the rules, show the run that checks them, and then print all of them, 762,670 characters for the whole program.
@@ -2064,6 +2184,14 @@ All 16,384 points, each one input with one program, agree. The last count is the
 | accepted' | 33 terms, 728 characters | 33 terms, 728 characters |
 
 `accepted'` is already multilinear in the general ring, so the identity keeps its 33 terms; the two printers order them differently. Skim the boxes, admire the scroll bar, and move on.
+
+```text 1689, here: the terms of accepted that are 1 at its four points
+input  terms of the 10,324 that are 1 there  their coefficients' sum
+0      41                                     1
+1      82                                     0
+2      76                                     1
+3      157                                    1
+```
 
 ### One step, in the Boolean ring
 
@@ -2164,6 +2292,12 @@ digraph {
 
 A setting of the twelve unknowns that satisfies every gate's rule and lights the output is a program that decides the problem. The circuit has a satisfying setting exactly when some program decides the problem.
 
+```text 1689, here: the circuit turned around, want 1011 fixed and decides = 1 required
+settings of v1 .. v12 tried: 4096
+settings that light decides: 1
+01 10 10 01 10 01: zero, decr, decr, zero, decr, zero, program 1689
+```
+
 ### The tableau
 
 Cook's proof draws the run of a checking machine as a grid, the tableau: one row for each moment of the run, each row the machine's whole state, and each row fixed by the row above it through a small local rule. Here the grid has seven rows, the start and the six steps, and four columns, one per core. Each cell is a state of four bits, `hb`, `lb`, `halted` and `accepted`. The top row is known, since core `i` starts with `AX` = `i` and both flags 0, and each cell below it is one stepper applied to the cell above and to that row's line of the unknown program. The local rule is the stepper, drawn from its parts in {{chapter The machine as a circuit}}.
@@ -2199,6 +2333,17 @@ Here is the tableau filled in for `is_not_tiny`'s answer, program 2916 (`decr, m
 | 6 | `nada` | AX=0, halted | AX=0, accepted, halted | AX=0, accepted | AX=0, accepted, halted |
 
 The bottom row's `accepted` flags read 0, 1, 1, 1, which is {1, 2, 3}, the problem. One detail of the circuit shows here: an accept leaves the core running, since only `decr` at 0 sets `halted`. Cores 1 and 3 accept on line 3 and halt on line 4, and `accepted` stays 1, because the flags only ever turn on. The interpreter stops at the accept instead; the bottom row agrees either way.
+
+```text 1689, here: the tableau of program 1689
+step   line  core 0     core 1     core 2     core 3
+start        0 0 · 0 0  0 1 · 0 0  1 0 · 0 0  1 1 · 0 0
+1      zero  0 0 · 0 1  0 1 · 0 0  1 0 · 0 0  1 1 · 0 0
+2      decr  0 0 · 1 1  0 0 · 0 0  0 1 · 0 0  1 0 · 0 0
+3      decr  0 0 · 1 1  0 0 · 1 0  0 0 · 0 0  0 1 · 0 0
+4      zero  0 0 · 1 1  0 0 · 1 0  0 0 · 0 1  0 1 · 0 0
+5      decr  0 0 · 1 1  0 0 · 1 0  0 0 · 1 1  0 0 · 0 0
+6      zero  0 0 · 1 1  0 0 · 1 0  0 0 · 1 1  0 0 · 0 1
+```
 
 ### The tableau of every program
 
@@ -2289,6 +2434,13 @@ Each of the six lines, on each of the four cores, is such a stepper, wired to th
 
 `sat/oracle.shale` asks `rocsat solve` about each problem's formula with the program's bits free (`f977bcc`), so the solver searches ({{chapter The SAT solver}}). Each SATISFIABLE answer is a program, which the script runs on the machine and blocks with a clause before asking again; UNSATISFIABLE, expected once every program is found, ends the count. Each shortest length is then SATISFIABLE, and one line shorter UNSATISFIABLE, as expected, with a DRAT proof our checker replays. That is Theorem 4 again, by Theorem 19. Its last run, on 2026-11-25, started rocsat 4,143 times in 62.6 s and verified 4,096 models and all 15 proofs. `tests/test_sat.c` gets the same counts by propagation; the loop shows the solver as an oracle, blind to the machine.
 
+```text 1689, here: the CNF of {0, 2, 3}, and rocsat's answers
+sat 13: 416 variables, 1216 clauses
+rocsat's model, v1 to v12: -1 2 3 -4 5 -6 -7 8 9 -10 -11 12
+read two bits a line:     01 10 10 01 10 01, program 1689
+sat 13 len=5: UNSATISFIABLE, its DRAT proof 286 lemmas
+```
+
 ## Solved by hand
 
 **Worked examples; it needs {{chapter Cook-Levin as SAT}}.** We solve the smallest puzzle's formula on paper and read the first lemmas of the hardest one's proof as plain statements about programs.
@@ -2362,7 +2514,7 @@ The formulas come from the repository's C: `book/book.shale` builds `src/sat_mai
 
 A DRAT proof is a list of lines, each a clause added, a lemma, or a clause deleted, after a `d`. `src/drat.c` replays it forward. Each lemma has to follow by reverse unit propagation: set all its literals false, propagate over the formula and the lemmas so far, and some clause must come out with every literal false. Each deletion has to name a clause the database holds, and it is applied. The proof ends at the empty clause, which follows when propagation over the database alone reaches a conflict. A lemma that fails this test may still pass as a RAT on its first literal; all 15 of rocsat's proofs pass by the first test alone.
 
-`tests/test_drat.c` holds the checker both ways in 16 tests: hand-made proofs that pass, four planted ones that fail, and each committed proof, which verifies against its formula and fails against the formula one line longer.
+`tests/test_drat.c` holds the checker both ways in 16 tests: hand-made proofs that pass, four planted ones that fail, and each committed proof, which verifies against its formula and fails against the formula one line longer. The proof for {0, 2, 3} at five lines, handed the six-line formula, which is satisfiable, stops at its first lemma: `refuted at line 1: a lemma that follows by neither RUP nor RAT on its first literal, -11`.
 
 ### All 15 proofs
 
@@ -2457,6 +2609,10 @@ Each pair shares only the machine's rule. The interpreter branches on opcodes, t
 **The tools; it needs {{chapter The Boolean ring}}.** We show the mathematics written so that it reads like mathematics, and how a race against it made the C four times faster.
 
 `roc/` is the same machine and the same mathematics in Roc, at the compiler that `roc/roc-version` pins (`6206236`). Its point is that the mathematics reads like mathematics.
+
+**1689, here**, as an expect of `roc/Fourteen.roc`, which `roc/check.shale` runs:
+
+{{lines roc/Fourteen.roc from "# Program 1689 is the one program" to "expect Fourteen.decided(1689)"}}
 
 ### The ring as operators
 

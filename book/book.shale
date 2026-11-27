@@ -109,7 +109,10 @@ end
 -- expressions, composed", are src/boolean_main.c's. The census tables and
 -- witnesses in "Nibble++" and "Two theorems about Nibble++" are
 -- src/plus_book_main.c's, and the members and non-members of ACCEPTS,
--- DECIDES and SOLVABLE in "Nibble, sized" are src/sized_main.c's.
+-- DECIDES and SOLVABLE in "Nibble, sized" are src/sized_main.c's. The
+-- "1689, here" boxes, program 1689 in each form the book gives the machine,
+-- are src/guide_main.c's, and the "is_not_14, here" boxes of the Nibble++
+-- chapters src/guide_plus_main.c's.
 function check_tables(name, count)
   must(run({"gcc", "-O2", "-std=c11", "-Wall", "-Wextra", "-Werror", "-o", real(COMPOSED) .. "/" .. name, "src/" .. name .. ".c"}, {timeout_ms = 120000, tail = 20}))
   local r = must(run({real(COMPOSED .. "/" .. name)}, {timeout_ms = 60000, whole = 40000, want = "book: " .. name .. ", just built from src/ for the book"}))
@@ -165,13 +168,14 @@ end
 
 -- The blocks of "One formula for the whole machine" and "Checking a claim":
 -- python/fourteen_cnf.py's six with `book`, and rocsat's verdicts as
--- sat/fourteen.shale wrote them to sat/fourteen/verdicts.txt. The book's
+-- sat/fourteen.shale wrote them to sat/fourteen/verdicts.txt, in a "1689,
+-- here" box. The book's
 -- source must hold each byte for byte.
 function check_fourteen()
   local r = must(run({"python3", "python/fourteen_cnf.py", "book"}, {timeout_ms = 60000, whole = 40000, want = "book: python/fourteen_cnf.py, the book's Python, prints its blocks"}))
   local blocks = split(trim(r.out), "\n\n")
   if #blocks ~= 6 then fail("book: python/fourteen_cnf.py printed " .. #blocks .. " blocks, not 6") end
-  push(blocks, "```text\n" .. trim(read("sat/fourteen/verdicts.txt")) .. "\n```")
+  push(blocks, "```text 1689, here: rocsat checks the claim on each input\n" .. trim(read("sat/fourteen/verdicts.txt")) .. "\n```")
   local source = read(SOURCE)
   for b in blocks do
     if find(source, b) == nil then
@@ -546,6 +550,12 @@ function check_solver_files()
     if find(text, "```dimacs " .. p) ~= nil and find(text, "`" .. program.ops .. "`") == nil then push(wrong, "the chapter shows " .. p .. " and quotes no `" .. program.ops .. "`") end
     answers = answers + 1
   end
+  -- The unhappy path: the proof for {0, 2, 3} at five lines, handed the
+  -- formula at six, which is satisfiable, is refused, and the chapter quotes
+  -- the refusal.
+  local refused = run({real(SAT_DIR .. "/drat"), "check", real(write_cnf(13, 6)), real(PROOFS .. "/13-len5.drat")}, {timeout_ms = 60000, tail = 3, want = SAT_WANT})
+  if get(refused, "code", -1) == 0 then fail("book: the checker accepts the five-line proof against the six-line formula") end
+  if find(text, "`" .. trim(refused.out) .. "`") == nil then push(wrong, "the chapter quotes no `" .. trim(refused.out) .. "`, the checker's refusal") end
   if proofs ~= 15 or answers ~= 16 then fail("book: " .. PROOFS .. " holds " .. proofs .. " proofs and " .. answers .. " answers, not 15 and 16") end
   if #wrong > 0 then
     for w in wrong do print("  " .. w) end
@@ -617,6 +627,47 @@ function check_numbered(word, plural)
   return nil
 end
 
+-- The "Run it" boxes, one under each theorem: a ```text fence titled "Run it"
+-- whose first line is `$ out/tcc/test_NAME`, the test binary `shale
+-- build.shale` builds, whose second is the line it prints, `tests/test_NAME.c:
+-- N tests passed`, and whose others name the tests that prove the theorem,
+-- `the test: NAME`. Each line is held to the test file: N to its `TEST(`
+-- count, as build.shale holds the binary's own line, and each test named to
+-- one of its `TEST(NAME)`s. A box of another shape, or a count of boxes other
+-- than the theorems', stops the build.
+function check_run_it()
+  local text = read(SOURCE)
+  local wrong = {}
+  local boxes = 0
+  for m in re_find_all(text, "```text Run it\n\\$ out/tcc/(test_[a-z0-9_]+)\n([^\n]*)\n((?:the test: [a-z0-9_]+\n)*)```") do
+    boxes = boxes + 1
+    local file = "tests/" .. m.groups[1] .. ".c"
+    if not exists(file) then
+      push(wrong, "a Run it box runs " .. m.groups[1] .. ", and there is no " .. file)
+    else
+      local n = 0
+      for g in grep(file, "TEST(") do
+        if starts_with(g.text, "TEST(") then n = n + 1 end
+      end
+      local said = file .. ": " .. n .. " tests passed"
+      if m.groups[2] ~= said then push(wrong, "a Run it box says `" .. m.groups[2] .. "`, where " .. m.groups[1] .. " says `" .. said .. "`") end
+      for t in re_find_all(m.groups[3], "the test: ([a-z0-9_]+)\n") do
+        if #grep(file, "TEST(" .. t.group .. ")") == 0 then push(wrong, "a Run it box names the test " .. t.group .. ", which " .. file .. " lacks") end
+      end
+    end
+  end
+  local opened = #find_all(text, "```text Run it\n")
+  if opened ~= boxes then push(wrong, opened .. " Run it boxes open, and " .. boxes .. " have the box's shape") end
+  local theorems = #re_find_all(text, "\\*\\*Theorem [0-9]+\\.\\*\\*")
+  if boxes ~= theorems then push(wrong, boxes .. " Run it boxes for " .. theorems .. " theorems") end
+  if #wrong > 0 then
+    for w in wrong do print("  " .. w) end
+    fail("book: the Run it boxes differ from the tests, so /" .. DEST_NAME .. "/ is left as it was")
+  end
+  print("book: " .. boxes .. " Run it boxes, one a theorem, each line its test file's")
+  return nil
+end
+
 -- `to`, a real path, as a path relative to the real folder `from`.
 function relative_path(from, to)
   local a = split(from, "/")
@@ -646,6 +697,8 @@ function main()
   check_tables("boolean_main", 4)
   check_tables("plus_book_main", 7)
   check_tables("sized_main", 3)
+  check_tables("guide_main", 12)
+  check_tables("guide_plus_main", 5)
   check_circuit()
   check_cnf()
   check_steps()
