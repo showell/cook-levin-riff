@@ -59,6 +59,8 @@ the search with that pattern at any cell and face.
 | `oracle.py` | the Python oracle, sharing no code with the C |
 | `cube_sat.c` | the CNF of "solved in exactly k rolls?" and a checker command line |
 | `sat.shale` | rocsat on the CNF, each answer checked; writes `sat/grid4.txt`, `sat/grid5.txt` |
+| `../roc/Cube.roc`, `../roc/CubeWasm.roc` | the rules in Roc (`Cube.play`: a program's run frame by frame, or the roll that left the board), and the playground's wasm |
+| `../web/cube.html`, `cube.js`, `cube_data.c`, `cube_check.mjs` | the playground (below) |
 
 ```sh
 out/tcc/census 4                  # the 4x4 report
@@ -84,6 +86,24 @@ So the oracle agrees with the census on every pattern of both grids, not
 just a sample (about 0.1 s and 1.1 s). A par one less than the census's,
 planted in the file, is refused. The census itself checks every solution it
 prints with `cube_check`, and checks each pattern against the floor below.
+
+## The playground
+
+`web/cube.html` shows the board and the cube in 3D, on a canvas with a
+perspective projection of its own (tiles drawn far to near, the cube last
+with its back faces culled), and animates each roll as a quarter turn about
+the cube's bottom edge. Rolls come from the N, E, S, W buttons, the arrow
+keys or a typed program; Play, Back, Forward and Reset move through the
+run. It shows the program's length, its lit set as a small map and the
+census's par for that set ("par 8; yours is 8"), with four samples: ESWN,
+b2 alone, the diagonal and every tile. Drag the board to turn it.
+
+The rules are `roc/Cube.roc` built to wasm on `web/platform/cube.roc` (the
+same C host as Nibble's pages), and the pars are the census's,
+`cube_pars.bin`, a byte a lit set. `shale web/build.shale` builds it and
+runs `web/cube_check.mjs`, which holds the wasm to `cube.c` on 400 programs
+frame by frame, rolls all 65,536 census solutions through it, holds the
+table to the census and plays the page in headless Chromium.
 
 ## The census
 

@@ -11,7 +11,12 @@
 --    (docs/NIBBLE_PLUS_NAMES.md), out/web/plus_names.tsv, and writes the
 --    page's table of the names of cost 4 or less, out/web/plus_names.bin;
 --    web/plus_names_check.c parses each name back to its set with an
---    evaluator of its own and holds the table to the tsv.
+--    evaluator of its own and holds the table to the tsv. cube/census.c
+--    runs on 4 x 4, its report held to cube/golden/census4.txt, and writes
+--    every pattern's par and solution, out/web/cube_pars4.txt;
+--    web/cube_data.c makes that the cube page's table, out/web/cube_pars.bin
+--    (a byte a pattern), and writes cube/cube.c's runs of 400 sample
+--    programs, out/web/cube_runs.txt.
 -- 2. clang (the system's, --target=wasm32-unknown-unknown) compiles
 --    web/platform/host.c, the allocator and the runtime functions Roc
 --    calls, to an object, web/platform/targets/wasm32/host.wasm. Then
@@ -21,14 +26,17 @@
 --    out/web/nibble.wasm, whose exports are the page's `status`, `after`
 --    and `accepts` (the platform's `exports:`). roc/PlusWasm.roc, Plus.roc
 --    on web/platform/plus.roc (main.roc's twin, the same host.wasm), is
---    built the same way to out/web/plus.wasm, the Nibble++ page's machine.
+--    built the same way to out/web/plus.wasm, the Nibble++ page's machine,
+--    and roc/CubeWasm.roc, Cube.roc on web/platform/cube.roc, to
+--    out/web/cube.wasm, the cube page's.
 -- 3. The three pages, the puzzles (index.html), the sandbox (sandbox.html)
---    and the Nibble++ sandbox (plus.html), go to out/web/site, each file but the two pages named by its bytes
+--    the Nibble++ sandbox (plus.html) and the rolling cube (cube.html), go to out/web/site, each file but the two pages named by its bytes
 --    (`nibble.<hash>.js`, the first 16 hex digits of its sha256), as
 --    roc-apps' site names them: the wasm, the table, the shared stylesheet
 --    nibble.css, the shared module machine.js and each page's script,
 --    nibble.js, sandbox.js and plus.js, and plus.js's wasm, plus.wasm, and
---    its names table, plus_names.bin. Each
+--    its names table, plus_names.bin, and cube.js with cube.wasm and
+--    cube_pars.bin. Each
 --    name a file holds is rewritten to its hashed one before that file is
 --    hashed: machine.js's wasm and table, plus.js's wasm and names, the two Nibble
 --    scripts' import of machine.js, the pages' script and stylesheet.
@@ -48,6 +56,10 @@
 --    It saves screenshots to out/web/page.png,
 --    out/web/page-given.png, out/web/page-fixed.png,
 --    out/web/page-sandbox.png and out/web/page-plus.png.
+-- 5. web/cube_check.mjs holds cube.wasm to cube.c on the 400 sample runs,
+--    frame by frame, rolls every census solution through it, holds
+--    cube_pars.bin to the census, and plays cube.html in headless Chromium;
+--    screenshots out/web/cube.png, cube-rolling.png and cube-phone.png.
 --
 -- One line a stage. Exits 0 only when every check passes.
 
