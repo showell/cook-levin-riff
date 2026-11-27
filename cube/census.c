@@ -8,6 +8,12 @@
 // rolls that end with exactly it lit, is the first level holding a state with
 // that pattern, since the cube may end anywhere.
 //
+// A roll off the board halts the machine, the tiles lit so far its set. The
+// search keeps, for each pattern, the first level at which a halted program
+// has it, and checks that halting changes no par: a halted program's set is
+// its prefix's, which is shorter. On 4 x 4 the report adds the language's
+// bound, CUBE_L (cube.h), and the sets no program within it decides.
+//
 //   census N              the report for an N x N grid, N 3 or 4, from the
 //                         north-west corner with the painted face up
 //   census N PATH         the report, and every pattern's par and a
@@ -40,6 +46,7 @@ typedef struct {
     uint32_t found;      // states reached
     uint8_t *par;        // per pattern: its par, or UNSEEN
     uint32_t *first;     // per pattern: the first state with it
+    uint8_t *halt;       // per pattern: the first level a halted program has it, or UNSEEN
     int levels;          // the deepest level reached
 } Census;
 
@@ -72,8 +79,10 @@ static void census_run(Census *c, int n, int start_cell, CubeFace start_face) {
     c->queue = must_alloc((size_t)c->states * sizeof(uint32_t));
     c->par = must_alloc(c->patterns);
     c->first = must_alloc((size_t)c->patterns * sizeof(uint32_t));
+    c->halt = must_alloc(c->patterns);
     memset(c->level, UNSEEN, c->states);
     memset(c->par, UNSEEN, c->patterns);
+    memset(c->halt, UNSEEN, c->patterns);
 
     // The start: nothing lit, and nothing flips, since the cube has not
     // landed.
@@ -97,7 +106,11 @@ static void census_run(Census *c, int n, int start_cell, CubeFace start_face) {
         uint32_t pattern = pattern_of(c, s);
         for (int r = 0; r < CUBE_ROLLS; r++) {
             int to = cube_cell_after(n, cell, (CubeRoll)r);
-            if (to < 0) continue;
+            if (to < 0) {
+                // The roll halts the machine with `pattern` lit.
+                if (c->halt[pattern] == UNSEEN) c->halt[pattern] = (uint8_t)d;
+                continue;
+            }
             CubeFace f = cube_face_after(face, (CubeRoll)r);
             uint32_t p = f == FACE_DOWN ? pattern ^ (1u << to) : pattern;
             uint32_t t = state_of(c, to, f, p);
@@ -120,6 +133,7 @@ static void census_free(Census *c) {
     free(c->queue);
     free(c->par);
     free(c->first);
+    free(c->halt);
 }
 
 // The roll that undoes a roll.
@@ -202,6 +216,23 @@ static void report(FILE *out, const Census *c) {
         if (c->par[p] > top) top = c->par[p];
     }
     fprintf(out, "patterns: %u, reachable %u, unreachable %u\n", c->patterns, reached, c->patterns - reached);
+
+    // Halting: the par with halted programs counted is the least of the two
+    // levels, and it must be the par without them.
+    uint32_t halted = 0, same = 0;
+    for (uint32_t p = 0; p < c->patterns; p++) {
+        int with = c->par[p];
+        if (c->halt[p] != UNSEEN) {
+            halted++;
+            if (c->halt[p] < with) with = c->halt[p];
+        }
+        if (with == c->par[p]) same++;
+    }
+    if (same != c->patterns) {
+        fprintf(stderr, "census: halting changes %u pars\n", c->patterns - same);
+        exit(2);
+    }
+    fprintf(out, "halting: a roll off the board halts the machine; %u patterns are a halted program's, and every pattern's par is the same with halting as without (%u of %u)\n", halted, same, c->patterns);
     fprintf(out, "\npar  patterns\n");
     for (int d = 0; d <= top; d++) fprintf(out, "%3d  %8ld\n", d, at[d]);
 
@@ -273,7 +304,7 @@ static void report(FILE *out, const Census *c) {
             int k = path_to(c, s, path);
             int end_cell;
             CubeFace end_face;
-            if (cube_play(n, c->start_cell, c->start_face, path, k, &end_cell, &end_face) != 0 || end_cell != c->start_cell || end_face != (CubeFace)f) {
+            if (cube_play(n, c->start_cell, c->start_face, path, k, &end_cell, &end_face, NULL) != 0 || end_cell != c->start_cell || end_face != (CubeFace)f) {
                 fprintf(stderr, "census: the macro to face %s does not roll there\n", FACE_NAMES[f]);
                 exit(2);
             }
@@ -291,6 +322,20 @@ static void report(FILE *out, const Census *c) {
     }
     fprintf(out, "\nthe largest par, %d, has %ld pattern(s); the first:\n", top, at[top]);
     print_level(out, c, "hardest", hardest);
+
+    // The 4 x 4 language's bound, and what it leaves out.
+    if (n == 4) {
+        long past[MAX_PAR + 1] = {0};
+        for (int d = top - 1; d >= 0; d--) past[d] = past[d + 1] + at[d + 1];
+        fprintf(out, "\nthe language: programs of at most L = %d rolls (cube.h's CUBE_L)\n", CUBE_L);
+        fprintf(out, "decided within L: %ld of %u, the rest:", (long)c->patterns - past[CUBE_L], c->patterns);
+        for (uint32_t p = 0; p < c->patterns; p++) {
+            if (c->par[p] > CUBE_L) fprintf(out, " %u%s (par %d)", p, p == c->patterns - 1 ? ", every tile" : "", c->par[p]);
+        }
+        fprintf(out, "\nsets with a par past each length:");
+        for (int d = top - 5; d < top; d++) fprintf(out, " %d: %ld%s", d, past[d], d + 1 < top ? "," : "");
+        fputc('\n', out);
+    }
 
     // A few levels by eye.
     uint32_t all = c->patterns - 1;

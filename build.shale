@@ -192,8 +192,8 @@ for n in {3, 4} do
   local pars = OUT .. "/" .. builds[1] .. "/cube_pars" .. n .. ".txt"
   local py = run({"python3", "cube/oracle.py", "" .. n, real(pars)}, {timeout_ms = 120000, tail = 10, want = PYTHON_WANT, nice = 10})
   local said = trim(py.out)
-  local want_said = "cube/oracle.py: 4x4: 65536 solutions rolled, 65536 pars by 1 search"
-  if n == 3 then want_said = "cube/oracle.py: 3x3: 512 solutions rolled, 512 pars by 2 searches" end
+  local want_said = "cube/oracle.py: 4x4: 65536 solutions rolled, 60760 rolled again past a halt, 65536 pars by 1 search, with halting and without"
+  if n == 3 then want_said = "cube/oracle.py: 3x3: 512 solutions rolled, 437 rolled again past a halt, 512 pars by 2 searches, with halting and without" end
   failures = failures + check(exited_0(py) and said == want_said, "python3: cube " .. n .. ": " .. said .. ", " .. py.ms .. " ms, " .. how_it_ended(py))
 end
 

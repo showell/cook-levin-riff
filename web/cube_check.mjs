@@ -6,7 +6,8 @@
 //
 // - loads the page's wasm (cube.<hash>.wasm in <site-dir>) in node and holds
 //   it to cube/cube.c on <cube_runs.txt>, web/cube_data.c's 400 programs,
-//   frame by frame, and the roll that leaves the board where one does;
+//   frame by frame, and the roll that halts the machine where one does;
+//   and its `max_length()` to the census's L;
 // - holds the page's table (cube_pars.<hash>.bin) to the census: its 65,536
 //   bytes to the pars in <cube_pars4.txt> (census 4's every pattern), and
 //   their count at each par to the table in <census4.txt>, the golden
@@ -14,14 +15,20 @@
 //   the wasm, each ending with exactly its pattern lit, in its par;
 // - serves <site-dir> on a loopback port and loads cube.html in headless
 //   Chromium (Playwright's, found by PLAYWRIGHT_BROWSERS_PATH, which Shale
-//   sets), and sees the canvas draw the cube with its painted face up; plays
+//   sets). At 1366 x 650 it sees three panes side by side and nothing
+//   scroll, and the canvas draw the cube with its painted face up; plays
 //   the "b2 alone" sample to its end and reads par 8, yours 8 and b2 lit,
-//   with lit tiles on the canvas; types programs (and one with a letter that
-//   is not a roll, and one off the board); rolls by the arrow keys, one
-//   refused at the wall; steps forward and back and resets; sees the "every
-//   tile" sample's par 47; and at a phone's width sees nothing scroll
-//   sideways and nothing stored. It saves screenshots to <screenshot.png>,
-//   and beside it `-rolling` (mid-roll) and `-phone`.
+//   with lit tiles on the canvas; steps forward and back and resets; types
+//   programs (one with a letter that is not a roll, one that halts, one
+//   longer than L, refused); rolls by the arrow keys, the button lighting,
+//   north from a1 halting the machine; rolls by clicking the tiles next to
+//   the cube and by dragging the cube, a click on the cube or the sky doing
+//   nothing; plays the halt sample to its halt; refuses a roll past L; sees
+//   three panes and no scroll at 1920 x 700 too; at a phone's width one
+//   column, nothing sideways and nothing stored; and the help page, its L
+//   the census's. It saves screenshots to <screenshot.png> (1366 x 650),
+//   and beside it `-rolling` (mid-roll), `-halt`, `-wide` (1920 x 700) and
+//   `-phone`.
 //
 // The browser is started as web/page_check.mjs starts it.
 import { spawn } from "node:child_process";
@@ -60,7 +67,7 @@ function framesOf(program) {
   let word = 0;
   for (let i = 0; i < program.length; i++) {
     const next = roll(word, ROLLS.indexOf(program[i]));
-    if (next & OFF) { out.push(`off@${i}`); break; }
+    if (next & OFF) { out.push(`halt@${i}`); break; }
     out.push(frameText(next));
     word = next;
   }
@@ -73,7 +80,7 @@ for (const line of runLines) {
   const [program, ...want] = line.split(" ");
   const got = framesOf(program === "-" ? "" : program).out;
   frames += want.length;
-  if (want.length > 0 && want[want.length - 1].startsWith("off@")) offs++;
+  if (want.length > 0 && want[want.length - 1].startsWith("halt@")) offs++;
   expect(got.join(" ") === want.join(" "), `the wasm's run of ${program} is ${got.join(" ")}, cube.c's ${want.join(" ")}`);
 }
 expect(runLines.length === 400, `${runsFile} has ${runLines.length} programs, not 400`);
@@ -89,7 +96,7 @@ parLines.forEach((line, p) => {
   if (Number(pattern) !== p || table[p] !== Number(par)) { expect(false, `pattern ${p}: the table says ${table[p]}, the census ${line}`); return; }
   const program = sol === "-" ? "" : sol;
   const { out, word } = framesOf(program);
-  const ok = program.length === table[p] && !out.some((f) => f.startsWith("off")) && (word & 0xffff) === p;
+  const ok = program.length === table[p] && !out.some((f) => f.startsWith("halt")) && (word & 0xffff) === p;
   if (!ok) expect(false, `the census's solution of pattern ${p}, ${sol}, rolls in the wasm to ${out[out.length - 1]}`);
   else solutions++;
 });
@@ -100,6 +107,12 @@ const counted = new Map();
 for (const b of table) counted.set(b, (counted.get(b) ?? 0) + 1);
 for (const [par, count] of histogram) expect((counted.get(par) ?? 0) === count, `${count} patterns have par ${par} in ${censusFile}, ${counted.get(par) ?? 0} in the table`);
 expect(Math.max(...table) === 47 && histogram.length === 48, `the table's largest par is ${Math.max(...table)}, the census's ${histogram.length - 1}`);
+// L: the census's line, the wasm's max_length(), and the sets decided within it.
+const lLine = census.match(/programs of at most L = (\d+) rolls/);
+const decided = census.match(/decided within L: (\d+) of 65536/);
+const L = lLine ? Number(lLine[1]) : NaN;
+expect(lLine && instance.exports.max_length(0) === L, `the wasm's max_length() is ${instance.exports.max_length(0)}, the census's L ${lLine?.[1]}`);
+expect(decided && Number(decided[1]) === table.filter((b) => b <= L).length, `the census decides ${decided?.[1]} sets within L, the table ${table.filter((b) => b <= L).length}`);
 
 // ── the page in Chromium ──────────────────────────────────────────────
 const TYPES = { ".html": "text/html", ".css": "text/css", ".js": "text/javascript", ".wasm": "application/wasm", ".json": "application/json" };
@@ -228,19 +241,52 @@ async function screenshot(file) {
   writeFileSync(file, Buffer.from(data, "base64"));
 }
 
+// The canvas's point (x, y) in the page, and a press there, a move and a
+// release at (x2, y2).
+async function pressAt(x, y, x2 = x, y2 = y) {
+  const r = await evaluate(`(() => { const b = document.getElementById("scene").getBoundingClientRect(); return { x: b.x, y: b.y }; })()`);
+  await page("Input.dispatchMouseEvent", { type: "mouseMoved", x: r.x + x, y: r.y + y });
+  await page("Input.dispatchMouseEvent", { type: "mousePressed", x: r.x + x, y: r.y + y, button: "left", clickCount: 1 });
+  if (x2 !== x || y2 !== y) {
+    for (const k of [0.33, 0.66, 1]) await page("Input.dispatchMouseEvent", { type: "mouseMoved", x: r.x + x + (x2 - x) * k, y: r.y + y + (y2 - y) * k, button: "left" });
+  }
+  await page("Input.dispatchMouseEvent", { type: "mouseReleased", x: r.x + x2, y: r.y + y2, button: "left", clickCount: 1 });
+  await sleep(30);
+}
+// The rollable neighbours' centres on the canvas, by roll letter.
+const targets = async () => Object.fromEntries((await evaluate("document.getElementById('scene').dataset.targets")).split(" ").filter(Boolean)
+  .map((t) => { const [r, xy] = t.split(":"); return [r, xy.split(",").map(Number)]; }));
+const programValue = () => evaluate("document.getElementById('program').value");
+// The page's fit: its scroll against the window, and each pane's box.
+const layout = () => evaluate(`(() => {
+  const s = document.scrollingElement;
+  const panes = Array.from(document.querySelectorAll(".pane")).map((p) => { const r = p.getBoundingClientRect(); return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height), bottom: Math.round(r.bottom) }; });
+  const c = document.getElementById("scene").getBoundingClientRect();
+  return { scrollW: s.scrollWidth, clientW: s.clientWidth, scrollH: s.scrollHeight, clientH: s.clientHeight, panes, canvas: [Math.round(c.width), Math.round(c.height)] };
+})()`);
+const measured = [];
+function threePanes(l, size) {
+  measured.push(`${size}: canvas ${l.canvas[0]} x ${l.canvas[1]}, page ${l.scrollW} x ${l.scrollH}`);
+  expect(l.scrollH <= l.clientH && l.scrollW <= l.clientW, `at ${size} the page scrolls: ${JSON.stringify(l)}`);
+  const [a, b, c] = l.panes;
+  expect(l.panes.length === 3 && a.y === b.y && b.y === c.y && a.x < b.x && b.x < c.x, `at ${size} the panes are not side by side: ${JSON.stringify(l.panes)}`);
+  expect(l.panes.every((p) => p.bottom <= l.clientH), `at ${size} a pane ends below the window: ${JSON.stringify(l.panes)}`);
+}
+
 try {
-  await open(1000, 1100, false);
+  await open(1366, 650, false);
   expect((await evaluate("document.title")) === "Rolling cube", `the page's title is ${await evaluate("document.title")}`);
   expect((await evaluate("!document.getElementById('loading')")), "the page still says it is loading");
+  threePanes(await layout(), "1366 x 650");
   const start = await pixels();
   expect(start.ivory > 500 && start.paint > 300 && start.amber === 0, `the start's canvas: ${JSON.stringify(start)} (the cube's ivory sides, its paint up, nothing lit)`);
-  expect((await text("par")) === "par 0; yours is 0", `the start's readout: ${await text("par")}`);
+  expect((await text("par")) === "par 0; yours is 0" && (await text("length")) === `0 of ${L} rolls`, `the start's readout: ${await text("par")} / ${await text("length")}`);
 
   await click('#samples button[data-program="ESENSNWS"]');
   expect(await settled(8), "the b2 sample did not play to its 8th frame");
   expect((await text("par")) === "par 8; yours is 8", `b2 alone's readout: ${await text("par")}`);
   expect((await litCells()) === "b2", `b2 alone lights ${await litCells()}`);
-  expect((await text("length")) === "8 rolls", `b2 alone's length: ${await text("length")}`);
+  expect((await text("length")) === `8 of ${L} rolls`, `b2 alone's length: ${await text("length")}`);
   // b2's tile is under the cube, which ends on it; the diagonal's three
   // other lit tiles show.
   await click('#samples button[data-program="ESSENNWWESESESNNWW"]');
@@ -264,38 +310,107 @@ try {
   expect((await text("par")) === "par 8; yours is 8", `after Reset the program's readout is ${await text("par")}`);
 
   // Typed programs: spaces and lower case pass, a letter that is no roll is
-  // refused, a roll off the board stops the run.
+  // refused, a roll off the board halts the run, and a program past L is
+  // refused.
   await typeProgram("es e");
   expect(await settled(3), "the typed `es e` did not show its end");
   expect((await text("par")) === "par 3; yours is 3" && (await litCells()) === "c2", `es e: ${await text("par")}, lit ${await litCells()}`);
   await typeProgram("ESX");
   expect((await text("said")).includes("not a roll") && (await text("par")) === "par 3; yours is 3", `ESX: ${await text("said")} / ${await text("par")}`);
   await typeProgram("EN");
-  expect((await text("status")).includes("leave the board") && (await text("par")).startsWith("No par"), `EN: ${await text("status")} / ${await text("par")}`);
+  expect(await settled(2), "the typed EN did not show its halt, frame 2");
+  expect((await text("status")).startsWith("Halted at roll 2") && (await text("par")) === "par 0; yours is 2" && (await evaluate("document.getElementById('scene').dataset.halted")) === "1",
+    `EN: ${await text("status")} / ${await text("par")}`);
+  await typeProgram("E".repeat(L + 1));
+  expect((await text("said")).includes(`at most ${L}`) && (await text("length")) === `2 of ${L} rolls`, `${L + 1} rolls: ${await text("said")} / ${await text("length")}`);
 
-  // The arrow keys roll the cube; north from a1 is refused.
+  // The arrow keys roll the cube, lighting their button; north from a1
+  // joins the program and halts the machine.
   await click("#clear");
   await evaluate("document.activeElement.blur()");
   await key("ArrowUp");
-  expect((await text("said")).includes("would leave the board") && (await evaluate("document.getElementById('program').value")) === "", `ArrowUp at a1: ${await text("said")}`);
+  expect((await evaluate("document.querySelector('.keys [data-roll=N]').classList.contains('pressed')")), "ArrowUp did not light the N button");
+  expect(await settled(1), "ArrowUp at a1 did not show the halt");
+  expect((await programValue()) === "N" && (await text("status")).startsWith("Halted at roll 1"), `ArrowUp at a1: ${await programValue()} / ${await text("status")}`);
+  await click("#clear");
+  await evaluate("document.activeElement.blur()");
   const arrows = ["ArrowRight", "ArrowDown", "ArrowRight"];
   for (let i = 0; i < arrows.length; i++) {
     await key(arrows[i]);
     expect(await settled(i + 1), `${arrows[i]} did not roll to frame ${i + 1}`);
   }
-  expect((await evaluate("document.getElementById('program').value")) === "ESE" && (await litCells()) === "c2", `the arrow keys made ${await evaluate("document.getElementById('program').value")}, lit ${await litCells()}`);
+  expect((await programValue()) === "ESE" && (await litCells()) === "c2", `the arrow keys made ${await programValue()}, lit ${await litCells()}`);
 
-  await click('#samples button[data-program="EEESWNWSENWSWNESWESWESWNESENWNESESWNESWNEWNEWNE"]');
-  expect((await text("par")) === "par 47; yours is 47", `every tile's readout: ${await text("par")}`);
+  // Clicks on the tiles next to the cube: from a1 only E and S; each click
+  // rolls that way. A click on the sky or on the cube does nothing, and a
+  // drag from the cube onto a tile rolls there.
+  await click("#clear");
+  expect(await settled(0), "Clear did not go back to the start");
+  const fromA1 = await targets();
+  expect(Object.keys(fromA1).sort().join("") === "ES", `from a1 the clickable tiles are ${Object.keys(fromA1).join("")}`);
+  await pressAt(4, 4);
+  const cubeAt = (await evaluate("document.getElementById('scene').dataset.cube")).split(",").map(Number);
+  await pressAt(cubeAt[0], cubeAt[1]);
+  expect((await programValue()) === "", `a click on the sky or the cube rolled: ${await programValue()}`);
+  let made = "";
+  for (const r of ["E", "S", "E", "N", "W", "S", "W", "N"]) {
+    const t = await targets();
+    if (!t[r]) { expect(false, `after ${made} no tile to click for ${r}: ${JSON.stringify(t)}`); break; }
+    await pressAt(...t[r]);
+    made += r;
+    expect(await settled(made.length) && (await programValue()) === made, `clicking ${r} after ${made.slice(0, -1)} made ${await programValue()}`);
+  }
+  const before = await programValue();
+  const pull = (await evaluate("document.getElementById('scene').dataset.cube")).split(",").map(Number);
+  const pullTo = (await targets()).E;
+  await pressAt(pull[0], pull[1], pullTo[0], pullTo[1]);
+  expect(await settled(before.length + 1) && (await programValue()) === before + "E", `the drag from the cube east made ${await programValue()}`);
 
-  await open(390, 900, true);
-  const widths = await evaluate("(() => { const s = document.scrollingElement; return { page: s.scrollWidth, box: s.clientWidth }; })()");
-  expect(widths.page <= widths.box, `at 390px the page scrolls sideways: ${JSON.stringify(widths)}`);
+  // The halt sample: its fifth roll leaves the board, and the rolls after
+  // it do nothing.
+  await click('#samples button[data-program="ESENNSSS"]');
+  expect(await settled(5), "the halt sample did not play to its halt, frame 5");
+  expect((await text("status")).startsWith("Halted at roll 5") && (await litCells()) === "c2" && (await text("par")) === "par 3; yours is 8",
+    `the halt sample: ${await text("status")} / ${await litCells()} / ${await text("par")}`);
+  expect((await evaluate("document.querySelectorAll('#rolls span.dead').length")) === 3 && (await evaluate("document.querySelectorAll('#rolls span.halt').length")) === 1, "the halt sample's rolls line does not mark the halt and the three dead rolls");
+  await screenshot(shotFile.replace(/\.png$/, "-halt.png"));
+
+  // The longest sample is L rolls; one more roll is refused.
+  const longest = "EEESWNESWNESSWWENWENWSWNESWESWESWNESNESENWNES";
+  expect(longest.length === L, `the longest sample is ${longest.length} rolls, L ${L}`);
+  await typeProgram(longest);
+  expect(await settled(L), "the longest program did not show its end");
+  expect((await text("par")) === `par ${L}; yours is ${L}` && (await text("length")) === `${L} of ${L} rolls`, `the longest: ${await text("par")} / ${await text("length")}`);
+  await evaluate("document.activeElement.blur()");
+  await key("ArrowLeft");
+  expect((await text("said")).includes(`at most ${L}`) && (await programValue()) === longest, `a roll past L: ${await text("said")}`);
+
+  await open(1920, 700, false);
+  threePanes(await layout(), "1920 x 700");
+  await screenshot(shotFile.replace(/\.png$/, "-wide.png"));
+
+  await open(390, 844, true);
+  const phone = await layout();
+  measured.push(`390 x 844: canvas ${phone.canvas[0]} x ${phone.canvas[1]}, page ${phone.scrollW} x ${phone.scrollH}`);
+  expect(phone.scrollW <= phone.clientW, `at 390px the page scrolls sideways: ${JSON.stringify(phone)}`);
+  expect(phone.panes.length === 3 && phone.panes.every((p) => p.x === phone.panes[0].x) && phone.panes[1].y < phone.panes[0].y && phone.panes[0].y < phone.panes[2].y,
+    `at 390px the panes are not one column, the canvas first: ${JSON.stringify(phone.panes)}`);
   await click('#samples button[data-program="ESENSNWS"]');
   expect(await settled(8), "at 390px the b2 sample did not play to its end");
   expect((await text("par")) === "par 8; yours is 8", `at 390px b2 alone's readout: ${await text("par")}`);
   await screenshot(shotFile.replace(/\.png$/, "-phone.png"));
   expect((await evaluate("localStorage.length")) === 0, "the page stored something in localStorage");
+
+  // The help page, by the page's link.
+  expect((await evaluate("document.getElementById('help').getAttribute('href')")) === "cube_help.html", "the page's Help link is not cube_help.html");
+  const helped = new Promise((d) => { loaded = d; });
+  await page("Page.navigate", { url: url.replace("cube.html", "cube_help.html") });
+  await helped;
+  expect((await evaluate("document.title")) === "Rolling cube help", `the help page's title is ${await evaluate("document.title")}`);
+  expect((await text("max-length")) === String(L), `the help page says L is ${await text("max-length")}, the census ${L}`);
+  expect((await evaluate("document.getElementById('back-to-cube').getAttribute('href')")) === "cube.html", "the help page's link back is not cube.html");
+  const help = await evaluate("(() => { const s = document.scrollingElement; return { page: s.scrollWidth, box: s.clientWidth }; })()");
+  expect(help.page <= help.box, `at 390px the help page scrolls sideways: ${JSON.stringify(help)}`);
   expect(thrown.length === 0, `the page threw: ${thrown.join("; ")}`);
 } finally {
   socket.close();
@@ -307,4 +422,4 @@ try {
 }
 
 if (failures > 0) { console.error(`cube_check: ${failures} of ${checks} checks failed`); process.exit(1); }
-console.log(`ok   cube_check: the wasm matches cube.c on ${runLines.length} programs (${frames} frames, ${offs} off the board) and rolls all ${solutions} census solutions to their patterns; the table's 65,536 pars are the census's; in Chromium the page drew the cube, played b2 alone to par 8, stepped back, forward and reset, took typed programs and the arrow keys, refused a non-roll and the wall, played the diagonal to par 18 with its lit tiles drawn, showed every tile's par 47 and, at 390px with no sideways scroll, played b2 alone again (${checks} checks)`);
+console.log(`ok   cube_check: the wasm matches cube.c on ${runLines.length} programs (${frames} frames, ${offs} halted) and rolls all ${solutions} census solutions to their patterns; the table's 65,536 pars and L = ${L} are the census's; in Chromium the page fit with no scroll (${measured.join("; ")}), played the samples, stepped, took typed programs, the arrow keys and clicks and a drag on the tiles, halted off the board (typed, by key, the halt sample), refused a non-roll and programs past L, and its help page says L (${checks} checks)`);

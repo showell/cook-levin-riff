@@ -6,7 +6,9 @@
 # PARS is the file `census N PARS` writes, a line a pattern: the pattern
 # (tile r * N + c is bit r * N + c, row 0 the north row), its par and a
 # shortest solution as letters N, E, S, W ("-" for none). The cube starts in
-# the north-west corner with the painted face up, and may end anywhere.
+# the north-west corner with the painted face up, and may end anywhere. A
+# roll off the grid halts the machine: the tiles lit so far are the
+# program's set, and the rolls after it do nothing.
 #
 # Three checks, each its own code:
 #   1. a plain breadth-first search, a state the tuple (row, col, face,
@@ -21,10 +23,15 @@
 #      any place's set;
 #   3. every solution the file gives, rolled by a plain simulator: it stays
 #      on the grid, ends with exactly its pattern lit, and has the par's
-#      length.
-# The census's pars must be the searches' on every pattern. It prints one
-# line, "cube/oracle.py: 4x4: 65536 solutions rolled, 65536 pars by 1 search",
-# and exits 1 on any difference.
+#      length; and, where it ends on the grid's edge, the same solution with
+#      a roll off the edge and then the start tile's ESSWNN, which the halt
+#      must make do nothing.
+# Each search runs twice, without halting and with it (a halted program's
+# set counted at its length), and the census's pars must be all of them on
+# every pattern: halting changes no par. It prints one line,
+# "cube/oracle.py: 4x4: 65536 solutions rolled, 60760 rolled again past a
+# halt, 65536 pars by 1 search, with halting and without", and exits 1 on
+# any difference.
 
 import sys
 
@@ -50,20 +57,37 @@ def roll(n, row, col, face, r):
     return row, col, ROLL[r][face]
 
 
-def play(n, rolls):
-    """The lit pattern after rolling `rolls` from the start, or None."""
-    row, col, face, lit = 0, 0, "up", 0
+START = (0, 0, "up", 0)
+
+
+def play(n, rolls, state=START):
+    """The state (row, col, face, lit) after rolling `rolls` from `state`, a
+    roll off the grid halting the run: the rolls after it do nothing."""
+    row, col, face, lit = state
     for r in rolls:
         moved = roll(n, row, col, face, r)
         if moved is None:
-            return None
+            break
         row, col, face = moved
         if face == "down":
             lit ^= 1 << (row * n + col)
-    return lit
+    return row, col, face, lit
+
+
+def off_roll(n, row, col):
+    """A roll that leaves the grid from (row, col), or None inside it."""
+    for r in "NESW":
+        dr, dc = MOVE[r]
+        if not (0 <= row + dr < n and 0 <= col + dc < n):
+            return r
+    return None
 
 
 def plain_pars(n):
+    return plain_search(n, False), plain_search(n, True)
+
+
+def plain_search(n, halting):
     start = (0, 0, "up", 0)
     level = {start: 0}
     queue = [start]
@@ -73,6 +97,9 @@ def plain_pars(n):
         for r in "NESW":
             moved = roll(n, row, col, face, r)
             if moved is None:
+                # A halt: the set is lit's, at this length.
+                if halting:
+                    par.setdefault(lit, level[s] + 1)
                 continue
             row2, col2, face2 = moved
             lit2 = lit ^ (1 << (row2 * n + col2)) if face2 == "down" else lit
@@ -102,24 +129,27 @@ def flip(bits, j, low):
 
 
 def set_pars(n):
+    """The pars without halting and with it, from one search."""
     tiles = n * n
     lows = [low_mask(j, tiles) for j in range(tiles)]
     places = [(row, col, face) for row in range(n) for col in range(n) for face in FACES]
     seen = {p: 0 for p in places}
     frontier = {p: 0 for p in places}
     frontier[(0, 0, "up")] = seen[(0, 0, "up")] = 1  # the empty pattern
-    par = {0: 0}
-    found = 1
+    pars = ({0: 0}, {0: 0})
+    found = [1, 1]
     depth = 0
     while any(frontier.values()):
         depth += 1
         nxt = {p: 0 for p in places}
+        halted = 0
         for (row, col, face), bits in frontier.items():
             if bits == 0:
                 continue
             for r in "NESW":
                 moved = roll(n, row, col, face, r)
                 if moved is None:
+                    halted |= bits
                     continue
                 if moved[2] == "down":
                     j = moved[0] * n + moved[1]
@@ -131,14 +161,15 @@ def set_pars(n):
             nxt[p] &= ~seen[p]
             seen[p] |= nxt[p]
             union |= nxt[p]
-        new = union & ~found
-        found |= new
-        while new:
-            low = new & -new
-            par[low.bit_length() - 1] = depth
-            new ^= low
+        for k, reached in enumerate((union, union | halted)):
+            new = reached & ~found[k]
+            found[k] |= new
+            while new:
+                low = new & -new
+                pars[k][low.bit_length() - 1] = depth
+                new ^= low
         frontier = nxt
-    return par
+    return pars
 
 
 def main():
@@ -148,6 +179,7 @@ def main():
     lines = lines[:-1]
     assert len(lines) == 1 << (n * n), f"{len(lines)} lines, not {1 << (n * n)}"
     rolled = 0
+    halted = 0
     census = {}
     for i, line in enumerate(lines):
         parts = line.split(" ")
@@ -158,15 +190,22 @@ def main():
         census[i] = k
         rolls = "" if parts[2] == "-" else parts[2]
         assert len(rolls) == k, f"pattern {i}: a solution of {len(rolls)} rolls, par {k}"
-        assert play(n, rolls) == i, f"pattern {i}: {rolls} does not solve it"
+        end = play(n, rolls)
+        assert end[3] == i, f"pattern {i}: {rolls} does not solve it"
         rolled += 1
-    searches = [set_pars(n)]
+        off = off_roll(n, end[0], end[1])
+        if off is not None:
+            assert play(n, off + "ESSWNN", end) == end, f"pattern {i}: {rolls}{off}ESSWNN does not halt at the {off}"
+            halted += 1
+    assert play(n, "NESSWNN") == START, "N from a1 does not halt the run"
+    searches = [set_pars]
     if n <= 3:
-        searches.append(plain_pars(n))
-    for par in searches:
-        assert par == census, f"the pars differ on {len(set(par.items()) ^ set(census.items()))} entries"
+        searches.append(plain_pars)
+    for search in searches:
+        for halting, par in enumerate(search(n)):
+            assert par == census, f"the pars differ on {len(set(par.items()) ^ set(census.items()))} entries (halting {bool(halting)})"
     noun = "search" if len(searches) == 1 else "searches"
-    print(f"cube/oracle.py: {n}x{n}: {rolled} solutions rolled, {len(census)} pars by {len(searches)} {noun}")
+    print(f"cube/oracle.py: {n}x{n}: {rolled} solutions rolled, {halted} rolled again past a halt, {len(census)} pars by {len(searches)} {noun}, with halting and without")
 
 
 if __name__ == "__main__":

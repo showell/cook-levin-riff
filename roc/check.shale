@@ -34,7 +34,7 @@ const EXPECTS = {
   {app = "ClaimCnf.roc", count = 13},
   {app = "Cnf.roc", count = 9},
   {app = "Composition.roc", count = 30},
-  {app = "CubeWasm.roc", count = 23},
+  {app = "CubeWasm.roc", count = 28},
   {app = "FindSolutions.roc", count = 28},
   {app = "Fourteen.roc", count = 5},
   {app = "NibbleWasm.roc", count = 21},

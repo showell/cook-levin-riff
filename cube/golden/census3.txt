@@ -1,6 +1,7 @@
 cube 3x3: start at a1 (the north-west corner), painted face up; the cube may end anywhere
 states: 27648 reached of 27648 (cell, painted face, pattern), 32 levels
 patterns: 512, reachable 512, unreachable 0
+halting: a roll off the board halts the machine; 512 patterns are a halted program's, and every pattern's par is the same with halting as without (512 of 512)
 
 par  patterns
   0         1

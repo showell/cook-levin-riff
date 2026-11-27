@@ -1,6 +1,7 @@
 cube 4x4: start at a1 (the north-west corner), painted face up; the cube may end anywhere
 states: 6291456 reached of 6291456 (cell, painted face, pattern), 51 levels
 patterns: 65536, reachable 65536, unreachable 0
+halting: a roll off the board halts the machine; 65536 patterns are a halted program's, and every pattern's par is the same with halting as without (65536 of 65536)
 
 par  patterns
   0         1
@@ -113,6 +114,10 @@ the largest par, 47, has 1 pattern(s); the first:
     ####
     ####
     ####
+
+the language: programs of at most L = 45 rolls (cube.h's CUBE_L)
+decided within L: 65535 of 65536, the rest: 65535, every tile (par 47)
+sets with a par past each length: 42: 45, 43: 17, 44: 9, 45: 1, 46: 1
 
 sample levels:
   the start tile: par 6, ESSWNN

@@ -7,11 +7,15 @@
 #   cube.h numbers them (up 0, down 1, north 2, south 3, east 4, west 5);
 #   the start, a1 with the paint up and nothing lit, is 0;
 # - `roll(state, r)`: the state after roll r (N 0, E 1, S 2, W 3, cube.h's
-#   codes), or `off_board`, bit 24, when the roll leaves the board.
+#   codes), or `off_board`, bit 24, when the roll leaves the board, which
+#   halts the machine (the page stops the run there, the state before it
+#   the program's);
+# - `max_length(0)`: the longest program, Cube.roc's `max_length`, so the
+#   page takes L from the rules.
 #
 # web/cube_check.mjs holds it to cube/cube.c on web/cube_data.c's sample
 # runs, frame by frame, and to every one of the census's 65,536 solutions.
-app [roll] { pf: platform "../web/platform/cube.roc" }
+app [max_length, roll] { pf: platform "../web/platform/cube.roc" }
 
 import Cube
 
@@ -68,6 +72,9 @@ roll = |word, code|
 		Err(OffBoard) => off_board
 	}
 
+max_length : U64 -> U64
+max_length = |_| Cube.max_length
+
 # The start is 0; E from a1 goes to b1 with the paint east.
 expect pack(Cube.start) == 0
 expect roll(0, 1) == U64.shl_wrap(1, 16) + U64.shl_wrap(4, 20)
@@ -77,4 +84,5 @@ expect roll(0, 3) == off_board
 # S from b1 with the paint east keeps it east, on b2; E then lands it down on c2.
 expect roll(roll(0, 1), 2) == U64.shl_wrap(5, 16) + U64.shl_wrap(4, 20)
 expect roll(roll(roll(0, 1), 2), 1) == 64 + U64.shl_wrap(6, 16) + U64.shl_wrap(1, 20)
+expect max_length(0) == 45
 expect unpack(pack({ cell: 15, face: West, lit: 0xFFFF })) == { cell: 15, face: West, lit: 0xFFFF }

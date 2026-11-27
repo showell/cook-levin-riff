@@ -2,13 +2,15 @@
 //
 // One die-sized cube sits on an n x n grid of tiles, every tile dark at the
 // start. A roll tips the cube over one of its bottom edges into the cell
-// next to it: N, E, S or W, two bits a roll. A roll off the grid is refused.
+// next to it: N, E, S or W, two bits a roll. A roll off the grid halts the
+// machine: the cube stays where it was, the tiles lit so far are the
+// program's set, and the rolls after it do nothing.
 // One face of the cube is painted, and each time the cube lands with the
 // painted face down, the tile under it flips, dark to lit or lit to dark.
 //
 // A level is n, the cube's start cell and orientation, and the set of tiles
-// that must be lit once the program ends, every other tile dark. The cube may
-// end anywhere. The certificate for "this level is solved in k rolls" is the
+// that must be lit once the program ends (or halts), every other tile dark.
+// The cube may end anywhere. The certificate for "this level is solved in k rolls" is the
 // roll sequence, and the checker rolls it and compares.
 //
 // The cube has 24 orientations, but only the painted face touches the tiles,
@@ -29,6 +31,11 @@
 // The largest grid the CNF takes; the census takes 4 x 4 at most (16 tiles,
 // 65,536 patterns), since 5 x 5 has 5 billion states.
 enum { CUBE_MAX_N = 5 };
+
+// The 4 x 4 language is finite: a program is at most CUBE_L rolls, as a
+// Nibble program is six lines. 45 is the least length that decides every lit
+// set but one: every tile lit takes 47 rolls (the census, cube/README.md).
+enum { CUBE_L = 45 };
 
 // The rolls, by their two-bit codes.
 typedef enum { CUBE_N = 0, CUBE_E = 1, CUBE_S = 2, CUBE_W = 3 } CubeRoll;
@@ -51,12 +58,14 @@ char cube_roll_letter(CubeRoll r);
 int cube_roll_of(char c);
 
 // Rolls `rolls` (as letters, `k` of them) from the start and gives the
-// pattern of lit tiles, or -1 when a roll leaves the grid. *end_cell and
-// *end_face, when not NULL, get where the cube stopped.
-int64_t cube_play(int n, int start_cell, CubeFace start_face, const char *rolls, int k, int *end_cell, CubeFace *end_face);
+// pattern of lit tiles, or -1 for a letter that is not a roll. A roll off
+// the grid halts the run there. *end_cell and *end_face, when not NULL, get
+// where the cube stopped; *halt_at, when not NULL, gets the number of rolls
+// before the one that halted it, or -1 when none did.
+int64_t cube_play(int n, int start_cell, CubeFace start_face, const char *rolls, int k, int *end_cell, CubeFace *end_face, int *halt_at);
 
-// The checker: 1 when the rolls stay on the grid and end with exactly
-// `target` lit, else 0.
+// The checker: 1 when the rolls end (or halt) with exactly `target` lit,
+// else 0. It takes any length; CUBE_L is the 4 x 4 language's bound.
 int cube_check(int n, int start_cell, CubeFace start_face, uint32_t target, const char *rolls, int k);
 
 #endif

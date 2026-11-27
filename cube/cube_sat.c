@@ -7,7 +7,8 @@
 //                                (tile r * N + c is bit r * N + c)
 //   cube_sat check N TARGET ROLLS
 //                                exit 0 and "solves" when the rolls (letters
-//                                N, E, S, W) solve the level, else exit 1
+//                                N, E, S, W) solve the level, else exit 1;
+//                                a roll off the grid halts them (cube.h)
 //
 // The encoding is the machine unrolled, one copy of its state a step:
 //
@@ -15,20 +16,25 @@
 //     2t are roll t's high and low bit (N 00, E 01, S 10, W 11);
 //   - per step t = 1..k, R[t][r], roll t is r, tied to the two bits;
 //   - per time t = 0..k, the cube's cell P[t][c] and its painted face
-//     F[t][f], each one-hot, and the tiles L[t][c]; time 0 is the start,
-//     fixed by unit clauses, every tile dark;
-//   - a step: P[t-1][c] and R[t][r] imply P[t][c'] for the cell c' the roll
-//     reaches, and are refused together when the roll leaves the grid;
-//     F[t-1][f] and R[t][r] imply F[t][f'], the face cube.c's rule gives;
-//     D[t][c] = P[t][c] AND F[t][down] is a landing face down on c, by
-//     Tseitin's three clauses, and L[t][c] = L[t-1][c] XOR D[t][c], by
-//     four;
+//     F[t][f], each one-hot, the tiles L[t][c], and H[t], the machine
+//     halted; time 0 is the start, fixed by unit clauses, every tile dark,
+//     not halted;
+//   - a step, while the machine runs (not H[t-1]): P[t-1][c] and R[t][r]
+//     imply P[t][c'] and not H[t] for the cell c' the roll reaches, and
+//     H[t] when the roll leaves the grid, which halts the machine;
+//   - H[t-1] implies H[t]; a halted machine stands still: H[t] and
+//     P[t-1][c] imply P[t][c], and H[t] and F[t-1][f] imply F[t][f];
+//     otherwise F[t-1][f] and R[t][r] imply F[t][f'], the face cube.c's
+//     rule gives;
+//   - D[t][c] = P[t][c] AND F[t][down] AND NOT H[t] is a landing face down
+//     on c, by Tseitin's four clauses, and L[t][c] = L[t-1][c] XOR D[t][c],
+//     by four;
 //   - at most one cell and one face at each time, pairwise, so no extra
 //     true P or F can flip a tile;
 //   - the end: L[k][c] is TARGET's bit c, a unit clause a tile.
 //
-// So a model is a k-roll solution, and UNSAT says there is none of exactly
-// k rolls. "At most k" is the OR of the CNFs for 0..k; the census's par is
+// So a model is a k-roll solution, halted or not, and UNSAT says there is
+// none of exactly k rolls. "At most k" is the OR of the CNFs for 0..k; the census's par is
 // the least k that is SAT.
 
 #include "cube.c"
@@ -70,11 +76,14 @@ static void encode(Cnf *c, uint32_t target) {
     int P[k + 1][CUBE_MAX_N * CUBE_MAX_N];
     int F[k + 1][CUBE_FACES];
     int L[k + 1][CUBE_MAX_N * CUBE_MAX_N];
+    int H[k + 1];
     for (int t = 0; t <= k; t++) {
         for (int x = 0; x < tiles; x++) P[t][x] = fresh(c);
         for (int f = 0; f < CUBE_FACES; f++) F[t][f] = fresh(c);
         for (int x = 0; x < tiles; x++) L[t][x] = fresh(c);
+        H[t] = fresh(c);
     }
+    CLAUSE(c, -H[0]);
     // The start.
     for (int x = 0; x < tiles; x++) {
         CLAUSE(c, x == 0 ? P[0][x] : -P[0][x]);
@@ -94,20 +103,25 @@ static void encode(Cnf *c, uint32_t target) {
             CLAUSE(c, -R[r], l);
             CLAUSE(c, R[r], -h, -l);
         }
+        int was = H[t - 1], now = H[t];
+        CLAUSE(c, -was, now);
         for (int x = 0; x < tiles; x++) {
             for (int r = 0; r < CUBE_ROLLS; r++) {
                 int to = cube_cell_after(n, x, (CubeRoll)r);
                 if (to < 0) {
-                    CLAUSE(c, -P[t - 1][x], -R[r]);
+                    CLAUSE(c, was, -P[t - 1][x], -R[r], now);
                 } else {
-                    CLAUSE(c, -P[t - 1][x], -R[r], P[t][to]);
+                    CLAUSE(c, was, -P[t - 1][x], -R[r], P[t][to]);
+                    CLAUSE(c, was, -P[t - 1][x], -R[r], -now);
                 }
             }
+            CLAUSE(c, -now, -P[t - 1][x], P[t][x]);
         }
         for (int f = 0; f < CUBE_FACES; f++) {
             for (int r = 0; r < CUBE_ROLLS; r++) {
-                CLAUSE(c, -F[t - 1][f], -R[r], F[t][cube_face_after((CubeFace)f, (CubeRoll)r)]);
+                CLAUSE(c, now, -F[t - 1][f], -R[r], F[t][cube_face_after((CubeFace)f, (CubeRoll)r)]);
             }
+            CLAUSE(c, -now, -F[t - 1][f], F[t][f]);
         }
         at_most_one(c, P[t], tiles);
         at_most_one(c, F[t], CUBE_FACES);
@@ -116,7 +130,8 @@ static void encode(Cnf *c, uint32_t target) {
             int d = fresh(c);
             CLAUSE(c, -d, P[t][x]);
             CLAUSE(c, -d, down);
-            CLAUSE(c, d, -P[t][x], -down);
+            CLAUSE(c, -d, -now);
+            CLAUSE(c, d, -P[t][x], -down, now);
             int a = L[t][x], b = L[t - 1][x];
             // a = b XOR d.
             CLAUSE(c, -a, b, d);

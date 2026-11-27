@@ -11,7 +11,8 @@
 //
 // A line of OUT is a program, `-` for the empty one, then each frame after
 // each roll as `cell.face.lit` (cube.h's numbers, the lit set in decimal);
-// a program with a roll off the board ends `off@k`, k the rolls before it.
+// a program with a roll off the board, which halts the machine, ends
+// `halt@k`, k the rolls before it; the rolls after it do nothing.
 // The programs are the census's sample levels, then 396 pseudo-random ones
 // of 1 to 80 rolls, most rolls kept on the board so that runs are long and
 // a few let off it.
@@ -76,11 +77,11 @@ static void write_run(FILE *out, const char *program) {
     int k = (int)strlen(program);
     fputs(k == 0 ? "-" : program, out);
     for (int i = 1; i <= k; i++) {
-        int cell;
+        int cell, halt_at;
         CubeFace face;
-        int64_t lit = cube_play(N, 0, FACE_UP, program, i, &cell, &face);
-        if (lit < 0) {
-            fprintf(out, " off@%d", i - 1);
+        int64_t lit = cube_play(N, 0, FACE_UP, program, i, &cell, &face, &halt_at);
+        if (halt_at >= 0) {
+            fprintf(out, " halt@%d", halt_at);
             break;
         }
         fprintf(out, " %d.%d.%lld", cell, (int)face, (long long)lit);

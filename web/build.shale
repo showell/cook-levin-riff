@@ -29,8 +29,10 @@
 --    built the same way to out/web/plus.wasm, the Nibble++ page's machine,
 --    and roc/CubeWasm.roc, Cube.roc on web/platform/cube.roc, to
 --    out/web/cube.wasm, the cube page's.
--- 3. The three pages, the puzzles (index.html), the sandbox (sandbox.html)
---    the Nibble++ sandbox (plus.html) and the rolling cube (cube.html), go to out/web/site, each file but the two pages named by its bytes
+-- 3. The pages, the puzzles (index.html), the sandbox (sandbox.html)
+--    the Nibble++ sandbox (plus.html) and the rolling cube (cube.html, and
+--    its help, cube_help.html), go to out/web/site, each file but the pages
+--    named by its bytes
 --    (`nibble.<hash>.js`, the first 16 hex digits of its sha256), as
 --    roc-apps' site names them: the wasm, the table, the shared stylesheet
 --    nibble.css, the shared module machine.js and each page's script,
@@ -58,8 +60,11 @@
 --    out/web/page-sandbox.png and out/web/page-plus.png.
 -- 5. web/cube_check.mjs holds cube.wasm to cube.c on the 400 sample runs,
 --    frame by frame, rolls every census solution through it, holds
---    cube_pars.bin to the census, and plays cube.html in headless Chromium;
---    screenshots out/web/cube.png, cube-rolling.png and cube-phone.png.
+--    cube_pars.bin and L to the census, and plays cube.html in headless
+--    Chromium: halting, L, clicks on the tiles, three panes with no scroll
+--    at 1366 x 650 and 1920 x 700, one column at a phone's width, and the
+--    help page; screenshots out/web/cube.png, cube-rolling.png,
+--    cube-halt.png, cube-wide.png and cube-phone.png.
 --
 -- One line a stage. Exits 0 only when every check passes.
 
@@ -221,7 +226,8 @@ local cube_js = hashed_copy("cube", "js", {{"fetched(\"cube.wasm\")", "fetched(\
   {"fetched(\"cube_pars.bin\")", "fetched(\"" .. cube_bin .. "\")"}})
 replace(SITE .. "/cube.html", rename_in(rename_in(read("web/cube.html"), "src=\"cube.js\"", "src=\"" .. cube_js .. "\"", "web/cube.html"),
   sheet[1], sheet[2], "web/cube.html"))
-print("ok   " .. SITE .. ": index.html, sandbox.html, plus.html, cube.html, " .. join({js, sandbox_js, plus_js, cube_js, shared, css, wasm, plus_wasm, plus_names, json, cube_wasm, cube_bin}, ", "))
+replace(SITE .. "/cube_help.html", rename_in(read("web/cube_help.html"), sheet[1], sheet[2], "web/cube_help.html"))
+print("ok   " .. SITE .. ": index.html, sandbox.html, plus.html, cube.html, cube_help.html, " .. join({js, sandbox_js, plus_js, cube_js, shared, css, wasm, plus_wasm, plus_names, json, cube_wasm, cube_bin}, ", "))
 
 local check = run({"node", "web/page_check.mjs", real(SITE), real(OUT .. "/puzzles.json"), real(OUT .. "/runs.json"), real(OUT .. "/plus_runs.txt"), real(OUT) .. "/page.png", real(OUT .. "/plus_names.tsv")},
   {timeout_ms = 120000, tail = 30, want = WANT_NODE})
