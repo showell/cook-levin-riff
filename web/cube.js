@@ -627,7 +627,7 @@ const el = (tag, text, cls) => { const e = document.createElement(tag); e.textCo
 // One line of the listing, as the page shows it: its number, its
 // instruction (a word, with the typed letter beside it), where the paint
 // points after it, and what it did. Change how a line reads here alone.
-const MARK_WORDS = { lit: "lights", unlit: "darkens", halt: "halts: off the board", dead: "does nothing" };
+const MARK_WORDS = { lit: "lights", unlit: "darkens", halt: "halts", dead: "skipped" };
 function listingLine(row) {
   const li = document.createElement("li");
   li.dataset.line = String(row.line);

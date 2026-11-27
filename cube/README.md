@@ -108,27 +108,34 @@ number. The canvas shows each tile's number on it and the chess names
 along the edges.
 
 **The layout:** three panes side by side, the canvas as tall as the
-window. The first is the title and a Help link (`cube_help.html`: the
-rules, the numbering, the questions, par, the halt, L and the samples),
-the program (the text box, the roll buttons laid out as arrow keys, Play,
-Back, Forward, Reset and Clear), ten questions and five samples. The last
-is the readout: the length, "8 of 45 rolls", the lit set as a numbered map
-and as a number in decimal and binary, the census's par, "par 8; yours is
-8", the question it answers and the one chosen, where the cube is, and the
-program with the shown roll marked. At a phone's width the panes stack,
-the canvas first.
+window, sized for a short laptop screen (1366 × 650) with no page scroll.
+The first is the title and a Help link (`cube_help.html`: the rules, the
+numbering, the names, the views, par, the halt, L and the samples), the
+program (the text box with its machine code under it, the roll buttons
+laid out as arrow keys, Play, Back, Forward, Reset and Clear), five
+samples, and the listing, which fills the rest of the pane and scrolls in
+it. The middle is the canvas, with the paint's compass in its corner. The
+last is the readout: the length, "8 of 45 rolls", the lit set as a
+numbered map and as a number in decimal and binary, the census's par,
+"par 8; yours is 8", its name, and where the cube is. At a phone's width
+the panes stack, the canvas first.
 
-**The questions** bring back Nibble++'s spirit: a lit set is a set of
-numbers, so a program answers a question about 0 to 15 by lighting the
-tiles whose answer is yes, as a Nibble++ program decides a language. The
-names are Nibble++'s (`docs/NIBBLE_PLUS_NAMES.md`); a question chosen rings
-its tiles on the board and the map, and says when the lit set answers it.
+**The name.** A lit set is a set of numbers, so a program answers a
+question about 0 to 15 by lighting the tiles whose answer is yes, as a
+Nibble++ program decides a language. As you roll, the page names the set
+the way the Nibble++ sandbox does, from the same table, `plus_names.bin`
+(`web/plus_names.c`; `docs/NIBBLE_PLUS_NAMES.md`): each set's cheapest
+name of cost 4 or less, a tie to the shorter name, then byte order. A set
+with no such name (17% of them, mostly scattered tiles) shows its number
+alone. `cube_check.mjs` holds these to `plus_names.tsv`, on the page and in
+the help's table:
 
-| question | yes for | the number | par |
+| name | yes for | the number | par |
 |---|---|---|---|
+| `grumpy` | nothing | 0 | 0 |
+| `is_5` | 5 (b2) | 32 | 8 |
+| `is_6` | 6 (c2) | 64 | 3 |
 | `is_even` | n % 2 == 0 (columns a and c) | 21845 | 24 |
-| `is_odd` | n % 2 == 1 (columns b and d) | 43690 | 26 |
-| `is_small` | n < 8 (rows 1 and 2) | 255 | 23 |
 | `is_small_even` | n < 8 and even | 85 | 12 |
 | `is_mult_of_4` | n % 4 == 0 (column a) | 4369 | 12 |
 | `is_mult_of_5` | n % 5 == 0 (the diagonal) | 33825 | 18 |
@@ -137,8 +144,28 @@ its tiles on the board and the map, and says when the lit set answers it.
 | `is_fib` | 1, 2, 3, 5, 8, 13 | 8494 | 20 |
 | `is_not_14` | every n but 14 | 49151 | 44 |
 
-The pars are the census's (`cube_pars.bin`); `cube_check.mjs` holds each
-question's set and par, on the page, in the help and in the table.
+**The listing** is the program as a Nibble++ program reads, a line an
+instruction: the line's number, its opcode (a roll's two bits, N 00, E 01,
+S 10, W 11), the roll as a word with its letter, where the paint points
+after it (U, D, N, S, E or W), and what it did: the tile it lit or
+darkened, the halt, or skipped after a halt. Line 0 is the start. The
+current line is highlighted as you step, and a click on a line shows the
+run there. One function, `listingLine` in `cube.js`, says how a line
+reads. Under the text box, the machine code: the opcodes line 1 first,
+and the number they make read as one binary number (`#25  01 10 01` for
+ESE).
+
+**The views of the hidden paint.** When the paint lands face down, the tile
+under the cube flashes, a ring of the paint's blue spreads from it, and the
+cube dips; the tile keeps a blue frame, its stamp, for the rest of the run
+(stepping back takes it away). `landed()` in `cube.js` is where a ding
+would go. When the paint faces a side, the floor glows blue on that side,
+as strong as the paint is turned that way through a roll. The compass, in
+the canvas's corner, lights N, E, S or W, or U or D in its middle. The
+check judges these by the page's state (the canvas's `data-paint`,
+`data-glow`, `data-stamped`, `data-flash` and the compass's
+`data-points`), along ESWN (the paint east, east, up, north) and on ESE's
+landing on c2.
 
 **Rolls** come from the arrow buttons (each lights when its arrow key is
 pressed), the arrow keys, the text box, or a click on a tile next to the
@@ -161,7 +188,8 @@ by frame (80 of them halt), rolls all 65,536 census solutions through it,
 holds the table and L to the census, and plays the page in headless
 Chromium: the samples, stepping, typed programs, the keys, clicks and a drag
 on the tiles, the halt three ways, L refused, the numbered tiles, the lit
-set as a number, a question chosen and answered, and the fit with no
+set as a number and its name, the listing and the machine code against the
+wasm's run, the compass, the glow and a landing, and the fit with no
 scroll:
 
 | window | panes | canvas |
