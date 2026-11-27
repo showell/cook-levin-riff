@@ -49,24 +49,18 @@
 //   <plus_runs.txt>, web/plus_runs.c's sample: its language, each input's
 //   status, and `after` at every line against each prefix's language;
 // - follows the sandbox's link to the Nibble++ sandbox, plus.html, and sees
-//   it open as zero, decr, zero, decr, zero and 25 decrs, deciding
-//   is_below_3's {0, 1, 2}, its buttons and its ops' legend in the order
-//   zero, decr, mod2, half, with the machine's tips; steps to the start,
-//   three lines on and back, the stepped line marked; edits line 5 to decr
-//   ({0, 1}) with the step kept;
-//   saves a screenshot (`-plus`); removes lines down to one and adds them
-//   back; types numbers in (7 into two lines, 16 refused, 30-line numbers
-//   past 2^53 loaded as the wasm runs them, 4^30 refused); types in
-//   programs of zeros and decrs for known languages and sees each one's
-//   name (held to <plus_names.tsv> too) and its set's ranges, the longest
-//   name wrapping with nothing scrolled sideways, and a language the table
-//   doesn't name shown by its set alone; sees the elegance rating under the
-//   language, its stars from the name's cost (one for no name) and its line,
-//   following the program (an edit, a special like grumpy or is_even, a
-//   cost-3 and a cost-4 name, an unnamed set); opens and closes the "?"; resets
-//   to its start; sees nothing scroll sideways and
-//   nothing stored; and follows its links back to the sandbox and the
-//   puzzles.
+//   it open as its 7 lines, zero, decr, zero, decr, zero, decr, decr,
+//   program #6554 deciding is_below_3's {0, 1, 2}, its buttons and its ops'
+//   legend in the order zero, decr, mod2, half, with the machine's tips, and
+//   none of the controls the lean page dropped (the intro, the rating, the
+//   line buttons, the number box, the step buttons, the trace); opens and
+//   closes the machine code's "?"; saves a screenshot (`-plus`); clicks ops
+//   on a few lines and sees the language, its name (held to
+//   <plus_names.tsv>) and the program's number and bits follow: is_even,
+//   is_below_2, and the one language a 7-line program decides that the
+//   table doesn't name, shown by its set alone; sees nothing scroll
+//   sideways and nothing stored; and follows its links back to the sandbox
+//   and the puzzles.
 //
 // The browser is started as roc-apps' tools/chromium.mjs starts it (its
 // flags and its folder under TMPDIR, for Shale's confinement); this is a
@@ -221,30 +215,9 @@ expect(table.ops.map((o) => o.name).join(" ") === "nada zero decr mod2", "the ta
 // accepted exactly the members of prefix k's language; a halted run stays
 // as it halted, and `after` at the last line ends as `status` does.
 const PLUS_LINES = 30;
-// Languages the Nibble++ page names (web/plus_names.c), with their sets'
-// ranges as it writes them; the last is a long one, to see it wrap.
-const KNOWN_NAMES = [
-  { set: [1, 2, 3, 5], name: "is_small_fib", range: "{1–3, 5}" },
-  { set: [0, 2, 3, 4, 5, 7, 8, 11, 12, 13], name: "is_prime_or_mult_of_4", range: "{0, 2–5, 7, 8, 11–13}" },
-  { set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15], name: "is_not_14", range: "{0–13, 15}" },
-  { set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15], name: "is_below_11_or_mult_of_3", range: "{0–10, 12, 15}" },
-  { set: [2, 6, 10, 14], name: "is_even_and_has_bit_1", range: "{2, 6, 10, 14}" },
-  { set: [1, 2, 5, 6, 9, 10, 13], name: "is_from_1_to_2_or_from_5_to_6_or_from_9_to_10_or_13", range: "{1, 2, 5, 6, 9, 10, 13}" },
-];
-// The elegance rating: the stars are 6 less the name's cost (held to
-// plus_names.tsv's), one for a language the page doesn't name; a line a
-// language, a special's own or one of its stars' lines by the language's
-// number. grumpy, is_even and a single number are specials; then a cost-3
-// name, a cost-4 one, and a set past the table (KNOWN_NAMES' unnamed one).
-const ELEGANCE = [
-  { set: [], stars: 5, line: "Accepts nothing. Commitment issues? No: standards." },
-  { set: [0, 2, 4, 6, 8, 10, 12, 14], stars: 5, line: "Every other number, starting at zero. Textbook." },
-  { set: [9], stars: 5, line: "Only 9 will do. Picky, and proud of it." },
-  { set: [1, 2, 3, 5, 15], stars: 3, line: "It works, and it knows it." },
-  { set: [1, 2, 5, 6, 9, 10, 13], stars: 2, line: "Has strong opinions about some numbers." },
-  { set: [0, 2, 4, 5, 7, 8, 11], stars: 1, line: "There's no short way to say this." },
-];
-const plusWasmFile =files.find((f) => /^plus\.[0-9a-f]{16}\.wasm$/.test(f));
+// The Nibble++ page's programs are 7 lines.
+const PAGE_LINES = 7;
+const plusWasmFile = files.find((f) => /^plus\.[0-9a-f]{16}\.wasm$/.test(f));
 if (!plusWasmFile) { console.error(`page_check: no hashed plus wasm in ${site}`); process.exit(1); }
 const pm = (await WebAssembly.instantiate(readFileSync(join(site, plusWasmFile)))).instance.exports;
 const plusSample = readFileSync(plusRunsFile, "utf8").trim().split("\n").map((l) => {
@@ -356,7 +329,7 @@ async function open(where) {
   const done = new Promise((d) => { loaded = d; });
   await page("Page.navigate", { url: where });
   await done;
-  for (let k = 0; k < 50 && !(await evaluate("!!document.getElementById('trace')")); k++) await sleep(100);
+  for (let k = 0; k < 50 && !(await evaluate("!!document.querySelector('.slot')")); k++) await sleep(100);
 }
 const text = (id) => evaluate(`document.getElementById(${JSON.stringify(id)})?.textContent ?? null`);
 // A real click, at the middle of the element the selector names.
@@ -374,7 +347,7 @@ async function follow(selector) {
   const done = new Promise((d) => { loaded = d; });
   await click(selector);
   await done;
-  for (let k = 0; k < 50 && !(await evaluate("!!document.getElementById('trace')")); k++) await sleep(100);
+  for (let k = 0; k < 50 && !(await evaluate("!!document.querySelector('.slot')")); k++) await sleep(100);
 }
 async function screenshot(file) {
   await evaluate("window.scrollTo(0, 0)");
@@ -663,160 +636,73 @@ try {
   // ── the Nibble++ sandbox ──
   await follow("#plus-link");
   expect((await evaluate("document.title")) === "Nibble++ sandbox", `the sandbox's Nibble++ link opens \`${await evaluate("document.title")}\``);
-  // A program as the page shows it: its bits, its number, its language.
+  // A program as the page shows it: its bits and number, then its language.
   const plusOps = ["half", "zero", "decr", "mod2"];
-  const plusCode = (prog) => prog.reduce((sum, op, i) => sum | (BigInt(op) << BigInt(2 * i)), 0n);
+  const plusCode = (prog) => BigInt(prog.reduce((sum, op, i) => sum + op * 4 ** i, 0));
   const plusSet = (lang) => { const s = Array.from({ length: 16 }, (_, n) => n).filter((n) => (lang >> n) & 1); return s.length ? `{${s.join(", ")}}` : "{ }"; };
-  const plusWant = (prog) => `${prog.map((op) => op.toString(2).padStart(2, "0")).join(" ")}  (#${prog.reduce((s, op) => s * 4n + BigInt(op), 0n)}) | ${plusSet(pm.accepts(plusCode(prog), prog.length))} #${pm.accepts(plusCode(prog), prog.length)}`;
-  const plusShows = async () => `${await text("machine-code")} | ${await text("decided-set")} #${await text("decided-code")}`;
   const plusOnOps = () => evaluate("[...document.querySelectorAll('.slot')].map((r) => r.querySelector('button.on')?.dataset.op ?? '-').join(' ')");
-  const column = (col) => evaluate(`[...document.querySelectorAll('#trace tbody td[data-col="${col}"]')].map((c) => c.textContent).join(" | ")`);
-  // It opens as zero, decr, zero, decr, zero and 25 decrs, which accept 0,
-  // 1 and 2 at lines 1, 3 and 5 and reject n > 2 at line n + 4.
-  const opening = [1, 2, 1, 2, 1, ...Array(PLUS_LINES - 5).fill(2)];
-  const openingNumber = opening.reduce((s, op) => s * 4n + BigInt(op), 0n);
-  expect((await plusOnOps()) === opening.map((op) => plusOps[op]).join(" "), `the Nibble++ sandbox opens as \`${await plusOnOps()}\``);
-  expect((await plusShows()) === plusWant(opening) && (await text("decided-set")) === "{0, 1, 2}", `the fresh Nibble++ sandbox shows \`${await plusShows()}\`, not \`${plusWant(opening)}\``);
-  expect((await text("machine-code")).endsWith(`(#${openingNumber})`), `the opening program's number reads \`${await text("machine-code")}\`, not #${openingNumber}`);
-  expect((await text("decided")) === "This program decides is_below_3, {0–2}, #7 of 65,536: it accepts {0, 1, 2} and rejects the rest.", `the fresh Nibble++ language reads \`${await text("decided")}\``);
-  // The elegance rating, right under the language: its stars (data-stars,
-  // then as drawn) and its line. is_below_3 costs 1, five stars, and #7 takes
-  // the second of five stars' lines.
-  const rated = async () => `${await evaluate("document.getElementById('elegance').dataset.stars")} ${await text("elegance-stars")} ${await text("elegance-line")}`;
-  const stars = (n) => `${n} ${"★".repeat(n)}${"☆".repeat(5 - n)}`;
-  expect((await evaluate("document.getElementById('decided').nextElementSibling?.id")) === "elegance", "the elegance rating isn't right under the language");
-  expect((await rated()) === `${stars(5)} Says it in one word.`, `the opening program's elegance reads \`${await rated()}\``);
-  // The ops are shown workhorses first: zero, decr, mod2, then half.
-  const shownOrder = "zero decr mod2 half";
-  const buttonOrders = await evaluate("[...new Set([...document.querySelectorAll('.slot')].map((r) => [...r.querySelectorAll('button')].map((b) => b.dataset.op).join(' ')))].join(' / ')");
-  expect(buttonOrders === shownOrder, `the Nibble++ lines' buttons run \`${buttonOrders}\`, not \`${shownOrder}\``);
-  const legendOrder = await evaluate("[...document.querySelectorAll('#ops dt')].map((d) => d.textContent).join(' ')");
-  expect(legendOrder === shownOrder, `the Nibble++ ops' legend runs \`${legendOrder}\`, not \`${shownOrder}\``);
-  expect((await text("line-count")) === "30 lines" && (await evaluate("document.getElementById('add-line').disabled")), "thirty lines don't say so, or + line isn't shut");
-  const plusFree = await evaluate("[...document.querySelectorAll('.slot')].map((r) => [...r.querySelectorAll('button')].filter((b) => !b.disabled).length).join('')");
-  expect(plusFree === "4".repeat(PLUS_LINES), `the Nibble++ lines' free buttons are \`${plusFree}\``);
-  const decrTip = await evaluate("document.querySelector('[data-slot=\"29\"][data-op=\"decr\"]').title");
-  expect(decrTip === `decr: 0->R, ${Array.from({ length: 15 }, (_, n) => `${n + 1}->${n}`).join(", ")} (R rejects)`, `line 30's decr tip is \`${decrTip}\``);
-  const halfTip = await evaluate("document.querySelector('[data-slot=\"0\"][data-op=\"half\"]').title");
-  expect(halfTip === `half: ${Array.from({ length: 16 }, (_, n) => `${n}->${n >> 1}`).join(", ")}`, `line 1's half tip is \`${halfTip}\``);
-  expect((await evaluate("document.querySelectorAll('#trace tbody tr').length")) === 16, "the Nibble++ trace hasn't a row an input");
-  const ends = Array.from({ length: 16 }, (_, n) => (n <= 2 ? `accept at line ${2 * n + 1}` : `reject at line ${n + 4}`)).join(" | ");
-  expect((await column("result")) === ends, `the opening program's results are \`${await column("result")}\``);
-  expect((await text("step-label")) === "after line 30 of 30", `the trace opens \`${await text("step-label")}\``);
-  // Stepping: the start is the inputs, and three lines on (zero, decr,
-  // zero), inputs 0 and 1 have accepted and the rest are 1 less, line 3
-  // marked.
-  await click("#step-start");
-  expect((await column("now")) === Array.from({ length: 16 }, (_, n) => `AX=${n}`).join(" | ") && (await text("step-label")) === "after line 0 of 30", `at the start the trace shows \`${await column("now")}\``);
-  for (let k = 0; k < 3; k++) await click("#step-next");
-  const third = Array.from({ length: 16 }, (_, n) => (n < 2 ? `accept (line ${2 * n + 1})` : `AX=${n - 1}`)).join(" | ");
-  expect((await column("now")) === third, `after three steps the trace shows \`${await column("now")}\`, not \`${third}\``);
-  expect((await evaluate("[...document.querySelectorAll('.slot.current')].map((r) => r.dataset.line).join(' ')")) === "2", "after three steps line 3 isn't the one marked");
-  await click("#step-back");
-  expect((await text("step-label")) === "after line 2 of 30", `Back leaves \`${await text("step-label")}\``);
-  await click("#step-next");
-  // Editing a line keeps the step: decr on line 5 leaves {0, 1}.
-  await click('[data-slot="4"][data-op="decr"]');
-  const edited = [1, 2, 1, ...Array(PLUS_LINES - 3).fill(2)];
-  expect((await plusShows()) === plusWant(edited) && (await text("decided-set")) === "{0, 1}", `decr on line 5 shows \`${await plusShows()}\``);
-  // The rating follows the edit: is_below_2, #3, the first of five stars' lines.
-  expect((await rated()) === `${stars(5)} Dijkstra would nod.`, `after decr on line 5 the elegance reads \`${await rated()}\``);
-  expect((await column("now")) === third && (await text("step-label")) === "after line 3 of 30", `after decr on line 5, step 3 shows \`${await column("now")}\``);
-  await screenshot(shotFile.replace(/\.png$/, "-plus.png"));
-  await click("#step-end");
-  expect((await text("step-label")) === "after line 30 of 30", `End leaves \`${await text("step-label")}\``);
-  // Down to two lines, then half, zero: {0, 1}.
-  for (let k = PLUS_LINES; k > 2; k--) await click("#remove-line");
-  expect((await text("line-count")) === "2 lines" && (await text("step-label")) === "after line 2 of 2", `twenty-eight removals leave \`${await text("line-count")}\`, \`${await text("step-label")}\``);
-  await click('[data-slot="0"][data-op="half"]');
-  await click('[data-slot="1"][data-op="zero"]');
-  expect((await plusShows()) === "00 01  (#1) | {0, 1} #3", `half, zero shows \`${await plusShows()}\``);
-  await click("#remove-line");
-  await click("#remove-line");
-  expect((await text("line-count")) === "1 line" && (await evaluate("document.getElementById('remove-line').disabled")), "one line doesn't say so, or − line isn't shut");
-  await click("#add-line");
-  // A typed number loads into the lines there are: 7 is zero, mod2; 16 is
-  // past two lines' 15.
-  async function plusType(said) {
-    await evaluate("document.getElementById('program-number').value = ''");
-    await click("#program-number");
-    await page("Input.insertText", { text: said });
-    await click("#load-button");
-  }
-  await plusType("7");
-  expect((await plusShows()) === plusWant([1, 3]) && (await plusOnOps()) === "zero mod2", `typing 7 into two lines shows \`${await plusShows()}\``);
-  await plusType("16");
-  expect((await plusShows()) === plusWant([1, 3]) && (await evaluate("document.getElementById('program-number').classList.contains('bad')")), "typing 16 into two lines loads it, or leaves the box unmarked");
-  for (let k = 2; k < PLUS_LINES; k++) await click("#add-line");
-  expect((await plusShows()) === plusWant([1, 3, ...Array(PLUS_LINES - 2).fill(2)]), `lines added after zero, mod2 show \`${await plusShows()}\``);
-  // Thirty-line numbers past 2^53, the sample's and the largest, load as the
-  // wasm runs them; one past the largest is refused.
-  const picks = plusSample.filter((p) => p.lines === PLUS_LINES).slice(4, 9).map((p) => Array.from({ length: PLUS_LINES }, (_, k) => Number((p.code >> BigInt(2 * k)) & 3n)));
-  for (const prog of [...picks, Array(PLUS_LINES).fill(3)]) {
-    const n = prog.reduce((s, op) => s * 4n + BigInt(op), 0n);
-    await plusType(String(n));
-    expect((await plusShows()) === plusWant(prog) && (await plusOnOps()) === prog.map((op) => plusOps[op]).join(" "), `typing ${n} shows \`${await plusShows()}\`, not \`${plusWant(prog)}\``);
-  }
-  await plusType(String(4n ** 30n));
-  expect((await evaluate("document.getElementById('program-number').classList.contains('bad')")) && (await plusOnOps()) === Array(PLUS_LINES).fill("mod2").join(" "), "typing 4^30 loads something, or leaves the box unmarked");
-  // A program that accepts some: the sample's first thirty-line one with a
-  // language past { }, its results each the wasm's.
-  const rich = plusSample.find((p) => p.lines === PLUS_LINES && p.lang !== 0 && p.lang !== 0xffff);
-  if (rich) {
-    const prog = Array.from({ length: PLUS_LINES }, (_, k) => Number((rich.code >> BigInt(2 * k)) & 3n));
-    await plusType(String(prog.reduce((s, op) => s * 4n + BigInt(op), 0n)));
-    expect((await text("decided-set")) === plusSet(rich.lang), `program ${rich.code.toString(16)} decides \`${await text("decided-set")}\`, not the C's ${plusSet(rich.lang)}`);
-    const accepted = (await column("result")).split(" | ").map((r) => r.startsWith("accept"));
-    expect(accepted.every((a, n) => a === Boolean((rich.lang >> n) & 1)), `program ${rich.code.toString(16)}'s results aren't the C's`);
-  }
-  // Names: a program of zeros and decrs decides any set S of max(S) + |S|
-  // lines or fewer (a zero at each member, a decr between), padded with
-  // decrs, which only reject.
   const plusNames = new Map(readFileSync(plusNamesFile, "utf8").trim().split("\n").map((l) => l.split("\t")).map(([c, cost, n]) => [Number(c), { cost: Number(cost), name: n }]));
-  const deciding = (set) => {
-    const prog = [];
-    for (let v = 0; v <= set[set.length - 1]; v++) {
-      if (set.includes(v)) prog.push(1);
-      if (v < set[set.length - 1]) prog.push(2);
+  // The cases, each reached by clicking from the one before: the opening
+  // program (zero, decr, zero, decr, zero, decr, decr: 0, 1 and 2 accepted
+  // at lines 1, 3 and 5, the rest rejected); mod2 on line 3, is_even; zero
+  // on lines 2 and 3, is_below_2; and the one language a
+  // 7-line program decides that the table doesn't name (its name costs 5),
+  // shown by its set alone.
+  const PLUS_CASES = [
+    { prog: [1, 2, 1, 2, 1, 2, 2], code: "01 10 01 10 01 10 10  (#6554)", decided: "This program decides is_below_3, {0–2}, #7 of 65,536: it accepts {0, 1, 2} and rejects the rest." },
+    { prog: [1, 2, 3, 2, 1, 2, 2], code: "01 10 11 10 01 10 10  (#7066)", decided: "This program decides is_even, {0, 2, 4, 6, 8, 10, 12, 14}, #21845 of 65,536: it accepts {0, 2, 4, 6, 8, 10, 12, 14} and rejects the rest." },
+    { prog: [1, 1, 1, 2, 1, 2, 2], code: "01 01 01 10 01 10 10  (#5530)", decided: "This program decides is_below_2, {0, 1}, #3 of 65,536: it accepts {0, 1} and rejects the rest." },
+    { prog: [2, 1, 0, 2, 1, 3, 1], code: "10 01 00 10 01 11 01  (#9373)", decided: "This program decides the language {1, 3, 4, 7, 8, 11, 12, 15}, #39322 of 65,536: it accepts {1, 3, 4, 7, 8, 11, 12, 15} and rejects the rest." },
+  ];
+  // Every 7-line program, by the wasm: the one language the table doesn't name is the last case's.
+  const unnamedLangs = new Set();
+  for (let n = 0; n < 4 ** PAGE_LINES; n++) {
+    const lang = pm.accepts(plusCode(Array.from({ length: PAGE_LINES }, (_, k) => Math.floor(n / 4 ** (PAGE_LINES - 1 - k)) % 4)), PAGE_LINES);
+    if ((plusNames.get(lang)?.cost ?? 99) > 4) unnamedLangs.add(lang);
+  }
+  expect([...unnamedLangs].join(" ") === "39322", `the 7-line languages the page doesn't name are \`${[...unnamedLangs].join(" ")}\`, not 39322`);
+  for (const [i, c] of PLUS_CASES.entries()) {
+    if (i > 0) {
+      const was = PLUS_CASES[i - 1].prog;
+      for (let k = 0; k < PAGE_LINES; k++) if (c.prog[k] !== was[k]) await click(`[data-slot="${k}"][data-op="${plusOps[c.prog[k]]}"]`);
     }
-    return [...prog, ...Array(PLUS_LINES - prog.length).fill(2)];
-  };
-  const codeOfSet = (set) => set.reduce((c, n) => c | (1 << n), 0);
-  for (const k of KNOWN_NAMES) {
-    const prog = deciding(k.set);
-    const tsv = plusNames.get(codeOfSet(k.set));
-    expect(tsv && tsv.name === k.name && tsv.cost <= 4, `plus_names.tsv names ${plusSet(codeOfSet(k.set))} \`${tsv && tsv.name}\`, not \`${k.name}\``);
-    await plusType(String(prog.reduce((s, op) => s * 4n + BigInt(op), 0n)));
-    expect((await text("decided-name")) === k.name && (await text("decided-range")) === k.range && (await text("decided-set")) === plusSet(codeOfSet(k.set)),
-      `a program deciding ${k.range} shows \`${await text("decided")}\``);
+    const lang = pm.accepts(plusCode(c.prog), PAGE_LINES);
+    const name = plusNames.get(lang);
+    const said = name && name.cost <= 4 ? `decides ${name.name}, ` : "decides the language ";
+    expect(c.decided.startsWith(`This program ${said}`) && c.decided.includes(`#${lang} of 65,536: it accepts ${plusSet(lang)} `), `case ${i + 1}'s pinned language isn't what the wasm and plus_names.tsv say, #${lang} ${plusSet(lang)}`);
+    expect((await plusOnOps()) === c.prog.map((op) => plusOps[op]).join(" "), `case ${i + 1} lights \`${await plusOnOps()}\``);
+    expect((await text("machine-code")) === c.code, `case ${i + 1}'s machine code reads \`${await text("machine-code")}\`, not \`${c.code}\``);
+    expect((await text("decided")) === c.decided, `case ${i + 1} reads \`${await text("decided")}\``);
+    if (i === 0) {
+      // The opening page: seven lines of four free buttons, workhorses first
+      // (zero, decr, mod2, then half), the legend in that order, the
+      // machine's tips; and none of the controls the lean page dropped.
+      const shownOrder = "zero decr mod2 half";
+      const buttonOrders = await evaluate("[...new Set([...document.querySelectorAll('.slot')].map((r) => [...r.querySelectorAll('button')].map((b) => b.dataset.op).join(' ')))].join(' / ')");
+      expect(buttonOrders === shownOrder, `the Nibble++ lines' buttons run \`${buttonOrders}\`, not \`${shownOrder}\``);
+      const legendOrder = await evaluate("[...document.querySelectorAll('#ops dt')].map((d) => d.textContent).join(' ')");
+      expect(legendOrder === shownOrder, `the Nibble++ ops' legend runs \`${legendOrder}\`, not \`${shownOrder}\``);
+      const plusFree = await evaluate("[...document.querySelectorAll('.slot')].map((r) => [...r.querySelectorAll('button')].filter((b) => !b.disabled).length).join('')");
+      expect(plusFree === "4".repeat(PAGE_LINES), `the Nibble++ lines' free buttons are \`${plusFree}\``);
+      const decrTip = await evaluate(`document.querySelector('[data-slot="${PAGE_LINES - 1}"][data-op="decr"]').title`);
+      expect(decrTip === `decr: 0->R, ${Array.from({ length: 15 }, (_, n) => `${n + 1}->${n}`).join(", ")} (R rejects)`, `line 7's decr tip is \`${decrTip}\``);
+      const halfTip = await evaluate("document.querySelector('[data-slot=\"0\"][data-op=\"half\"]').title");
+      expect(halfTip === `half: ${Array.from({ length: 16 }, (_, n) => `${n}->${n >> 1}`).join(", ")}`, `line 1's half tip is \`${halfTip}\``);
+      const GONE = ["intro", "elegance", "reset", "add-line", "remove-line", "line-count", "load", "program-number", "load-button", "stepper", "step-start", "step-back", "step-next", "step-end", "step-label", "trace"];
+      const left = await evaluate(`${JSON.stringify(GONE)}.filter((id) => document.getElementById(id))`);
+      expect(left.length === 0 && !(await evaluate("!!document.querySelector('main > p, input, form, table')")), `the lean Nibble++ page still has \`${left.join(" ")}\`, or a paragraph, box, form or table`);
+      // Its "?" opens the line about the bits, and closes it again.
+      expect(await evaluate("document.getElementById('code-explain').hidden"), "the Nibble++ code explanation shows before its ? is pressed");
+      await click("#code-help");
+      expect(!(await evaluate("document.getElementById('code-explain').hidden")) && (await text("code-explain")).startsWith("The machine code:") && (await text("code-explain")).includes("16,384 programs, numbered 0 to 16383"), `the Nibble++ ? opens \`${await text("code-explain")}\``);
+      await click("#code-help");
+      expect(await evaluate("document.getElementById('code-explain').hidden"), "the Nibble++ ? doesn't close its explanation");
+      await screenshot(shotFile.replace(/\.png$/, "-plus.png"));
+    }
   }
-  const wrapped = await evaluate(`(() => { const s = document.scrollingElement, d = document.getElementById("decided");
+  const plusWidths = await evaluate(`(() => { const s = document.scrollingElement, d = document.getElementById("decided");
     return { page: s.scrollWidth, pageBox: s.clientWidth, box: d.scrollWidth, boxBox: d.clientWidth }; })()`);
-  expect(wrapped.page <= wrapped.pageBox && wrapped.box <= wrapped.boxBox, `a long name scrolls sideways at ${WIDTH}px: ${JSON.stringify(wrapped)}`);
-  // (The check above ran with the long name, the last of KNOWN_NAMES, shown.)
-  // {0, 2, 4, 5, 7, 8, 11} costs 5, past the table's 4: its set alone.
-  const unnamed = [0, 2, 4, 5, 7, 8, 11];
-  expect((plusNames.get(codeOfSet(unnamed))?.cost ?? 99) > 4, "{0, 2, 4, 5, 7, 8, 11} has a name of cost 4 or less");
-  await plusType(String(deciding(unnamed).reduce((s, op) => s * 4n + BigInt(op), 0n)));
-  expect((await text("decided-name")) === null && (await text("decided")) === "This program decides the language {0, 2, 4, 5, 7, 8, 11}, #2485 of 65,536: it accepts {0, 2, 4, 5, 7, 8, 11} and rejects the rest.",
-    `a program deciding {0, 2, 4, 5, 7, 8, 11} shows \`${await text("decided")}\``);
-  for (const e of ELEGANCE) {
-    const code = codeOfSet(e.set);
-    const cost = plusNames.get(code)?.cost ?? 99;
-    expect(e.stars === (cost <= 4 ? 6 - cost : 1), `${plusSet(code)} costs ${cost}, not ${6 - e.stars} stars' worth`);
-    await plusType(String((e.set.length ? deciding(e.set) : Array(PLUS_LINES).fill(2)).reduce((s, op) => s * 4n + BigInt(op), 0n)));
-    expect((await text("decided-set")) === plusSet(code) && (await rated()) === `${stars(e.stars)} ${e.line}`, `a program deciding ${plusSet(code)} rates \`${await rated()}\``);
-  }
-  // The machine code's "?" opens its line and closes it.
-  await click("#code-help");
-  expect(!(await evaluate("document.getElementById('code-explain').hidden")) && (await text("code-explain")).startsWith("The machine code:"), "the Nibble++ ? doesn't open its explanation");
-  await click("#code-help");
-  expect(await evaluate("document.getElementById('code-explain').hidden"), "the Nibble++ ? doesn't close its explanation");
-  await click("#reset");
-  expect((await plusShows()) === plusWant(opening) && (await text("step-label")) === "after line 30 of 30", `Reset leaves \`${await plusShows()}\``);
-  const plusWidths = await evaluate(`(() => { const s = document.scrollingElement, t = document.getElementById("trace"), tb = t.querySelector("table");
-    return { page: s.scrollWidth, pageBox: s.clientWidth, trace: t.scrollWidth, traceBox: t.clientWidth, table: tb.scrollWidth, tableBox: tb.clientWidth }; })()`);
-  expect(plusWidths.page <= plusWidths.pageBox && plusWidths.trace <= plusWidths.traceBox && plusWidths.table <= plusWidths.tableBox, `at ${WIDTH}px the Nibble++ sandbox scrolls sideways: ${JSON.stringify(plusWidths)}`);
+  expect(plusWidths.page <= plusWidths.pageBox && plusWidths.box <= plusWidths.boxBox, `at ${WIDTH}px the Nibble++ sandbox scrolls sideways: ${JSON.stringify(plusWidths)}`);
   expect((await evaluate("localStorage.length")) === 0, "the Nibble++ sandbox stored something in localStorage");
   await follow("#sandbox-link");
   expect((await evaluate("document.title")) === "Nibble sandbox", `the Nibble++ sandbox's Nibble link opens \`${await evaluate("document.title")}\``);
@@ -835,4 +721,4 @@ try {
 if (failures > 0) { console.error(`page_check: ${failures} of ${checks} checks failed`); process.exit(1); }
 const hardest = puzzles[puzzles.length - 1];
 const fixedCount = puzzles.filter((p, i) => i >= LESSONS.length && p.fixed).length;
-console.log(`ok   page_check: the wasm matches the C on all ${PROGRAMS * 4} runs and its ${puzzles.length}-puzzle table (${first.name} ${first.count} programs, shortest ${first.shortest}; ... ${hardest.name} ${hardest.count}, shortest ${hardest.shortest}); in Chromium at ${WIDTH}px with no sideways scroll the first puzzle was solved by clicks, a reload started fresh with nothing stored, is_one and is_even were solved by line 2's zero and grumpy by one click, and puzzles 5 to 16 opened with their locks and were solved by clicks, ${fixedCount} of them with a fixed zero; the sandbox opened free as #0 deciding grumpy, showed #1689 deciding is_not_one {0, 2, 3} by clicks and by its typed number, and loaded typed numbers as the wasm runs them; the Nibble++ wasm matches src/plus.c on ${plusSample.length} programs (${plusRuns} runs, ${plusSteps} steps), and the Nibble++ sandbox opened as zero, decr, zero, decr, zero and 25 decrs deciding is_below_3 {0, 1, 2}, its ops in the order zero, decr, mod2, half, stepped, edited, shrank to half, zero deciding {0, 1}, grew back, loaded typed 60-bit numbers as the wasm runs them, and showed ${KNOWN_NAMES.length} languages' names and the set alone for one past the table, and ${ELEGANCE.length + 2} elegance ratings (${checks} checks)`);
+console.log(`ok   page_check: the wasm matches the C on all ${PROGRAMS * 4} runs and its ${puzzles.length}-puzzle table (${first.name} ${first.count} programs, shortest ${first.shortest}; ... ${hardest.name} ${hardest.count}, shortest ${hardest.shortest}); in Chromium at ${WIDTH}px with no sideways scroll the first puzzle was solved by clicks, a reload started fresh with nothing stored, is_one and is_even were solved by line 2's zero and grumpy by one click, and puzzles 5 to 16 opened with their locks and were solved by clicks, ${fixedCount} of them with a fixed zero; the sandbox opened free as #0 deciding grumpy, showed #1689 deciding is_not_one {0, 2, 3} by clicks and by its typed number, and loaded typed numbers as the wasm runs them; the Nibble++ wasm matches src/plus.c on ${plusSample.length} programs (${plusRuns} runs, ${plusSteps} steps), and the Nibble++ sandbox opened as its 7 lines, #6554 deciding is_below_3 {0, 1, 2}, its ops in the order zero, decr, mod2, half, with none of the dropped controls, and followed clicks to is_even, is_below_2 and the one 7-line language with no name on the page (${checks} checks)`);

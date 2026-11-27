@@ -41,10 +41,10 @@
 --    with its fixed zero; then it loads the sandbox and plays it by clicks
 --    and by a typed program number. It holds plus.wasm to
 --    out/web/plus_runs.txt, every input and every step, and plays the
---    Nibble++ sandbox: its start, deciding {0, 1, 2}, steps, an edit, lines
---    removed and added, typed 60-bit numbers, and languages' names (from
---    out/web/plus_names.tsv), the fallback for one without, and the
---    elegance rating under the language, its stars from the name's cost.
+--    Nibble++ sandbox, 7 fixed lines: its start, #6554 deciding {0, 1, 2},
+--    clicked edits and the languages' names (from out/web/plus_names.tsv),
+--    the fallback for one without, its "?", and none of the controls the
+--    lean page dropped.
 --    It saves screenshots to out/web/page.png,
 --    out/web/page-given.png, out/web/page-fixed.png,
 --    out/web/page-sandbox.png and out/web/page-plus.png.
