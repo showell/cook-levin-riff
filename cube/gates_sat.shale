@@ -1,0 +1,131 @@
+-- cube/gates_sat.shale: the gates' CNF (cube/gates.c, Tseitin's encoding of
+-- k rolls of the one-roll circuit) beside cube_sat.c's hand-written CNF, on
+-- rocsat: for each level, both at the census's par (SAT) and at par - 1
+-- (UNSAT), each answer checked as cube/sat.shale checks it: a SAT model's
+-- rolls by `cube_sat check` and its `v` lines by `drat model`, an UNSAT's
+-- DRAT proof by src/drat.c. The two encodings must agree on every case.
+--
+--   shale cube/gates_sat.shale
+--
+-- It writes one line a case to cube/sat/gates.txt: the encoding, its size,
+-- rocsat's verdict and time, and the check. The build doesn't run it. From
+-- the repository's root; rocsat is the one sat/oracle.shale runs, built in
+-- build:rocsat.
+-- budget: steps=50000000 read_bytes=400000000 arena_bytes=400000000
+
+const WANT_RAN = "cube: cube_sat, cube_gates and drat, just compiled by this script"
+const WANT_ROCSAT = "cube: rocsat, built in build:rocsat from its pinned nightly"
+const OUT = "out/cube/gates"
+const CUBE_SAT = "out/cube/gates/cube_sat"
+const CUBE_GATES = "out/cube/gates/cube_gates"
+const DRAT = "out/cube/gates/drat"
+
+-- {n, name, pattern, par}: the pars from cube/golden/census3.txt and census4.txt.
+const LEVELS = {{3, "c3 alone", 256, 4}, {3, "b2 alone", 16, 8}, {3, "a1 and b2", 17, 14}, {3, "the diagonal", 273, 16}, {3, "the checkerboard", 341, 22}, {3, "every tile", 511, 26}, {4, "c2 alone", 64, 3}, {4, "d4 alone", 32768, 8}, {4, "the diagonal", 33825, 18}, {4, "the checkerboard", 42405, 32}}
+
+local rocsat = arg("rocsat", "build:rocsat/src/rocsat")
+if not exists(rocsat) then fail("rocsat is not built at " .. rocsat .. ": see README.md, \"SAT\", or give rocsat=PATH") end
+local timeout_ms = arg("timeout_ms", 900000)
+mkdir(OUT)
+mkdir("cube/sat")
+must(run({"tcc", "-Wall", "-Werror", "-o", real(OUT) .. "/cube_sat", "cube/cube_sat.c"}, {timeout_ms = 60000, tail = 20}))
+must(run({"tcc", "-Wall", "-Werror", "-o", real(OUT) .. "/cube_gates", "cube/gates_main.c"}, {timeout_ms = 60000, tail = 20}))
+must(run({"tcc", "-Wall", "-Werror", "-o", real(OUT) .. "/drat", "src/drat_main.c"}, {timeout_ms = 60000, tail = 20}))
+local t = {rocsat = rocsat, timeout_ms = timeout_ms}
+
+-- The rolls of a model: roll t from variables 2t - 1 (high) and 2t (low),
+-- in both encodings.
+function rolls_of(out, k)
+  local bits = {}
+  for v = 1, 2 * k do push(bits, -1) end
+  for l in re_lines(out, "^v ") do
+    for w in words(l.text) do
+      local x = parse_int(w)
+      if x ~= nil and x ~= 0 and abs(x) <= 2 * k then
+        if x > 0 then bits[x] = 1 else bits[-x] = 0 end
+      end
+    end
+  end
+  local letters = {"N", "E", "S", "W"}
+  local rolls = ""
+  for t = 1, k do
+    if bits[2 * t - 1] < 0 or bits[2 * t] < 0 then fail("the model leaves roll " .. t .. "'s bits out") end
+    rolls = rolls .. letters[2 * bits[2 * t - 1] + bits[2 * t] + 1]
+  end
+  if rolls == "" then return "-" end
+  return rolls
+end
+
+-- One case: the level at exactly k rolls, by one encoding ("hand", cube_sat;
+-- "gates", cube_gates). Gives {verdict, vars, clauses, line}; any check that
+-- fails stops the run.
+function solve(t, enc, n, name, pattern, k)
+  local base = OUT .. "/" .. enc .. "-" .. n .. "-" .. pattern .. "-k" .. k
+  local cnf = base .. ".cnf"
+  local maker = CUBE_SAT
+  if enc == "gates" then maker = CUBE_GATES end
+  replace(cnf, must(run({real(maker), "cnf", "" .. n, "" .. pattern, "" .. k}, {timeout_ms = 60000, whole = 40000000, want = WANT_RAN})).out)
+  local h = re_find(join(head_lines(cnf, 2), "\n"), "p cnf ([0-9]+) ([0-9]+)")
+  local proof = base .. ".drat"
+  if exists(proof) then remove(proof) end
+  local r = run({real(t.rocsat), "solve", real(cnf), real(proof)}, {timeout_ms = t.timeout_ms, whole = 400000, want = WANT_ROCSAT, nice = 19})
+  local code = get(r, "code", -1)
+  local said = n .. "x" .. n .. " " .. name .. " (" .. pattern .. "), k=" .. k .. ", " .. enc .. ", " .. h.groups[1] .. " vars, " .. h.groups[2] .. " clauses: "
+  local res = {vars = h.groups[1], clauses = h.groups[2], cpu_ms = r.cpu_ms}
+  if code == 10 then
+    local model = base .. ".model"
+    replace(model, r.out)
+    local rolls = rolls_of(r.out, k)
+    local checked = run({real(CUBE_SAT), "check", "" .. n, "" .. pattern, rolls}, {timeout_ms = 60000, tail = 2, want = WANT_RAN})
+    if get(checked, "code", -1) ~= 0 then fail(said .. "the model's rolls " .. rolls .. " do not solve it") end
+    local m = run({real(DRAT), "model", real(cnf), real(model)}, {timeout_ms = 60000, tail = 2, want = WANT_RAN})
+    if get(m, "code", -1) ~= 0 then fail(said .. "drat model refused it: " .. trim(m.out)) end
+    remove(model)
+    res.verdict = "SAT"
+    res.line = said .. "SAT in " .. r.cpu_ms .. " ms; " .. rolls .. " solves it; drat model: ok"
+  elseif code == 20 then
+    if not exists(proof) then fail(said .. "UNSAT with no proof") end
+    local c = run({real(DRAT), "check", real(cnf), real(proof)}, {timeout_ms = 1800000, tail = 3, want = WANT_RAN, nice = 19})
+    if get(c, "code", -1) ~= 0 then fail(said .. "drat refused the proof: " .. trim(c.out)) end
+    res.verdict = "UNSAT"
+    res.line = said .. "UNSAT in " .. r.cpu_ms .. " ms; proof " .. stat(proof).size .. " bytes, drat check in " .. c.cpu_ms .. " ms: " .. trim(c.out)
+  elseif not has_key(r, "code") and r.ended == "timeout" then
+    res.verdict = "timeout"
+    res.line = said .. "no answer in " .. t.timeout_ms .. " ms"
+  else
+    print(r.out)
+    fail(said .. "rocsat ended " .. r.ended .. ", exit " .. code)
+  end
+  -- The proofs are big (tens of MB on 4x4); the line keeps what they said.
+  if exists(proof) then remove(proof) end
+  remove(cnf)
+  return res
+end
+
+local results = "cube/sat/gates.txt"
+local said = {}
+-- Written as it goes, so a long run's cases so far are kept.
+function say(said, results, line)
+  print(line)
+  push(said, line)
+  replace(results, join(said, "\n") .. "\n")
+end
+
+local agreed = 0
+for c in LEVELS do
+  for k in {c[4], c[4] - 1} do
+    local hand = solve(t, "hand", c[1], c[2], c[3], k)
+    say(said, results, hand.line)
+    local gates = solve(t, "gates", c[1], c[2], c[3], k)
+    say(said, results, gates.line)
+    local want = "UNSAT"
+    if k == c[4] then want = "SAT" end
+    -- A timeout is a result, kept; any answer must be the census's.
+    for res in {hand, gates} do
+      if res.verdict ~= "timeout" and res.verdict ~= want then fail(res.line .. "; the census says par " .. c[4]) end
+    end
+    if hand.verdict == gates.verdict then agreed = agreed + 1 end
+    yield()
+  end
+end
+say(said, results, "cube/gates_sat.shale: " .. agreed .. " of " .. 2 * #LEVELS .. " cases answered alike by both encodings, every answer the census's")
