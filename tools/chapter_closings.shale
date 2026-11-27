@@ -1,0 +1,71 @@
+-- tools/chapter_closings.shale: each chapter of the book and its last
+-- block, exactly as book/book.md has them, with no rewrites. A chapter is a
+-- `## ` heading and everything up to the next one. Its blocks are runs of
+-- non-blank lines, with a code fence (```...```) counted as one block however
+-- many blank lines it holds. From the repository's root:
+--
+--   shale tools/chapter_closings.shale
+--   shale tools/chapter_closings.shale kinds=1
+--
+-- It prints `## <chapter>`, a blank line, the last block, a blank line, and
+-- so on for every chapter. With kinds=1 it prints instead one line a chapter,
+-- the kind of its last block (prose, code, table, list, heading, quote), so a
+-- chapter that ends on anything but prose stands out.
+
+const KINDS = arg("kinds", 0) == 1
+
+-- The kind of a block, by its first line.
+function kind_of(block)
+  local first = block[1]
+  if starts_with(first, "```") then return "code" end
+  if starts_with(first, "|") then return "table" end
+  if starts_with(first, "- ") or starts_with(first, "* ") or re_match(first, "^[0-9]+\\. ") then return "list" end
+  if starts_with(first, "#") then return "heading" end
+  if starts_with(first, ">") then return "quote" end
+  return "prose"
+end
+
+-- Each chapter's title and its blocks, in order.
+function chapters()
+  local out = {}
+  local current = nil
+  local block = {}
+  local in_code = false
+  for line in lines(read("book/book.md")) do
+    if not in_code and starts_with(line, "## ") then
+      if current ~= nil and #block > 0 then push(current.blocks, block) end
+      block = {}
+      current = {title = sub(line, 4, #line), blocks = {}}
+      push(out, current)
+    elseif current ~= nil then
+      if starts_with(line, "```") then in_code = not in_code end
+      if trim(line) == "" and not in_code then
+        if #block > 0 then push(current.blocks, block) end
+        block = {}
+      else
+        push(block, line)
+      end
+    end
+  end
+  if current ~= nil and #block > 0 then push(current.blocks, block) end
+  return out
+end
+
+function main()
+  local out = {}
+  for c in chapters() do
+    local last = c.blocks[#c.blocks]
+    if KINDS then
+      push(out, kind_of(last) .. "  " .. c.title)
+    else
+      push(out, "## " .. c.title)
+      push(out, "")
+      push(out, join(last, "\n"))
+      push(out, "")
+    end
+  end
+  print(join(out, "\n"))
+  return nil
+end
+
+main()
