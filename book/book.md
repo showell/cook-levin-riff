@@ -570,7 +570,7 @@ So the toy carries one instruction more than it needs, and a different design wo
 
 **Complexity theory. A review; skip it if you know P and NP.** We give you the two classes the rest of the book leans on, at the level of their definitions, with the toy close at hand.
 
-The toy's every question was settled by trying everything: 4,096 programs on four inputs. That works because the toy is finite. Complexity theory is about formal languages with inputs of every length, where trying everything grows with the input, and it sorts them by how fast the work grows. This chapter gives the two classes the rest of the book leans on, P and NP, at the level of their definitions.
+The toy's every question was settled by trying everything: 4,096 programs on four inputs. That works because the toy is finite. Complexity theory is about formal languages with inputs of every length, where trying everything grows with the input, and it sorts them by how fast the work grows.
 
 ### Problems, formal languages and algorithms
 
@@ -607,7 +607,7 @@ Polynomial is the dividing line because it is robust: a polynomial-time machine 
 - **Every yes has evidence.** If x is in L, some string c, a *certificate*, makes V(x, c) accept, and c is short: its length is at most polynomial in the length of x.
 - **Every non-member resists all evidence.** If x is outside L, V(x, c) rejects for every c whatsoever.
 
-The certificate is the answer's evidence, and the verifier is a skeptic that only checks. Finding the certificate is someone else's job.
+The certificate is the answer's evidence, and the verifier works like a test suite: handed a proposed answer, it says pass or fail. Finding the certificate is someone else's job.
 
 Two examples:
 
@@ -689,11 +689,9 @@ Given two sizes that grow, the toy has a formal language in NP whose certificate
 
 **Complexity theory. A review; it needs {{chapter P and NP}}, and you can skip it if you know Cook-Levin.** We state the theorem this whole book riffs on, and say exactly what it means for a machine with a two-bit register.
 
-{{chapter P and NP}} defines the two classes, and {{chapter Nibble, sized}} places the toy among them. This chapter states the theorem that ties NP to one formal language, SAT, and says what it means for the toy.
-
 ### SAT, as hard as all of NP
 
-A *reduction* from a formal language A to a formal language B is a polynomial-time translation of A's inputs into B's that keeps every answer: x is in A exactly when its translation is in B. A machine for B then answers A too. A formal language is *NP-complete* when it is in NP and every language in NP reduces to it. In 1971 Stephen Cook, in "The Complexity of Theorem-Proving Procedures", and independently Leonid Levin, published in 1973, showed that SAT is as hard as anything in NP. Their proof takes the checking machine, which runs for a polynomial number of steps, and writes each step of its run as clauses: the whole run becomes one formula, satisfiable exactly when a certificate exists.
+A *reduction* from a formal language A to a formal language B is a polynomial-time translation of A's inputs into B's that keeps every answer: x is in A exactly when its translation is in B. A machine for B then answers A too. A formal language is *NP-complete* when it is in NP and every formal language in NP reduces to it. In 1971 Stephen Cook, in "The Complexity of Theorem-Proving Procedures", and independently Leonid Levin, published in 1973, showed that SAT is as hard as anything in NP. Their proof takes the checking machine, which runs for a polynomial number of steps, and writes each step of its run as clauses: the whole run becomes one formula, satisfiable exactly when a certificate exists.
 
 ### Guessing, and the computation history
 
