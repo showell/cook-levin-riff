@@ -1,0 +1,378 @@
+-- budget: steps=40000000 arena_bytes=400000000 read_bytes=100000000 output_bytes=200000
+-- This builds the cube book, Rolling a Cube to Cook-Levin, with the book
+-- builder (roc-apps' book_builder/), into the dev channel's /cube-book/:
+--
+--   cd <a cook-levin checkout> && shale cube_book/book.shale
+--
+-- The checkout may be the main one (repos:cook-levin) or a lane under
+-- build:lanes/; the book builder's tools run with roc-apps as their root and
+-- name this checkout through that mount (here(), below). The app,
+-- cube_book/app/main.roc, imports roc-apps and roc-syntax-color by relative
+-- path, so each must sit beside the checkout (a lane's are links in
+-- build:lanes/).
+--
+-- Every number the book prints comes from a program this script runs, and
+-- the book's source must hold each block of its output byte for byte:
+--
+-- * cube_book/shortest.py, the breadth-first search of "Same state, same
+--   future", prints its run on the 3 x 3 board, and its count of patterns at
+--   each par must be the census's, line for line;
+-- * cube_book/tables.py prints the runs, challenges and tables of the 3 x 3
+--   and 2 x 2 boards, and a list of facts the prose must hold;
+-- * cube/census.c, built here with gcc, gives the least par at each count of
+--   lit tiles on 3 x 3 and 4 x 4, which this script tables and holds to the
+--   floor 3m - 1, the states the 2 x 2 board reaches, and each single
+--   tile's par on 3 x 3 and 4 x 4, the first the second's north-west corner.
+--
+-- check_numbers is a check of sets: a number the prose prints must be one
+-- some program printed, anywhere. A number in the right set and the wrong
+-- place passes it; the blocks and facts above hold numbers in place.
+--
+-- Then check_numbers holds every number in the prose to those outputs: a
+-- number outside a code fence or a code span must be one of theirs, or one
+-- of DEFINED. The prose is also held to the book's words (check_words) and
+-- its theorems to their numbers (check_theorems). The book builder's own
+-- gates hold the includes, the chapter references, the negatives lint
+-- (cube_book/negatives.txt) and the 1,000-word limit a chapter.
+--
+-- Then the diagrams are drawn, the book is built into cube_book/build/book/,
+-- staged in the channel's /cube-book.staging/, driven there in a browser by
+-- book_check.mjs, and moved into /cube-book/. A failure at any step stops
+-- the run before the move, so the channel's book is left as it was.
+const SOURCE = "cube_book/book.md"
+const APP_DIR = "cube_book"
+const BUILD_DIR = "cube_book/build"
+const PREPARED = "cube_book/build/prepared"
+const OUT = "cube_book/build/book"
+const REPORT = "cube_book/build/report.txt"
+const SHOTS = "cube_book/build/shots"
+const NEXT = "build:roc-apps/next"
+const DEST_NAME = "cube-book"
+const STAGED_NAME = "cube-book.staging"
+const ROC_APPS = "repos:roc-apps"
+const DRAW = "book_builder/tools/draw_diagrams.shale"
+const MOVE = "book_builder/tools/move_stage.shale"
+const CHECKER = "book_builder/tools/book_check.mjs"
+const BUILD = "book_builder/tools/build_book.shale"
+const APP_TESTS = 3
+const PY_WANT = "book: cube_book's Python, the book's own programs"
+const CENSUS_WANT = "book: cube/census.c, just built from the checkout for the book"
+const DOT_WANT = "graphviz: a book's diagrams, drawn at build time"
+const CHECK_WANT = "script: book_check.mjs drives the staged pages in headless Chromium"
+-- The numbers the prose may use with no program behind them, because the
+-- rules define them: a cube's six faces, four rolls, the boards' sides from
+-- 2 to 5, and the 1 and 3 of the floor 3m - 1.
+const DEFINED = {"1", "2", "3", "4", "5", "6"}
+-- Words the prose never uses.
+const BANNED = {"Nibble", "Steve", "2023", "mathematic"}
+
+-- The checkout's root as a mount names it, for roc-apps' tools.
+function here()
+  for place in {"repos:cook-levin", "build:lanes/" .. basename(real("."))} do
+    if exists(place) and real(place) == real(".") then return place end
+  end
+  fail("book: run from a cook-levin checkout at repos:cook-levin or under build:lanes/, not " .. real("."))
+end
+
+-- A count with a comma before each group of three digits.
+function commas(n)
+  local s = "" .. n
+  local out = ""
+  for i = 1, #s do
+    if i > 1 and (#s - i + 1) % 3 == 0 then out = out .. "," end
+    out = out .. sub(s, i, i)
+  end
+  return out
+end
+
+-- The manuscript's prose lines, each `{line, text}`: every line outside a
+-- code fence, with its code spans, links' targets and includes taken out.
+function prose_lines(text)
+  local out = {}
+  local fenced = false
+  local n = 0
+  for l in lines(text) do
+    n = n + 1
+    if starts_with(l, "```") then
+      fenced = not fenced
+    elseif not fenced then
+      local t = re_replace(l, "`[^`]*`", " ")
+      t = re_replace(t, "\\]\\([^)]*\\)", "] ")
+      t = re_replace(t, "\\{\\{[^}]*\\}\\}", " ")
+      push(out, {line = n, text = t})
+    end
+  end
+  return out
+end
+
+-- The numbers a text holds: each run of digits, with its commas, that stands
+-- alone as a word.
+function numbers_in(text)
+  local found = {}
+  for m in re_find_all(text, "[A-Za-z0-9_]+(?:,[0-9]+)*") do
+    if re_find(m.text, "^[0-9]+(?:,[0-9]+)*$") ~= nil then push(found, m.text) end
+  end
+  return found
+end
+
+-- The book holds `text` byte for byte, and its numbers count as printed.
+function hold(book, what, text)
+  if find(book.source, text) == nil then
+    print(text)
+    fail("book: " .. SOURCE .. " lacks " .. what .. " above, so /" .. DEST_NAME .. "/ is left as it was")
+  end
+  for n in numbers_in(text) do book.numbers[n] = true end
+  book.held = book.held + 1
+  return nil
+end
+
+-- The blocks a program printed, a blank line apart: each held as it is, or,
+-- for a block whose first line is `facts`, each of its other lines.
+function hold_blocks(book, name, out)
+  local blocks = 0
+  local facts = 0
+  for b in split(trim(out), "\n\n") do
+    local ls = split(b, "\n")
+    if ls[1] == "facts" then
+      for f in drop(ls, 1) do
+        hold(book, name .. "'s fact", f)
+        facts = facts + 1
+      end
+    else
+      hold(book, name .. "'s block", b)
+      blocks = blocks + 1
+    end
+  end
+  print("book: " .. name .. "'s " .. blocks .. " blocks and " .. facts .. " facts are in " .. SOURCE)
+  return nil
+end
+
+-- The block of a census report that starts with the line `head`.
+function census_block(report, head)
+  local at = find(report, "\n" .. head .. "\n")
+  if at == nil then fail("book: the census's report has no `" .. head .. "` block") end
+  local rest = sub(report, at + 1)
+  local stop = find(rest, "\n\n")
+  return stop == nil and trim(rest) or sub(rest, 1, stop - 1)
+end
+
+-- Each count of lit tiles' least par, from a census report's table.
+function least_pars(report)
+  local least = {}
+  for l in lines(census_block(report, "lit  patterns  reachable  min par  max par  mean par")) do
+    local m = re_find(l, "^ *([0-9]+) +[0-9]+ +[0-9]+ +([0-9]+) ")
+    if m ~= nil then least[m.groups[1]] = tonumber(m.groups[2]) end
+  end
+  return least
+end
+
+-- The census on 2 x 2, 3 x 3 and 4 x 4, and what the book takes from it:
+-- the states the 2 x 2 board reaches, the table of least pars against the
+-- floor 3m - 1 (every one met, or the build stops), and the count of
+-- patterns at each par on 3 x 3, which shortest.py must print too.
+function check_census(book, shortest_out)
+  local exe = BUILD_DIR .. "/census"
+  must(run({"gcc", "-O2", "-std=c11", "-Wall", "-Wextra", "-Werror", "-o", real(BUILD_DIR) .. "/census", "cube/census.c"}, {timeout_ms = 120000, tail = 20}))
+  local reports = {}
+  for n in {2, 3, 4} do
+    reports["" .. n] = must(run({real(exe), "" .. n}, {timeout_ms = 60000, whole = 40000, want = CENSUS_WANT})).out
+  end
+  local two = re_find(reports["2"], "\nstates: ([0-9]+) reached of ([0-9]+) ")
+  local patterns = re_find(reports["2"], "\npatterns: ([0-9]+), reachable ([0-9]+), unreachable ([0-9]+)\n")
+  if two == nil or patterns == nil then fail("book: the 2 x 2 census printed no states or patterns line") end
+  if patterns.groups[2] ~= "1" then fail("book: the 2 x 2 census reaches " .. patterns.groups[2] .. " patterns, not the dark board alone") end
+  hold(book, "the 2 x 2 census's states", commas(two.groups[1]) .. " of the " .. commas(two.groups[2]) .. " states")
+  hold(book, "the 2 x 2 census's patterns", "the other " .. commas(patterns.groups[3]) .. " patterns")
+  local four = re_find(reports["4"], "\nstates: ([0-9]+) reached of ([0-9]+) ")
+  hold(book, "the 4 x 4 census's states", "all " .. commas(four.groups[1]) .. " states")
+
+  local least3 = least_pars(reports["3"])
+  local least4 = least_pars(reports["4"])
+  local rows = {"| Lit tiles m | 3m − 1 | Least par on 3 × 3 | Least par on 4 × 4 |", "|---:|---:|---:|---:|"}
+  for m = 1, 16 do
+    local floor = 3 * m - 1
+    local three = ""
+    if m <= 9 then
+      if get(least3, "" .. m, -1) ~= floor then fail("book: on 3 x 3 the least par at " .. m .. " lit is not the floor " .. floor) end
+      three = "" .. floor
+    end
+    if get(least4, "" .. m, -1) ~= floor then fail("book: on 4 x 4 the least par at " .. m .. " lit is not the floor " .. floor) end
+    push(rows, "| " .. m .. " | " .. floor .. " | " .. three .. " | " .. floor .. " |")
+  end
+  hold(book, "the census's table of least pars", join(rows, "\n"))
+
+  -- Each tile lit alone: the 3 x 3 board's pars are the 4 x 4 board's in
+  -- its north-west corner, which the book says of the playground's board.
+  local alone3 = census_block(reports["3"], "the par of each tile lit alone")
+  local alone4 = census_block(reports["4"], "the par of each tile lit alone")
+  local rows3 = split(alone3, "\n")
+  local rows4 = split(alone4, "\n")
+  for i = 2, 4 do
+    if not starts_with(rows4[i], rows3[i]) then fail("book: the single tiles' pars of 3 x 3 differ from 4 x 4's corner in row " .. (i - 1)) end
+  end
+  hold(book, "the 3 x 3 census's single tiles", "```text\n" .. alone3 .. "\n```")
+  hold(book, "the 4 x 4 census's single tiles", "```text\n" .. alone4 .. "\n```")
+
+  local census_pars = census_block(reports["3"], "par  patterns")
+  local search_pars = trim(sub(shortest_out, find(shortest_out, "par  patterns")))
+  if census_pars ~= search_pars then
+    print(census_pars)
+    print(search_pars)
+    fail("book: shortest.py's pars on 3 x 3 differ from the census's")
+  end
+  print("book: the census on 2 x 2, 3 x 3 and 4 x 4 meets the floor at every m, and its 3 x 3 pars are shortest.py's")
+  return nil
+end
+
+-- The prose's words: none of BANNED, and "language" only as a programming
+-- language or a formal one.
+function check_words(book)
+  local wrong = {}
+  for p in prose_lines(book.source) do
+    for w in BANNED do
+      if find(p.text, w) ~= nil then push(wrong, SOURCE .. ":" .. p.line .. ": " .. w) end
+    end
+    local low = lower(p.text)
+    local at = 1
+    while true do
+      local i = find(low, "language", at)
+      if i == nil then break end
+      local before = sub(low, 1, i - 1)
+      if not (ends_with(before, "programming ") or ends_with(before, "formal ")) then push(wrong, SOURCE .. ":" .. p.line .. ": a bare \"language\"") end
+      at = i + 8
+    end
+  end
+  if #wrong > 0 then
+    for w in wrong do print("  " .. w) end
+    fail("book: the prose uses words the book keeps out, so /" .. DEST_NAME .. "/ is left as it was")
+  end
+  print("book: the prose names no banned word and no bare \"language\"")
+  return nil
+end
+
+-- The theorems: each is given where the prose first says `Theorem N:`, once,
+-- numbered 1, 2, 3 and on in order, and every other "Theorem N" names one
+-- given.
+function check_theorems(book)
+  local stated = {}
+  local wrong = {}
+  local count = 0
+  for m in re_find_all(book.source, "Theorem ([0-9]+):") do
+    count = count + 1
+    if has_key(stated, m.group) then push(wrong, "Theorem " .. m.group .. " is given twice") end
+    if tonumber(m.group) ~= count then push(wrong, "the theorem given " .. count .. " in order is numbered " .. m.group) end
+    stated[m.group] = true
+  end
+  local named = 0
+  for m in re_find_all(book.source, "Theorem ([0-9]+)") do
+    named = named + 1
+    if not has_key(stated, m.group) then push(wrong, "Theorem " .. m.group .. " is named and never given") end
+  end
+  if #wrong > 0 then
+    for w in wrong do print("  " .. w) end
+    fail("book: the theorems' numbers don't hold together, so /" .. DEST_NAME .. "/ is left as it was")
+  end
+  print("book: " .. count .. " theorems given once each, in order, and " .. (named - count) .. " references to them")
+  return nil
+end
+
+-- Every number in the prose is one a program printed, or DEFINED. A
+-- theorem's number is its name, and is left out.
+function check_numbers(book)
+  for d in DEFINED do book.numbers[d] = true end
+  local wrong = {}
+  local seen = 0
+  for p in prose_lines(book.source) do
+    for n in numbers_in(re_replace(p.text, "Theorems? [0-9]+", " ")) do
+      seen = seen + 1
+      if not has_key(book.numbers, n) then push(wrong, SOURCE .. ":" .. p.line .. ": " .. n) end
+    end
+  end
+  if #wrong > 0 then
+    for w in wrong do print("  " .. w) end
+    fail("book: the prose prints numbers no program printed, so /" .. DEST_NAME .. "/ is left as it was")
+  end
+  print("book: " .. seen .. " numbers in the prose, each printed by a program or defined by the rules")
+  return nil
+end
+
+-- `to`, a real path, as a path relative to the real folder `from`.
+function relative_path(from, to)
+  local a = split(from, "/")
+  local b = split(to, "/")
+  local i = 1
+  while i <= #a and i <= #b and a[i] == b[i] do i = i + 1 end
+  local parts = {}
+  for j = i, #a do push(parts, "..") end
+  for j = i, #b do push(parts, b[j]) end
+  return join(parts, "/")
+end
+
+function main()
+  local HERE = here()
+  if not exists(ROC_APPS .. "/" .. BUILD) then fail("book: no " .. ROC_APPS .. "/" .. BUILD .. ": clone roc-apps beside this checkout") end
+  mkdir(BUILD_DIR)
+  local book = {source = read(SOURCE), numbers = {}, held = 0}
+  check_words(book)
+  check_theorems(book)
+
+  local shortest = must(run({"python3", "cube_book/shortest.py", "3"}, {timeout_ms = 60000, whole = 20000, want = PY_WANT}))
+  hold(book, "shortest.py's run on 3 x 3", "```text\n$ python3 cube_book/shortest.py 3\n" .. trim(shortest.out) .. "\n```")
+  local states = re_find(shortest.out, "^3x3: ([0-9]+) states reached, ([0-9]+) patterns lit")
+  hold(book, "shortest.py's count of states", "only " .. commas(states.groups[1]) .. " states")
+  print("book: shortest.py's run on 3 x 3 is in " .. SOURCE .. ", in " .. shortest.ms .. " ms")
+  local tables = must(run({"python3", "cube_book/tables.py"}, {timeout_ms = 60000, whole = 40000, want = PY_WANT}))
+  hold_blocks(book, "tables.py", tables.out)
+  check_census(book, shortest.out)
+  local max_length = re_find(read("roc/Cube.roc"), "\n\tmax_length = ([0-9]+)\n")
+  book.numbers[max_length.group] = true
+  check_numbers(book)
+  print("book: " .. book.held .. " blocks and facts held to their programs")
+
+  if exists(PREPARED) then remove_tree(PREPARED) end
+  mkdir(PREPARED)
+  local drawn = must(run({"shale", "--root", ".", DRAW, "source=" .. HERE .. "/" .. SOURCE, "prepared=" .. HERE .. "/" .. PREPARED}, {cwd = ROC_APPS, timeout_ms = 120000, tail = 20, want = DOT_WANT}))
+  for l in lines(drawn.out) do
+    if starts_with(l, "draw_diagrams: ") then print("book: " .. sub(l, 16) .. " in " .. drawn.ms .. " ms") end
+  end
+
+  local app = relative_path(real(ROC_APPS .. "/book_builder"), real(APP_DIR .. "/app/main.roc"))
+  local argv = {"shale", "--root", ".", BUILD, "book=" .. HERE .. "/" .. APP_DIR, "tests=" .. APP_TESTS, "name=" .. DEST_NAME, "folder=" .. real("."), "out=" .. HERE .. "/" .. OUT, "report=" .. HERE .. "/" .. REPORT, "app=" .. app}
+  local built = run(argv, {cwd = ROC_APPS, timeout_ms = 900000, tail = 60})
+  local pages = 0
+  for l in lines(built.out) do
+    if starts_with(l, "build_book: ") then print("book: " .. sub(l, 13)) end
+    local m = re_find(l, "^build_book: ([0-9]+) pages in ")
+    if m ~= nil then pages = tonumber(m.groups[1]) end
+  end
+  if built.code ~= 0 then
+    print(trim(built.out))
+    fail("book: build_book.shale stopped, so /" .. DEST_NAME .. "/ is left as it was")
+  end
+  local staging = NEXT .. "/" .. STAGED_NAME
+  if exists(staging) then remove_tree(staging) end
+  copy(OUT, staging)
+
+  if exists(SHOTS) then remove_tree(SHOTS) end
+  mkdir(SHOTS)
+  local check_argv = {"nice", "-n", "19", "node", real(ROC_APPS .. "/" .. CHECKER), "http://127.0.0.1:9210/" .. STAGED_NAME .. "/", real(SHOTS)}
+  local checked = run(check_argv, {timeout_ms = 600000, tail = 60, want = CHECK_WANT})
+  if checked.ended ~= "exit" or checked.code ~= 0 then
+    print(trim(checked.out))
+    fail("book: book_check failed on " .. staging .. ", so /" .. DEST_NAME .. "/ is left as it was")
+  end
+  for l in lines(checked.out) do
+    if starts_with(l, "book_check: ") then print(l) end
+  end
+  print("book: book_check, shots in " .. SHOTS .. ", took " .. checked.ms .. " ms")
+  local moved = must(run({"shale", "--root", ".", MOVE, "stage=" .. STAGED_NAME, "place=" .. DEST_NAME}, {cwd = ROC_APPS, timeout_ms = 60000, tail = 20}))
+  print("book: the move into place took " .. moved.ms .. " ms")
+
+  for l in lines(read(REPORT)) do
+    if trim(l) ~= "" then print("book: " .. l) end
+  end
+  print("book: " .. pages .. " pages at http://localhost:9210/" .. DEST_NAME .. "/")
+  return nil
+end
+
+main()

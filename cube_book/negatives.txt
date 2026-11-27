@@ -1,0 +1,28 @@
+# The negative sentences the cube book's prose keeps. The rule: say what
+# happens, and keep a negative only where the "no" is the point.
+# The book builder's negatives lint reads cube_book/book.md and finds every
+# sentence holding a word of negative_words.txt. Each one is rewritten, or
+# listed here with its kind, and the build stops on any other.
+#
+# The kinds. A `fix` kind is rewritten: cut the sentence or the clause first,
+# if the paragraph stands without it, and only then say what happens. A `keep`
+# kind may be listed below, and still has to earn its place.
+#
+# fix extraneous: the paragraph says it already, or needs none of it.
+# fix contrast: says what a thing is by what it isn't, "X, not Y".
+# fix hidden-positive: a negation that hides a positive fact.
+# fix presumed-worry: answers a doubt the reader never raised.
+# fix hedge: softens or apologizes for a claim.
+# fix double-negative: two negatives where one positive does.
+# keep theorem: the "no" is what a theorem or its proof states: no program does this, nothing is shorter.
+# keep open: the "no" is the state of knowledge: a question nobody has settled.
+#
+# Each line below is `kind: the sentence`, the sentence exactly as the lint
+# prints it, and its kind is a `keep` kind.
+
+open: We won't settle that question; nobody has.
+theorem: ## A board where nothing ever happens
+theorem: We prove our first theorem: on a 2 × 2 board, no program ever lights a tile.
+theorem: The proof follows the paint around the cube and shows it can never reach the bottom.
+theorem: Proving that nothing shorter exists is a different skill, and this chapter teaches it.
+theorem: Each program has exactly 3m − 1 rolls, and Theorem 2 says no program for its pattern is shorter, so each is a par.
