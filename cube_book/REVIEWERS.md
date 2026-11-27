@@ -49,6 +49,6 @@ A reader who wants the book to be a pleasure to read cover to cover.
 - **Repetition:** each point said twice, such as a chapter's opener restating the table of contents or a section restating the opener.
 - **Pacing:** sections that drag, and sections that belong in an appendix (how the book is built, for instance).
 - **Length:** chapters that are too long for what they carry.
-- **Order:** places where the book makes the reader wait for the interesting part.
+- **Waiting:** places where the book makes the reader wait for the interesting part, within a chapter. Never propose moving or reordering chapters: the author forbids reshuffling, so fix the wait where it happens.
 - **House style:** every breach of `cube_book/TONE.md`, such as bold labels, sentence fragments, guideposts, a presumed reaction, a result shown before what it looks for, or a procedure called "search".
 - **Proposals:** a cut or a merge for each, named by the sentences to cut.
