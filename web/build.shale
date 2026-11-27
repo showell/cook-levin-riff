@@ -7,6 +7,11 @@
 --    out/web/runs.json, for the check. web/plus_runs.c (the same flags)
 --    writes src/plus.c's verdicts on 27,848 Nibble++ programs, every one
 --    of 1 to 7 lines and 6,004 longer, to out/web/plus_runs.txt.
+--    web/plus_names.c (the same flags) names every Nibble++ language
+--    (docs/NIBBLE_PLUS_NAMES.md), out/web/plus_names.tsv, and writes the
+--    page's table of the names of cost 4 or less, out/web/plus_names.bin;
+--    web/plus_names_check.c parses each name back to its set with an
+--    evaluator of its own and holds the table to the tsv.
 -- 2. clang (the system's, --target=wasm32-unknown-unknown) compiles
 --    web/platform/host.c, the allocator and the runtime functions Roc
 --    calls, to an object, web/platform/targets/wasm32/host.wasm. Then
@@ -22,9 +27,10 @@
 --    (`nibble.<hash>.js`, the first 16 hex digits of its sha256), as
 --    roc-apps' site names them: the wasm, the table, the shared stylesheet
 --    nibble.css, the shared module machine.js and each page's script,
---    nibble.js, sandbox.js and plus.js, and plus.js's wasm, plus.wasm. Each
+--    nibble.js, sandbox.js and plus.js, and plus.js's wasm, plus.wasm, and
+--    its names table, plus_names.bin. Each
 --    name a file holds is rewritten to its hashed one before that file is
---    hashed: machine.js's wasm and table, plus.js's wasm, the two Nibble
+--    hashed: machine.js's wasm and table, plus.js's wasm and names, the two Nibble
 --    scripts' import of machine.js, the pages' script and stylesheet.
 -- 4. web/page_check.mjs holds the wasm to the C's table on all 4,096 x 4
 --    runs and to its 16-puzzle table and order, then loads the page in
@@ -35,8 +41,9 @@
 --    with its fixed zero; then it loads the sandbox and plays it by clicks
 --    and by a typed program number. It holds plus.wasm to
 --    out/web/plus_runs.txt, every input and every step, and plays the
---    Nibble++ sandbox: thirty decrs, steps, an edit, lines removed and
---    added, typed 60-bit numbers. It saves screenshots to out/web/page.png,
+--    Nibble++ sandbox: its start, deciding {0, 1, 2}, steps, an edit, lines
+--    removed and added, typed 60-bit numbers, and languages' names (from
+--    out/web/plus_names.tsv) and the fallback for one without. It saves screenshots to out/web/page.png,
 --    out/web/page-given.png, out/web/page-fixed.png,
 --    out/web/page-sandbox.png and out/web/page-plus.png.
 --
@@ -104,6 +111,19 @@ must(run({"gcc", "-std=c11", "-O2", "-Wall", "-Wextra", "-Werror", "-o", real(OU
   {timeout_ms = 120000, tail = 20}))
 must(run({real(OUT .. "/plus_runs"), real(OUT) .. "/plus_runs.txt"}, {timeout_ms = 30000, tail = 10, want = RAN}))
 print("ok   web/plus_runs.c: " .. count_lines(OUT .. "/plus_runs.txt") .. " Nibble++ programs judged by src/plus.c")
+must(run({"gcc", "-std=c11", "-O2", "-Wall", "-Wextra", "-Werror", "-o", real(OUT) .. "/plus_names", "web/plus_names.c"},
+  {timeout_ms = 120000, tail = 20}))
+local named = must(run({real(OUT .. "/plus_names"), real(OUT) .. "/plus_names.tsv", real(OUT) .. "/plus_names.bin"},
+  {timeout_ms = 60000, tail = 20, want = RAN, cpu_budget_ms = 5000, stage = "plus_names"}))
+must(run({"gcc", "-std=c11", "-O2", "-Wall", "-Wextra", "-Werror", "-o", real(OUT) .. "/plus_names_check", "web/plus_names_check.c"},
+  {timeout_ms = 120000, tail = 20}))
+local checked = must(run({real(OUT .. "/plus_names_check"), real(OUT .. "/plus_names.tsv"), real(OUT .. "/plus_names.bin"), "4"},
+  {timeout_ms = 60000, tail = 20, want = RAN}))
+local coverage = {}
+for l in lines(trim(checked.out)) do
+  if starts_with(l, "cost ") or starts_with(l, "none") then push(coverage, l) end
+end
+print("ok   web/plus_names.c: " .. named.ms .. " ms; plus_names_check: " .. join(coverage, ", ") .. "; plus_names.bin " .. stat(OUT .. "/plus_names.bin").size .. " bytes, the names of cost 4 or less")
 
 -- Bulk memory makes host.c's memcpy a memory.copy, not an import.
 mkdir(HOST_DIR)
@@ -145,7 +165,10 @@ local js = hashed_copy("nibble", "js", {import})
 local sandbox_js = hashed_copy("sandbox", "js", {import})
 local plus_wasm = hashed_name("plus", "wasm")
 copy(OUT .. "/plus.wasm", SITE .. "/" .. plus_wasm)
-local plus_js = hashed_copy("plus", "js", {{"fetch(\"plus.wasm\")", "fetch(\"" .. plus_wasm .. "\")"}})
+local plus_names = hashed_name("plus_names", "bin")
+copy(OUT .. "/plus_names.bin", SITE .. "/" .. plus_names)
+local plus_js = hashed_copy("plus", "js", {{"fetched(\"plus.wasm\")", "fetched(\"" .. plus_wasm .. "\")"},
+  {"fetched(\"plus_names.bin\")", "fetched(\"" .. plus_names .. "\")"}})
 local sheet = {"href=\"nibble.css\"", "href=\"" .. css .. "\""}
 replace(SITE .. "/index.html", rename_in(rename_in(read("web/index.html"), "src=\"nibble.js\"", "src=\"" .. js .. "\"", "web/index.html"),
   sheet[1], sheet[2], "web/index.html"))
@@ -153,9 +176,9 @@ replace(SITE .. "/sandbox.html", rename_in(rename_in(read("web/sandbox.html"), "
   sheet[1], sheet[2], "web/sandbox.html"))
 replace(SITE .. "/plus.html", rename_in(rename_in(read("web/plus.html"), "src=\"plus.js\"", "src=\"" .. plus_js .. "\"", "web/plus.html"),
   sheet[1], sheet[2], "web/plus.html"))
-print("ok   " .. SITE .. ": index.html, sandbox.html, plus.html, " .. join({js, sandbox_js, plus_js, shared, css, wasm, plus_wasm, json}, ", "))
+print("ok   " .. SITE .. ": index.html, sandbox.html, plus.html, " .. join({js, sandbox_js, plus_js, shared, css, wasm, plus_wasm, plus_names, json}, ", "))
 
-local check = run({"node", "web/page_check.mjs", real(SITE), real(OUT .. "/puzzles.json"), real(OUT .. "/runs.json"), real(OUT .. "/plus_runs.txt"), real(OUT) .. "/page.png"},
+local check = run({"node", "web/page_check.mjs", real(SITE), real(OUT .. "/puzzles.json"), real(OUT .. "/runs.json"), real(OUT .. "/plus_runs.txt"), real(OUT) .. "/page.png", real(OUT .. "/plus_names.tsv")},
   {timeout_ms = 120000, tail = 30, want = WANT_NODE})
 print(trim(check.out))
 if check.code ~= 0 then fail("web/page_check.mjs exited " .. check.code) end
