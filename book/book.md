@@ -36,7 +36,7 @@ This list is the whole book in one line a chapter, the kind in italics:
 - {{chapter The Boolean view}}: the toy as a chip sees it. *The machine as gates.*
 - {{chapter The problems, seen from outside}}: the 16 puzzles are the 16 two-input gates. *New results.*
 - {{chapter One formula for the whole machine}}: the whole machine as one formula of 14 bits. *The machine as one formula.*
-- {{chapter The SAT solver}}: rocsat and the two questions we ask it. *Tools and history.*
+- {{chapter The SAT solver}}: rocsat, DIMACS in a readable form, and the two questions we ask it. *Tools and history.*
 - {{chapter Checking a claim}}: a claim about a program, checked by a solver. *The machine as clauses.*
 - {{chapter Parts for a small computer}}: each instruction drawn as a circuit. *The machine as parts you could buy.*
 - {{chapter The machine as a circuit}}: one step of the machine as 59 gates. *The machine's step as a circuit.*
@@ -1323,15 +1323,34 @@ Several chapters from here on hand a formula to a SAT solver, [rocsat](https://g
 
 ### CNF, the solvers' format
 
-A *literal* is a variable or its complement: v3, or ¬v3. A *clause* is an OR of literals, and it holds when at least one of its literals is true. A formula in *conjunctive normal form*, CNF, is a list of clauses that must all hold: an AND of ORs. For example,
+A *literal* is a variable or its complement: `x3`, or `NOT x3`. A *clause* is an OR of literals, and it holds when at least one of its literals is true. A formula in *conjunctive normal form*, CNF, is a list of clauses that must all hold: an AND of ORs. For example, this formula of three clauses
 
 ```text
-(v1 ∨ ¬v2) ∧ (v2 ∨ v3) ∧ (¬v1 ∨ ¬v3)
+3 variables, 3 clauses
+(x1 OR NOT x2)
+(x2 OR x3)
+(NOT x1 OR NOT x3)
 ```
 
-holds at v1 = 1, v2 = 1, v3 = 0, among other settings. In DIMACS, the text format SAT tools read, it is three lines, each clause's literals as signed numbers ending in 0: `1 -2 0`, `2 3 0`, `-1 -3 0`.
+holds at x1 = 1, x2 = 1, x3 = 0, among other settings. Later chapters call variable N vN, as their programs print it.
 
 Solvers want CNF because its pieces can be reasoned about one at a time. A clause whose literals are all false but one forces that one to be true, and a contradiction a solver runs into can be kept as one more clause. Any formula can be written in CNF, but writing it out directly can multiply its size, the way writing out f's text did.
+
+### DIMACS, and a readable form
+
+SAT tools read and write DIMACS, a plain text format of signed numbers. It is compact and hard on the eyes, so `sat/to_readable.shale` turns a DIMACS file into the readable form above, and `sat/to_dimacs.shale` turns it back, exactly, both ways; `sat/check_readable.shale` holds every CNF and model in the repository to that round trip. Line by line:
+
+| DIMACS | readable | what it says |
+|---|---|---|
+| `p cnf 3 3` | `3 variables, 3 clauses` | the counts, before the clauses |
+| `1 -2 0` | `(x1 OR NOT x2)` | a clause: a minus sign is `NOT`, and 0 ends it |
+| `0` | `()` | the empty clause, false under every assignment |
+| `c text` | `-- text` | a comment |
+| `c g1 = 4` | `g1 = x4` | a name: variable 4 is written `g1` |
+| `s SATISFIABLE` | `satisfiable` | a solver's verdict |
+| `v 1 2 -3 0` | `x1 = true, x2 = true, x3 = false` | a solver's assignment |
+
+`shale sat/to_readable.shale file=sat/intro/example.cnf` prints the formula above from its DIMACS, shown below.
 
 ### Two questions
 
@@ -1353,7 +1372,7 @@ p cnf 3 3
 -1 -3 0
 ```
 
-Our claim is that v1 = 1, v2 = 1, v3 = 0 satisfies it, the assignment `v 1 2 -3 0` in `ours.v`. rocsat agrees:
+Our claim is that x1 = 1, x2 = 1, x3 = 0 satisfies it, the assignment `v 1 2 -3 0` in `ours.v`. rocsat agrees:
 
 ```text
 rocsat check example.cnf ours.v: exit 0, c model ok
@@ -1361,18 +1380,18 @@ rocsat solve example.cnf: exit 10, s SATISFIABLE, v -1 -2 3 0
 rocsat check example.cnf found.v: exit 0, c model ok
 ```
 
-`check` confirms our assignment. `solve` finds one of its own, v3 alone true: a solver promises some satisfying assignment, whichever it reaches first. The script writes it to `found.v`, and `check` confirms that one too.
+`check` confirms our assignment. `solve` finds one of its own, x3 alone true: a solver promises some satisfying assignment, whichever it reaches first. The script writes it to `found.v`, and `check` confirms that one too.
 
 ### The unhappy paths
 
-An oracle that said yes to everything would pass the happy path. So the script also hands rocsat two false claims. The assignment `v 1 2 3 0`, in `wrong.v`, breaks the third clause, ¬v1 ∨ ¬v3. And `forced.cnf` is `example.cnf` with two unit clauses added, `1 0` and `3 0`, asking for v1 and v3 both true, which the third clause forbids, so the answer expected is UNSATISFIABLE:
+An oracle that said yes to everything would pass the happy path. So the script also hands rocsat two false claims. The assignment `v 1 2 3 0`, in `wrong.v`, breaks the third clause, `(NOT x1 OR NOT x3)`. And `forced.cnf` is `example.cnf` with two unit clauses added, `1 0` and `3 0`, asking for x1 and x3 both true, which the third clause forbids, so the answer expected is UNSATISFIABLE:
 
 ```text
 rocsat check example.cnf wrong.v: exit 1, c model falsifies clause 2
 rocsat solve forced.cnf: exit 20, s UNSATISFIABLE
 ```
 
-The script stops at the first answer other than the one it expects. Each script in this repository that runs rocsat holds it both ways: a claim that should hold must be confirmed, and a claim that should fail must be refused, at the clause or with the verdict the script names. The book's build holds each rocsat answer it shows to the file its script wrote, so the book builds from the committed files alone.
+Each script in this repository that runs rocsat holds it both ways: a claim that should hold must be confirmed, and a claim that should fail must be refused, at the clause or with the verdict the script names. The book's build holds each rocsat answer it shows to the file its script wrote, so the book builds from the committed files alone.
 
 ### Where the book asks
 

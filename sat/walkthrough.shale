@@ -2,6 +2,8 @@
 -- printed by a program so the book's build can hold them byte for byte.
 -- It needs no solver: its unit propagation is its own, a few lines below.
 --
+--   - The CNF of sat/intro/example.cnf, "The SAT solver"'s example, in
+--     the readable form (sat/readable_form.shale).
 --   - Tseitin's circuit, out = (a AND b) OR (NOT c), the CNF of
 --     sat/readable/circuit.cnf: its inputs fixed by unit clauses, and
 --     propagation run on it. With a = b = 1 and c = 0 every gate is forced
@@ -303,6 +305,9 @@ end
 
 mkdir(DIR)
 local blocks = {}
+
+local example = to_readable(read("sat/intro/example.cnf"), "sat/intro/example.cnf")
+push(blocks, sub(example, 1, #example - 1))
 
 -- Tseitin's circuit, a true case and a false case.
 local circuit = read_cnf(CIRCUIT)

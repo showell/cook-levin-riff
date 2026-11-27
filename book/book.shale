@@ -73,6 +73,7 @@ const SCHEMATICS = "book/build/schematics"
 const PLUS_SEARCH = "sat/plus/search.txt"
 const PLUS_VERDICTS = "sat/plus/verdicts.txt"
 const PLUS_GUIDED = "sat/plus/guided.txt"
+const WALKTHROUGH_BLOCKS = 6
 
 -- The four final polynomials, composed by the C into COMPOSED/out/. What
 -- compose_main prints is held to the golden's lines: each step's term counts
@@ -565,6 +566,34 @@ function check_solver_files()
   return nil
 end
 
+-- The small worked examples of "The SAT solver", "Naming the gates", "Proofs
+-- of unsatisfiability" and "What comes next": each block sat/walkthrough.shale
+-- prints, in the book's source byte for byte. The two DRAT proofs it writes
+-- are checked by src/drat.c (built by check_solver_files), and the chapter
+-- quotes the checker's line for the small proof.
+function check_walkthrough()
+  local r = must(run({"shale", "sat/walkthrough.shale"}, {timeout_ms = 60000, whole = 20000}))
+  local blocks = {}
+  for b in split(trim(r.out), "\n\n") do
+    if starts_with(b, "```") then push(blocks, b) end
+  end
+  if #blocks ~= WALKTHROUGH_BLOCKS then fail("book: sat/walkthrough.shale printed " .. #blocks .. " blocks, not " .. WALKTHROUGH_BLOCKS) end
+  local source = read(SOURCE)
+  for b in blocks do
+    if find(source, b) == nil then
+      print(b)
+      fail("book: book/book.md lacks sat/walkthrough.shale's block above, so /" .. DEST_NAME .. "/ is left as it was")
+    end
+  end
+  for name in {"no_opcode", "circuit_false"} do
+    local said = run({real(SAT_DIR .. "/drat"), "check", real("sat/walkthrough/" .. name .. ".cnf"), real("sat/walkthrough/" .. name .. ".drat")}, {timeout_ms = 10000, tail = 3, want = SAT_WANT})
+    if get(said, "code", -1) ~= 0 then fail("book: sat/walkthrough/" .. name .. ".drat fails the checker: " .. trim(said.out)) end
+    if name == "no_opcode" and find(source, "`" .. trim(said.out) .. "`") == nil then fail("book: book/book.md quotes no `" .. trim(said.out) .. "`, the checker's line for the small proof") end
+  end
+  print("book: the " .. #blocks .. " blocks of sat/walkthrough.shale are in book/book.md, and its 2 proofs pass src/drat.c")
+  return nil
+end
+
 -- Every commit the manuscript cites resolves: a short hash in backticks is a
 -- commit of this repository. The Python repository's commits are cited as
 -- links to GitHub, outside the backticks, and this check leaves them alone.
@@ -708,6 +737,7 @@ function main()
   check_fourteen()
   check_hand()
   check_solver_files()
+  check_walkthrough()
   check_plus_sat()
 
   local app = relative_path(real(ROC_APPS .. "/book_builder"), real(APP_DIR .. "/app/main.roc"))
