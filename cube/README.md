@@ -350,5 +350,5 @@ par − 1 is UNSAT with a checked proof, and the par is SAT. So these are
 | a plus (row 3 and column c) | 9 | 26 | 28 | 2 | 2 | 48.9 s | 9.97 s | SSSENNEESNESNNWWESWWSEESWESW |
 
 The 5 × 5 diagonal is 10 rolls over its floor, against 7 on 4 × 4 and
-2 on 3 × 3. The far corner alone is 8 over: on 4 × 4 it is 6 over, on
+8 on 3 × 3. The far corner alone is 8 over: on 4 × 4 it is 6 over, on
 3 × 3 2 over.
