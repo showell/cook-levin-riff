@@ -108,7 +108,7 @@ parts = [
 	{ before: "The Boolean view", level: Category, title: "The machine as logic" },
 	{ before: "Parts for a small computer", level: Category, title: "The machine as hardware" },
 	{ before: "The Cook-Levin machine", level: Category, title: "Naming: the tableau and SAT" },
-	{ before: "Six expressions, composed", level: Part, title: "Part IV: expanding, the polynomials" },
+	{ before: "The program left unknown", level: Part, title: "Part IV: expanding, the polynomials" },
 	{ before: "Nibble++", level: Part, title: "Part V: Nibble++, a bigger machine" },
 	{ before: "The oracles", level: Part, title: "Part VI: the cross-checks, and the history" },
 	{ before: "What the toy taught us", level: Category, title: "Closing" },

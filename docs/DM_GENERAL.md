@@ -1,6 +1,6 @@
 # The six steps in the general ring: an experiment
 
-The Delightful Monstrosity in the book composes the six steps in the Boolean
+The delightful monstrosity in the book composes the six steps in the Boolean
 ring, where x² = x. This experiment tries the whole program in the general
 integer ring instead: step k's four output polynomials substituted into step
 k+1's, every product expanded in full, and no power ever reduced. Ignoring

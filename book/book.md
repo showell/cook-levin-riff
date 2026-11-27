@@ -48,14 +48,14 @@ This list is the whole book in one line a chapter, the kind in italics:
 - {{chapter The tableau, filled in}}: Cook's grid, printed twice. *The machine shown another way.*
 - {{chapter Cook-Levin as SAT}}: every puzzle as one formula. *New results.*
 - {{chapter Solved by hand}}: a formula solved on paper. *The machine shown another way.*
-- {{chapter The solver's work, in full}}: a whole formula, answer and proof, to skim. *Big output to skim.*
+- {{chapter The solver's work, in full}}: one puzzle's whole formula and answer, and all 15 proofs checked. *Big output to skim.*
 
 **Part IV, the polynomials:**
 
-- {{chapter Six expressions, composed}}: the program left unknown, and two roads forward. *The machine shown another way.*
+- {{chapter The program left unknown}}: the machine as a formula of its program's bits, and two roads forward. *The machine shown another way.*
 - {{chapter Arithmetization}}: logic turned into arithmetic, kept small by one identity, x² = x. *The machine shown another way.*
 - {{chapter Six steps composed}}: four polynomials that are the machine. *New results.*
-- {{chapter The Delightful Monstrosity}}: the machine as one polynomial, in full view, then evaluated by hand. *Big output to skim.*
+- {{chapter The delightful monstrosity}}: the machine as one polynomial, in full view, then evaluated by hand. *Big output to skim.*
 
 **Part V, Nibble++, a bigger machine:**
 
@@ -73,7 +73,7 @@ This list is the whole book in one line a chapter, the kind in italics:
 - {{chapter How it got here}}: the toy in four days of 2023, and its polynomials composed in 2026. *Tools and history.*
 - {{chapter What the toy taught us}}: Cook-Levin as it looks from inside the toy, in one page. *A review.*
 - {{chapter What comes next}}: the steps still open. *Tools and history.*
-- {{chapter Appendix: two DRAT proofs}}: two proofs of impossibility, whole. *Big output to skim.*
+- {{chapter Appendix: two DRAT proofs}}: two of those proofs, printed lemma by lemma. *Big output to skim.*
 
 **The monstrosities.** Here they all are, each shown because its size is the point:
 
@@ -81,7 +81,7 @@ This list is the whole book in one line a chapter, the kind in italics:
 - Monstrosity 2: the proof that five lines are too few for {0, 2, 3}, in {{chapter Appendix: two DRAT proofs}}.
 - Monstrosity 3: the largest of the 15 proofs, in {{chapter Appendix: two DRAT proofs}}.
 - Monstrosity 4: one puzzle as 1,216 clauses, in {{chapter The solver's work, in full}}.
-- Monstrosity 5: the machine as one polynomial, in {{chapter The Delightful Monstrosity}}.
+- Monstrosity 5: the machine as one polynomial, in {{chapter The delightful monstrosity}}.
 - Monstrosity 6: a 17 MB proof that 27 lines are too few, in {{chapter is_not_14 needs 28 lines}}.
 
 ## Introduction
@@ -668,7 +668,7 @@ Sipser calls the record of one branch's run, every state from the start to the v
 
 ### The toy as a checker
 
-The toy is such a checker. Given a problem and a program, it runs the program on four inputs and says whether the program decides the problem; the program is the certificate. The rest of the book takes that checker apart two ways. {{chapter The Boolean view}} through {{chapter The solver's work, in full}} take Cook and Levin's route: the checker as gates and a circuit, the run as a tableau, the tableau as clauses, and a SAT solver to find the certificates. {{chapter Six expressions, composed}} through {{chapter The Delightful Monstrosity}} then write its step as polynomials and compose all six, the riff's own route.
+The toy is such a checker. Given a problem and a program, it runs the program on four inputs and says whether the program decides the problem; the program is the certificate. The rest of the book takes that checker apart two ways. {{chapter The Boolean view}} through {{chapter The solver's work, in full}} take Cook and Levin's route: the checker as gates and a circuit, the run as a tableau, the tableau as clauses, and a SAT solver to find the certificates. {{chapter The program left unknown}} through {{chapter The delightful monstrosity}} then write its step as polynomials and compose all six, the riff's own route.
 
 ## The Boolean view
 
@@ -1780,9 +1780,7 @@ The first two restate the length bound, and the next four decode line 6 as `nada
 
 ## The solver's work, in full
 
-**SAT solving. Big output to skim; it needs {{chapter Cook-Levin as SAT}}.** You get a whole SAT formula, its whole answer and two whole proofs of impossibility, each checked again at every build.
-
-This chapter prints what rocsat was given and answered for two problems, whole, each box under the counts the build makes from it.
+**SAT solving. Big output to skim; it needs {{chapter Cook-Levin as SAT}}.** Here is one puzzle as rocsat saw it, whole: the formula of {0, 2, 3} and rocsat's answer, with all 15 of its proofs of impossibility measured and checked again at every build; the appendix prints two of those proofs line by line.
 
 ### Where the files come from
 
@@ -1846,13 +1844,13 @@ rocsat's answer to that CNF, as sat/oracle.shale kept it
 416
 ```
 
-## Six expressions, composed
+## The program left unknown
 
 **Circuit design, then mathematics. The machine shown another way; it needs {{chapter The Boolean view}} and {{chapter Cook-Levin as SAT}}.** We leave the program's bits unknown, and the machine becomes a formula whose true points are exactly the programs that solve a puzzle; then we set the road already travelled, naming, beside the one this part takes, expanding.
 
 {{chapter The Boolean view}} ran the machine as four Boolean functions of six bits, composed over six steps, with the input and the program fixed. Cook and Levin's move is to stop fixing the program. Keep the same four functions and the same six steps, give the program's twelve bits names in place of values, v1 to v12, and what comes out of the sixth step is a formula where it was a bit. This chapter does that, turns the formula into the question a puzzle asks, and then sets the two ways of composing side by side: the circuit chapters took one, and the rest of this part takes the other.
 
-### The program unknown
+### Each input fixed
 
 Line k's opcode bits are v(2k − 1) and v(2k), so instruction k is 2·v(2k − 1) + v(2k), numbered as in {{chapter Cook-Levin as SAT}}. The input stays fixed, so `hb` and `lb` start as constants and both flags as 0. `python/steps.py` composes the six steps with the same Python functions, now given formulas: a constant folds away, and an equal subformula is built once. The final `accepted`, for each input, has this many gates:
 
@@ -1956,9 +1954,9 @@ Naming is why Cook-Levin's formula stays polynomial in size: each step adds the 
 
 ## Arithmetization
 
-**Mathematics. The machine shown another way; it needs {{chapter Six expressions, composed}}.** We turn logic into arithmetic, NOT as 1 − x and AND as a product, and add one identity, x² = x, so that one step of the machine becomes four small polynomials of the proper kind, the kind that composes.
+**Mathematics. The machine shown another way; it needs {{chapter The program left unknown}}.** We turn logic into arithmetic, NOT as 1 − x and AND as a product, and add one identity, x² = x, so that one step of the machine becomes four small polynomials of the proper kind, the kind that composes.
 
-The stepper writes one step of the machine as polynomials, the first of the two ways to compose in {{chapter Six expressions, composed}}: expand. Each bit of the state is a variable that is only ever 0 or 1, and logic becomes arithmetic:
+The stepper writes one step of the machine as polynomials, the first of the two ways to compose in {{chapter The program left unknown}}: expand. Each bit of the state is a variable that is only ever 0 or 1, and logic becomes arithmetic:
 
 - NOT x is 1 - x;
 - x AND y is x·y;
@@ -2093,7 +2091,7 @@ input  accepted after line 1 2 3 4 5 6  test_with_stepper
 
 **Mathematics. New results, the book's thesis; it needs {{chapter Arithmetization}}.** We compose all six steps into four polynomials, describe the one that answers every question at once, and prove that they agree with the machine at all 16,384 points.
 
-A whole program is six steps. Composing them means substituting: step 1's four polynomials go in for the state variables of step 2, and so on, until the final state is four polynomials in the 14 bits of {{chapter Six expressions, composed}}: the input's two, `h0` and `l0`, and the program's twelve, `op1_hb` to `op6_lb`. `src/compose.c` substitutes the step polynomials into themselves six times (`1146d43`). The Roc port's step, from `roc/Compose.roc`:
+A whole program is six steps. Composing them means substituting: step 1's four polynomials go in for the state variables of step 2, and so on, until the final state is four polynomials in the 14 bits of {{chapter The program left unknown}}: the input's two, `h0` and `l0`, and the program's twelve, `op1_hb` to `op6_lb`. `src/compose.c` substitutes the step polynomials into themselves six times (`1146d43`). The Roc port's step, from `roc/Compose.roc`:
 
 {{function roc/Compose.roc after_step}}
 
@@ -2129,7 +2127,7 @@ Each step's term counts, from `roc/golden/composition.txt` and `out/tcc/compose_
 
 The final `hb` has degree 9 and its largest coefficient is 6; `lb` has degree 14 and 21; `halted` 14 and 20; `accepted` 14 and 63. Sixty-three is the largest coefficient of the four final polynomials, so int64 holds each with room to spare. In the Boolean ring `compose_main` composed all six in 44 to 50 ms (`gcc -O2`, three runs on 2026-11-27).
 
-The proper polynomial is still a big one, and intrinsically so. `accepted` is 10,324 terms and, as the C prints it, 510,387 characters: all 4,096 programs run on all four inputs, written as one sum, each term a coefficient times a product of up to 14 of the bits. Every term is the machine's own, and x² = x has already taken out every power. {{chapter The Delightful Monstrosity}}, a short chapter, prints it in full and evaluates it by hand at program 1689.
+The proper polynomial is still a big one, and intrinsically so. `accepted` is 10,324 terms and, as the C prints it, 510,387 characters: all 4,096 programs run on all four inputs, written as one sum, each term a coefficient times a product of up to 14 of the bits. Every term is the machine's own, and x² = x has already taken out every power. {{chapter The delightful monstrosity}}, a short chapter, prints it in full and evaluates it by hand at program 1689.
 
 ### The proof
 
@@ -2163,7 +2161,7 @@ input  hb  lb  halted  accepted
 3      0   0   0       1
 ```
 
-## The Delightful Monstrosity
+## The delightful monstrosity
 
 **Mathematics. Big output to skim; it needs {{chapter Six steps composed}}.** Here is the polynomial in full view: `accepted`, 10,324 terms and 510,387 characters that answer every question about a two-bit machine at once, and then the same polynomial evaluated by hand at program 1689.
 
@@ -2207,7 +2205,7 @@ input  terms of the 10,324 that are 1 there  their coefficients' sum
 
 **Ordinary computation. New results; it needs {{chapter The machine}}.** We built Nibble++ because the toy is too small to surprise anyone: with 16 inputs it has 65,536 problems and far too many programs to list, and yet one search of its states settles every problem exactly.
 
-The toy is small enough to settle by listing every program, 4,096 of them. Nibble++ is the case n = 4 of {{chapter Nibble, sized}}, with programs of any length: inputs 0 to 15, and 2^16 = 65,536 formal languages, the sets of inputs a program can decide. It is too big to list, and small enough to settle exactly by searching the machine's states. `src/plus.c` is its interpreter and `src/census.c` its census.
+The toy is small enough to settle by listing every program, 4,096 of them. Nibble++ is the case n = 4 of {{chapter Nibble, sized}}, with programs of any length: inputs 0 to 15, and 2^16 = 65,536 formal languages, the sets of inputs a program can decide. It is too big to list, and small enough to settle exactly by searching the machine's states. `src/plus.c` is its interpreter and `src/census.c` its census. Its problems are named as a programmer names a predicate, from the Nibble++ naming table (`web/plus_names.c`, `docs/NIBBLE_PLUS_NAMES.md`), which writes numbers as digits: is_not_14 is every input but 14, and is_small_fib is {1, 2, 3, 5}.
 
 ### The machine
 
@@ -2808,7 +2806,7 @@ You can use any mainstream programming language to study the toy languages. `js/
 
 ## Appendix: two DRAT proofs
 
-**SAT solving. Big output to skim; it needs {{chapter The solver's work, in full}}.** Here are two proofs of impossibility, whole, lemma by lemma, for anyone who wants to watch a solver rule out every program of a given length.
+**SAT solving. Big output to skim; it needs {{chapter The solver's work, in full}}.** Here are the raw files behind two rows of that chapter's table, rocsat's DRAT proofs printed lemma by lemma, for anyone who wants to watch a solver rule out every program of a given length.
 
 Each is a file of `sat/proofs/`, checked again by `src/drat.c` at every build of this book, as {{chapter The solver's work, in full}} tells.
 

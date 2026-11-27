@@ -1,4 +1,4 @@
-// test_boolean.c: the Boolean expressions of "Six expressions, composed",
+// test_boolean.c: the Boolean expressions of "The program left unknown",
 // held to the machine: the step's expressions to the stepper's step on all
 // 64 settings of its six bits, and each language's sum of products over the
 // program's twelve bits to the programs run_progam says decide it.

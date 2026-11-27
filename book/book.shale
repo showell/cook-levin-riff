@@ -129,7 +129,7 @@ function check_tables(name, count)
   return nil
 end
 
--- The blocks of "The Boolean view" and "Six expressions, composed" that
+-- The blocks of "The Boolean view" and "The program left unknown" that
 -- python/steps.py prints with `book`: a run at AX = 2 bit by bit, the
 -- formula's sizes, and its formula at AX = 0. The book's source must hold
 -- each byte for byte.

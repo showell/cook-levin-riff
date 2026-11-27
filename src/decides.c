@@ -1,5 +1,5 @@
 // decides.c: the step and the question "does this program decide L?" as
-// Boolean expressions, for the chapter "Six expressions, composed".
+// Boolean expressions, for the chapter "The program left unknown".
 // It reads boolean.c's expressions, and a unity build includes both.
 
 #include <stdint.h>
