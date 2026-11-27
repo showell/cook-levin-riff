@@ -2352,7 +2352,7 @@ The proof wants each final polynomial's value at all 16,384 points. `values` get
 
 ### The speed, honestly
 
-On this box, the release build of `composition 6` composes all six steps and runs the proof in about 30 ms, and the C's `compose_main` at -O2, which only composes, takes about 260 ms (`README.md`, "The Roc port"). The gap is the data structure, and the programming language has little to do with it: the C sums like terms in a hash table it grows and then sorts, while the Roc sums them in a dense table indexed by mask, a straight array write that reads back already in order. The C could use the same table, and it has yet to be tried (`9e0c86c`).
+On this box, the release build of `composition 6` composes all six steps and runs the proof in about 30 ms, and the C's `compose_main` at -O2, which only composes, took about 260 ms (`README.md`, "The Roc port"). The gap was in the C, and the programming language had little to do with it. The C summed like terms in a hash table it grew and then sorted, while the Roc sums them in a dense table indexed by mask, a straight array write that reads back already in order. Its checked multiply also tested for overflow with two divisions, where Roc's checks the processor's overflow flag. With the same dense table in `src/boolring.c` and GCC's overflow builtin in `src/ring_int.c`, the best of five runs on 2026-11-27 went from 214 ms of CPU to 52 ms, the polynomials byte for byte the same: 161 ms with the table alone, 99 ms with the builtin alone (`README.md`, "The Roc port").
 
 ## What is Shale?
 

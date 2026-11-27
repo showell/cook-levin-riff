@@ -176,7 +176,54 @@ static uint32_t all_masks(const BPoly *p) {
     return u;
 }
 
+// ── A dense accumulator: one slot a mask, 0 to the union of the masks ──────
+//
+// When every mask a sum can reach lies within `width` (the OR of the masks
+// involved), like terms are summed in a table of width + 1 slots indexed by
+// mask: each term product is one array write, and the table read back in
+// slot order is already sorted. roc/BoolPoly.roc sums so. Past
+// DENSE_MAX_SLOTS slots the hash accumulator above is used instead.
+
+enum { DENSE_MAX_SLOTS = 1 << 20 };
+
+typedef struct {
+    int64_t *sums;
+    size_t slots;
+} Dense;
+
+static int dense_fits(uint32_t width) { return (size_t)width < DENSE_MAX_SLOTS; }
+
+static Dense dense_new(uint32_t width) {
+    Dense d = {bp_alloc((size_t)width + 1, sizeof(int64_t)), (size_t)width + 1};
+    return d;
+}
+
+static void dense_put(Dense *d, uint32_t mask, int64_t c) { d->sums[mask] = ring_add(d->sums[mask], c); }
+
+// The table's nonzero slots as a canonical BPoly, in mask order; frees it.
+static BPoly dense_take(Dense *d) {
+    size_t n = 0;
+    for (size_t m = 0; m < d->slots; m++) n += d->sums[m] != 0;
+    BPoly r = {bp_alloc(n, sizeof(BTerm)), 0};
+    for (size_t m = 0; m < d->slots; m++) {
+        if (d->sums[m] != 0) r.terms[r.len++] = (BTerm){(uint32_t)m, d->sums[m]};
+    }
+    free(d->sums);
+    d->sums = NULL;
+    return r;
+}
+
 BPoly bp_mul(const BPoly *p, const BPoly *q) {
+    uint32_t width = all_masks(p) | all_masks(q);
+    if (dense_fits(width)) {
+        Dense d = dense_new(width);
+        for (size_t i = 0; i < p->len; i++) {
+            for (size_t j = 0; j < q->len; j++) {
+                dense_put(&d, p->terms[i].mask | q->terms[j].mask, ring_mul(p->terms[i].coeff, q->terms[j].coeff));
+            }
+        }
+        return dense_take(&d);
+    }
     // The product has at most 2^(variables in either) terms, and at most
     // |p| * |q|: the accumulator starts at the smaller, capped, and grows.
     int vars = popcount32(all_masks(p) | all_masks(q));
@@ -245,17 +292,33 @@ static const BPoly *product_of(Products *k, uint32_t mask, const BPoly *vals) {
 BPoly bp_substitute(const BPoly *p, const BPoly *vals, int n) {
     if (n < 0 || n > BP_MAX_VARS) bp_die("bp_substitute: bad variable count");
     if (n < BP_MAX_VARS && (all_masks(p) >> n) != 0) bp_die("bp_substitute: a variable has no value");
+    // Every product's masks lie within the union of the values' masks.
+    uint32_t width = 0;
+    for (int i = 0; i < n; i++) width |= all_masks(&vals[i]);
     Products *k = bp_alloc(1, sizeof *k);
-    Acc a = acc_new(1024);
-    for (size_t i = 0; i < p->len; i++) {
-        const BPoly *prod = product_of(k, p->terms[i].mask, vals);
-        for (size_t j = 0; j < prod->len; j++) {
-            acc_put(&a, prod->terms[j].mask, ring_mul(p->terms[i].coeff, prod->terms[j].coeff));
+    BPoly r;
+    if (dense_fits(width)) {
+        Dense d = dense_new(width);
+        for (size_t i = 0; i < p->len; i++) {
+            const BPoly *prod = product_of(k, p->terms[i].mask, vals);
+            for (size_t j = 0; j < prod->len; j++) {
+                dense_put(&d, prod->terms[j].mask, ring_mul(p->terms[i].coeff, prod->terms[j].coeff));
+            }
         }
+        r = dense_take(&d);
+    } else {
+        Acc a = acc_new(1024);
+        for (size_t i = 0; i < p->len; i++) {
+            const BPoly *prod = product_of(k, p->terms[i].mask, vals);
+            for (size_t j = 0; j < prod->len; j++) {
+                acc_put(&a, prod->terms[j].mask, ring_mul(p->terms[i].coeff, prod->terms[j].coeff));
+            }
+        }
+        r = acc_take(&a);
     }
     for (size_t i = 0; i < k->len; i++) bp_free(&k->products[i]);
     free(k);
-    return acc_take(&a);
+    return r;
 }
 
 int64_t bp_eval(const BPoly *p, uint32_t ones) {

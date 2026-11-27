@@ -361,8 +361,8 @@ cross-checks the stepper on its example programs as the Python does.
 All six steps compose. The final polynomials have 319 terms (hb), 2,185
 (lb), 2,732 (halted) and 10,324 (accepted), the largest coefficient is 63,
 and `tests/test_compose.c` holds all four to the machine on every program
-and every input (2^14 cases). The composition takes about a quarter of a
-second at -O2.
+and every input (2^14 cases). The composition takes about 50 ms of CPU at
+-O2.
 
 ## The Roc port
 
@@ -429,12 +429,18 @@ points, none differing, 5,596 accepted).
 
 On this box (2 cores, 2026-11-25), the release build of `composition 6`
 composes all six steps and runs the proof in about 30 ms; the C's
-`compose_main` at -O2, which composes and proves nothing, takes about 260
-ms. The gap is the data structure, not the language: the C sums like terms
-in a hash table it grows and then sorts, while the Roc sums them in a dense
-table indexed by mask (14 variables make at most 16,384 masks), a straight
-array write that reads back already in order. The C could use the same
-table, and has not been tried with it. The search's report is worked out by
+`compose_main` at -O2, which composes and proves nothing, took about 260
+ms. The gap was the C's, in two places. It summed like terms in a hash
+table it grew and then sorted, where the Roc sums them in a dense table
+indexed by mask (14 variables make at most 16,384 masks), a straight array
+write that reads back already in order; and its checked multiply tested
+for overflow by two divisions, where Roc's I64 `*` checks the processor's
+flag. `src/boolring.c` now uses the dense table whenever the masks fit in
+2^20 slots, and `src/ring_int.c` GCC's `__builtin_mul_overflow` (tcc keeps
+the divisions). Best of five runs on 2026-11-27, CPU time of the whole
+`compose_main`, the box's load average about 3: 214 ms as it was, 161 ms
+with the dense table, 99 ms with the builtin alone, 52 ms with both, the
+four polynomials byte for byte the same. The search's report is worked out by
 the compiler as it builds, since every input to it is a constant.
 
 The Nibble++ census's release build (2026-11-26) runs the four searches in

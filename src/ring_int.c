@@ -1,6 +1,6 @@
 // ring_int.c: checked int64 arithmetic (ring_int.h). The checks compare
-// against INT64_MAX and INT64_MIN rather than use gcc's
-// __builtin_*_overflow, which tcc lacks.
+// against INT64_MAX and INT64_MIN, as tcc lacks gcc's __builtin_*_overflow;
+// a multiply built by GCC uses the builtin, the same check.
 
 #include "ring_int.h"
 
@@ -19,8 +19,13 @@ static int add_fits(int64_t a, int64_t b, int64_t *out) {
     return 1;
 }
 
-// a * b into *out; 0 when it would overflow.
+// a * b into *out; 0 when it would overflow. GCC's builtin checks the
+// processor's overflow flag; the divisions, for tcc, cost about two
+// thirds of the C composer's time at -O2 (src/compose_main.c).
 static int mul_fits(int64_t a, int64_t b, int64_t *out) {
+#if defined(__GNUC__) && !defined(__TINYC__)
+    return !__builtin_mul_overflow(a, b, out);
+#else
     if (a != 0 && b != 0) {
         if (a > 0) {
             if (b > 0 ? a > INT64_MAX / b : b < INT64_MIN / a) return 0;
@@ -30,6 +35,7 @@ static int mul_fits(int64_t a, int64_t b, int64_t *out) {
     }
     *out = a * b;
     return 1;
+#endif
 }
 
 int64_t ring_add(int64_t a, int64_t b) {
