@@ -45,6 +45,7 @@ This list is the whole book in one line a chapter, the kind in italics:
 - {{chapter From equations to CNF}}: why naming gates beats multiplying them out. *New results.*
 - {{chapter The Cook-Levin machine}}: the circuit run backwards. *The machine run backwards.*
 - {{chapter The tableau, filled in}}: Cook's grid, printed twice. *The machine as a grid.*
+- {{chapter Naming the gates}}: three gates become nine clauses, and propagation runs them. *A review.*
 - {{chapter Cook-Levin as SAT}}: every puzzle as one formula. *New results.*
 - {{chapter Solved by hand}}: a formula solved on paper. *The machine as clauses, worked on paper.*
 - {{chapter The solver's work, in full}}: one puzzle's whole formula and answer, and all 15 proofs checked. *Big output to skim.*
@@ -1412,12 +1413,12 @@ What CNF adds to f's graph is a format any solver reads: a claim such as "progra
 
 ### Naming each gate
 
-Expanding f into CNF would start from its half-million characters. Tseitin's encoding names instead: each AND and OR node gets a variable of its own, and three clauses say that variable equals its gate. A complement is a literal's minus sign.
+Expanding f into CNF would start from its half-million characters. Tseitin's encoding names instead ({{chapter Naming the gates}} works a three-gate example by hand): each AND and OR node gets a variable of its own, and three clauses say that variable equals its gate. A complement is a literal's minus sign.
 
 | gate | its three clauses | what they say |
 |---|---|---|
-| g = a AND b | (¬g ∨ a), (¬g ∨ b), (g ∨ ¬a ∨ ¬b) | g gives a, g gives b, a and b give g |
-| g = a OR b | (g ∨ ¬a), (g ∨ ¬b), (¬g ∨ a ∨ b) | a gives g, b gives g, g gives a or b |
+| `g = a AND b` | `(NOT g OR a)`, `(NOT g OR b)`, `(g OR NOT a OR NOT b)` | g gives a, g gives b, a and b give g |
+| `g = a OR b` | `(g OR NOT a)`, `(g OR NOT b)`, `(NOT g OR a OR b)` | a gives g, b gives g, g gives a or b |
 
 {{lines python/fourteen_cnf.py from "def clauses_of(out):" to "    return lit, gates, clauses"}}
 
@@ -1682,6 +1683,116 @@ Each variable here is a gate's output, and its three clauses tie it to the cell 
 | `v407` | core 3's `accepted` after line 6 | 1 |
 
 Seven rows, four columns and 416 variables: that is Cook's tableau at the toy's size.
+
+## Naming the gates
+
+**SAT solving. A review; it needs {{chapter From equations to CNF}} and {{chapter The tableau, filled in}}.** We turn a circuit of three gates into nine clauses by Tseitin's encoding, one fresh variable a gate, and watch a solver's simplest rule run the circuit forward.
+
+A solver reads CNF, and the machine is a circuit, gates feeding gates. Writing a circuit as CNF directly multiplies its ANDs out over its ORs, and each layer of gates can multiply the size again, as f's text grew six-fold a line in {{chapter One formula for the whole machine}}. Grigori Tseitin's encoding names instead: each gate's output gets a fresh variable, and a few clauses say that the variable equals its gate. The formula grows by three clauses a gate, however deep the circuit is. {{chapter Checking a claim}} and {{chapter From equations to CNF}} used it at full size; here it is small enough to watch, before {{chapter Cook-Levin as SAT}} uses it on every puzzle.
+
+### A circuit of three gates
+
+Here is out = (a AND b) OR (NOT c), its gates' outputs named g1, g2 and out:
+
+The circuit, before
+```dot
+digraph {
+  rankdir=TB;
+  node [shape=box, style=rounded];
+  a; b; c;
+  g1 [label="g1 = a AND b"];
+  g2 [label="g2 = NOT c"];
+  out [label="out = g1 OR g2"];
+  a -> g1;
+  b -> g1;
+  c -> g2;
+  g1 -> out;
+  g2 -> out;
+}
+```
+
+### The same circuit, after
+
+Each gate becomes its clauses, and one more clause, `(out)`, asks for out = 1:
+
+The circuit, after: each gate's clauses beside it
+```dot
+digraph {
+  rankdir=TB;
+  node [shape=box, style=rounded];
+  a; b; c;
+  g1 [label="g1 = a AND b\n(NOT g1 OR a)\n(NOT g1 OR b)\n(g1 OR NOT a OR NOT b)"];
+  g2 [label="g2 = NOT c\n(NOT g2 OR NOT c)\n(g2 OR c)"];
+  out [label="out = g1 OR g2\n(NOT out OR g1 OR g2)\n(out OR NOT g1)\n(out OR NOT g2)\n(out)"];
+  a -> g1;
+  b -> g1;
+  c -> g2;
+  g1 -> out;
+  g2 -> out;
+}
+```
+
+Each clause is one direction of "the variable equals its gate":
+
+| gate | its clauses | what they say |
+|---|---|---|
+| `g1 = a AND b` | `(NOT g1 OR a)`, `(NOT g1 OR b)`, `(g1 OR NOT a OR NOT b)` | g1 = 1 forces a = 1; g1 = 1 forces b = 1; a = b = 1 forces g1 = 1 |
+| `g2 = NOT c` | `(NOT g2 OR NOT c)`, `(g2 OR c)` | g2 = 1 forces c = 0; c = 0 forces g2 = 1 |
+| `out = g1 OR g2` | `(NOT out OR g1 OR g2)`, `(out OR NOT g1)`, `(out OR NOT g2)` | out = 1 forces g1 or g2 to 1; g1 = 1 forces out = 1; g2 = 1 forces out = 1 |
+| the claim | `(out)` | out = 1 |
+
+An OR gate's clauses mirror an AND's. The book's encoders write a complement as a literal's minus sign and save g2's two clauses; this example names g2 to show every gate. The whole CNF, as `sat/readable/circuit.txt` holds it, six variables and nine clauses (`sat/to_dimacs.shale` gives its DIMACS):
+
+```text
+-- out = (a AND b) OR (NOT c), by Tseitin's encoding: g1 = a AND b,
+-- g2 = NOT c, out = g1 OR g2, and the unit clause (out) asks for out = 1.
+a = x1
+b = x2
+c = x3
+g1 = x4
+g2 = x5
+out = x6
+6 variables, 9 clauses
+(NOT g1 OR a)
+(NOT g1 OR b)
+(g1 OR NOT a OR NOT b)
+(NOT g2 OR NOT c)
+(g2 OR c)
+(NOT out OR g1 OR g2)
+(out OR NOT g1)
+(out OR NOT g2)
+(out)
+```
+
+### Propagation runs the circuit
+
+Unit propagation is the rule of {{chapter The SAT solver}}: a clause whose literals are all false but one forces that one. Fix the three inputs, and each gate's clauses force its output as soon as its inputs are known, in the circuit's own order, so propagation evaluates the circuit. `sat/walkthrough.shale` runs it, with a few lines of propagation of its own. A true case:
+
+```text
+inputs fixed: a = true, b = true, c = false
+g1 = true, from (g1 OR NOT a OR NOT b)
+g2 = true, from (g2 OR c)
+out = true, from (out OR NOT g1)
+every clause has a true literal, (out) among them
+```
+
+These are the values of `sat/readable/circuit_model.v`, a model of the formula. A false case:
+
+```text
+inputs fixed: a = false, b = true, c = true
+g1 = false, from (NOT g1 OR a)
+g2 = false, from (NOT g2 OR NOT c)
+out = false, from (NOT out OR g1 OR g2)
+conflict: every literal of (out) is false
+```
+
+The gates compute out = 0, and the claim asks for 1. With these inputs the formula is unsatisfiable, and seeing it took three forced values and zero guesses. The whole decider behaves the same way in {{chapter From equations to CNF}}: with every input fixed, rocsat answers in 0 decisions, one propagation a variable.
+
+### Sipser's tableau and our circuit
+
+Sipser's proof of Cook-Levin ({{chapter P, NP and Cook-Levin}}) gives each cell of the tableau its own variables, one for each symbol the cell might hold, and states the machine's rules by *windows*: every 2 × 3 block of cells must be one the rules allow. A window touches six cells, a fixed number, so its rule is a formula of constant size, and multiplying it out into CNF costs a constant a window, using the cells' variables alone. Our formula is one circuit, gates feeding gates down six steps, and multiplied out it grows by a factor a step: 3,869 clauses for the decider by distribution ({{chapter From equations to CNF}}). So we name every gate, three clauses each. Both routes stay polynomial: Sipser's by keeping each piece small, ours by Tseitin's names.
+
+Three gates, nine clauses, and the solver's one rule computes the circuit.
 
 ## Cook-Levin as SAT
 

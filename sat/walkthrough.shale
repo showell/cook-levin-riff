@@ -5,7 +5,7 @@
 --   - The CNF of sat/intro/example.cnf, "The SAT solver"'s example, in
 --     the readable form (sat/readable_form.shale).
 --   - Tseitin's circuit, out = (a AND b) OR (NOT c), the CNF of
---     sat/readable/circuit.cnf: its inputs fixed by unit clauses, and
+--     sat/readable/circuit.cnf, shown as sat/readable/circuit.txt: its inputs fixed by unit clauses, and
 --     propagation run on it. With a = b = 1 and c = 0 every gate is forced
 --     and every clause holds, the values sat/readable/circuit_model.v gives;
 --     with a = 0 and b = c = 1, propagation forces out = 0 and breaks the
@@ -309,7 +309,8 @@ local blocks = {}
 local example = to_readable(read("sat/intro/example.cnf"), "sat/intro/example.cnf")
 push(blocks, sub(example, 1, #example - 1))
 
--- Tseitin's circuit, a true case and a false case.
+-- Tseitin's circuit, its readable CNF, then a true case and a false case.
+push(blocks, trim(read("sat/readable/circuit.txt")))
 local circuit = read_cnf(CIRCUIT)
 local yes = circuit_case(circuit, true, true, false)
 if yes.conflict.found then fail("walkthrough: the circuit at a = b = 1, c = 0 conflicts") end
