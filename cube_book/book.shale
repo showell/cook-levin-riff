@@ -14,15 +14,17 @@
 -- Every number the book prints comes from a program this script runs, and
 -- the book's source must hold each block of its output byte for byte:
 --
--- * cube_book/shortest.py, the breadth-first search of "Same state, same
---   future", prints its run on the 3 x 3 board, and its count of patterns at
---   each par must be the census's, line for line;
--- * cube_book/tables.py prints the runs, challenges and tables of the 3 x 3
---   and 2 x 2 boards, and a list of facts the prose must hold;
--- * cube/census.c, built here with gcc, gives the least par at each count of
---   lit tiles on 3 x 3 and 4 x 4, which this script tables and holds to the
---   floor 3m - 1, the states the 2 x 2 board reaches, and each single
---   tile's par on 3 x 3 and 4 x 4, the first the second's north-west corner.
+-- * cube_book/shortest.py, the state flood of "Same state, same future",
+--   prints its run on the 3 x 3 board, and its count of patterns at each par
+--   must be the census's, line for line;
+-- * cube/census.c, built here with gcc, gives the states the 2 x 2 board
+--   reaches, the 4 x 4 board's states and each single tile's par there, the
+--   least par at each count of lit tiles on 3 x 3 and 4 x 4 (held to the
+--   floor 3m - 1), and every 4 x 4 lit set's par and a shortest program, in
+--   cube_book/build/pars4.txt;
+-- * cube_book/tables.py reads that file and prints the runs, challenges and
+--   tables of the 4 x 4 board, the 2 x 2 board's table, and a list of facts
+--   the prose must hold.
 --
 -- check_numbers is a check of sets: a number the prose prints must be one
 -- some program printed, anywhere. A number in the right set and the wrong
@@ -33,7 +35,7 @@
 -- of DEFINED. The prose is also held to the book's words (check_words) and
 -- its theorems to their numbers (check_theorems). The book builder's own
 -- gates hold the includes, the chapter references, the negatives lint
--- (cube_book/negatives.txt) and the 1,000-word limit a chapter.
+-- (cube_book/negatives.txt) and the 500-word limit a chapter.
 --
 -- Then the diagrams are drawn, the book is built into cube_book/build/book/,
 -- staged in the channel's /cube-book.staging/, driven there in a browser by
@@ -167,15 +169,18 @@ function least_pars(report)
 end
 
 -- The census on 2 x 2, 3 x 3 and 4 x 4, and what the book takes from it:
--- the states the 2 x 2 board reaches, the table of least pars against the
--- floor 3m - 1 (every one met, or the build stops), and the count of
--- patterns at each par on 3 x 3, which shortest.py must print too.
+-- the states the 2 x 2 and 4 x 4 boards reach, the least pars against the
+-- floor 3m - 1 (every one met, or the build stops), each single tile's par
+-- on 4 x 4, and the count of patterns at each par on 3 x 3, which
+-- shortest.py must print too. The 4 x 4 run writes PARS4 for tables.py.
 function check_census(book, shortest_out)
   local exe = BUILD_DIR .. "/census"
   must(run({"gcc", "-O2", "-std=c11", "-Wall", "-Wextra", "-Werror", "-o", real(BUILD_DIR) .. "/census", "cube/census.c"}, {timeout_ms = 120000, tail = 20}))
   local reports = {}
   for n in {2, 3, 4} do
-    reports["" .. n] = must(run({real(exe), "" .. n}, {timeout_ms = 60000, whole = 40000, want = CENSUS_WANT})).out
+    local argv = {real(exe), "" .. n}
+    if n == 4 then push(argv, real(BUILD_DIR) .. "/pars4.txt") end
+    reports["" .. n] = must(run(argv, {timeout_ms = 60000, whole = 40000, want = CENSUS_WANT})).out
   end
   local two = re_find(reports["2"], "\nstates: ([0-9]+) reached of ([0-9]+) ")
   local patterns = re_find(reports["2"], "\npatterns: ([0-9]+), reachable ([0-9]+), unreachable ([0-9]+)\n")
@@ -186,32 +191,16 @@ function check_census(book, shortest_out)
   local four = re_find(reports["4"], "\nstates: ([0-9]+) reached of ([0-9]+) ")
   hold(book, "the 4 x 4 census's states", "all " .. commas(four.groups[1]) .. " states")
 
-  local least3 = least_pars(reports["3"])
-  local least4 = least_pars(reports["4"])
-  local rows = {"| Lit tiles m | 3m − 1 | Least par on 3 × 3 | Least par on 4 × 4 |", "|---:|---:|---:|---:|"}
-  for m = 1, 16 do
-    local floor = 3 * m - 1
-    local three = ""
-    if m <= 9 then
-      if get(least3, "" .. m, -1) ~= floor then fail("book: on 3 x 3 the least par at " .. m .. " lit is not the floor " .. floor) end
-      three = "" .. floor
+  -- Theorem 3's table is tables.py's, from the pars file; the census's own
+  -- least pars meet the floor too, on both boards.
+  for n in {3, 4} do
+    local least = least_pars(reports["" .. n])
+    for m = 1, n * n do
+      if get(least, "" .. m, -1) ~= 3 * m - 1 then fail("book: on " .. n .. " x " .. n .. " the least par at " .. m .. " lit is not the floor " .. (3 * m - 1)) end
     end
-    if get(least4, "" .. m, -1) ~= floor then fail("book: on 4 x 4 the least par at " .. m .. " lit is not the floor " .. floor) end
-    push(rows, "| " .. m .. " | " .. floor .. " | " .. three .. " | " .. floor .. " |")
   end
-  hold(book, "the census's table of least pars", join(rows, "\n"))
 
-  -- Each tile lit alone: the 3 x 3 board's pars are the 4 x 4 board's in
-  -- its north-west corner, which the book says of the playground's board.
-  local alone3 = census_block(reports["3"], "the par of each tile lit alone")
-  local alone4 = census_block(reports["4"], "the par of each tile lit alone")
-  local rows3 = split(alone3, "\n")
-  local rows4 = split(alone4, "\n")
-  for i = 2, 4 do
-    if not starts_with(rows4[i], rows3[i]) then fail("book: the single tiles' pars of 3 x 3 differ from 4 x 4's corner in row " .. (i - 1)) end
-  end
-  hold(book, "the 3 x 3 census's single tiles", "```text\n" .. alone3 .. "\n```")
-  hold(book, "the 4 x 4 census's single tiles", "```text\n" .. alone4 .. "\n```")
+  hold(book, "the 4 x 4 census's single tiles", "```text\n" .. census_block(reports["4"], "the par of each tile lit alone") .. "\n```")
 
   local census_pars = census_block(reports["3"], "par  patterns")
   local search_pars = trim(sub(shortest_out, find(shortest_out, "par  patterns")))
@@ -319,11 +308,11 @@ function main()
   local shortest = must(run({"python3", "cube_book/shortest.py", "3"}, {timeout_ms = 60000, whole = 20000, want = PY_WANT}))
   hold(book, "shortest.py's run on 3 x 3", "```text\n$ python3 cube_book/shortest.py 3\n" .. trim(shortest.out) .. "\n```")
   local states = re_find(shortest.out, "^3x3: ([0-9]+) states reached, ([0-9]+) patterns lit")
-  hold(book, "shortest.py's count of states", "only " .. commas(states.groups[1]) .. " states")
+  hold(book, "shortest.py's count of states", "every one of the " .. commas(states.groups[1]) .. " states")
   print("book: shortest.py's run on 3 x 3 is in " .. SOURCE .. ", in " .. shortest.ms .. " ms")
-  local tables = must(run({"python3", "cube_book/tables.py"}, {timeout_ms = 60000, whole = 40000, want = PY_WANT}))
-  hold_blocks(book, "tables.py", tables.out)
   check_census(book, shortest.out)
+  local tables = must(run({"python3", "cube_book/tables.py", real(BUILD_DIR) .. "/pars4.txt"}, {timeout_ms = 60000, whole = 40000, want = PY_WANT}))
+  hold_blocks(book, "tables.py", tables.out)
   local max_length = re_find(read("roc/Cube.roc"), "\n\tmax_length = ([0-9]+)\n")
   book.numbers[max_length.group] = true
   check_numbers(book)
