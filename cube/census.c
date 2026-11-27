@@ -127,9 +127,10 @@ static CubeRoll back(CubeRoll r) { return (CubeRoll)((r + 2) % CUBE_ROLLS); }
 
 // A shortest solution for a reached pattern, as letters, into `out` (room
 // for its par and a NUL); gives its length.
-static int solution(const Census *c, uint32_t pattern, char *out) {
-    int k = c->par[pattern];
-    uint32_t s = c->first[pattern];
+// The rolls that first reach state `s`, as letters, into `out`; gives
+// their count.
+static int path_to(const Census *c, uint32_t s, char *out) {
+    int k = c->level[s];
     out[k] = '\0';
     for (int i = k - 1; i >= 0; i--) {
         CubeRoll r = (CubeRoll)c->roll[s];
@@ -143,9 +144,14 @@ static int solution(const Census *c, uint32_t pattern, char *out) {
         s = state_of(c, from, f, p);
     }
     if (s != state_of(c, c->start_cell, c->start_face, 0)) {
-        fprintf(stderr, "census: the solution of pattern %u does not lead back to the start\n", pattern);
+        fprintf(stderr, "census: a path does not lead back to the start\n");
         exit(2);
     }
+    return k;
+}
+
+static int solution(const Census *c, uint32_t pattern, char *out) {
+    int k = path_to(c, c->first[pattern], out);
     if (!cube_check(c->n, c->start_cell, c->start_face, pattern, out, k)) {
         fprintf(stderr, "census: the checker refuses the solution of pattern %u: %s\n", pattern, out);
         exit(2);
@@ -243,6 +249,35 @@ static void report(FILE *out, const Census *c) {
             fprintf(out, "\nthe most over the floor, %d, has %ld pattern(s); the first:\n", over_top, over[over_top]);
             print_level(out, c, "farthest over", p);
             break;
+        }
+    }
+
+    // Each tile lit alone, as the grid of its pars.
+    fprintf(out, "\nthe par of each tile lit alone\n");
+    for (int r = 0; r < n; r++) {
+        fprintf(out, "   ");
+        for (int col = 0; col < n; col++) fprintf(out, " %3d", c->par[1u << (r * n + col)]);
+        fputc('\n', out);
+    }
+
+    // The macros: back on the start cell, every tile dark, the painted face
+    // turned elsewhere.
+    fprintf(out, "\nback at the start cell with every tile dark, the painted face turned\nface   rolls  the first shortest\n");
+    for (int f = 0; f < CUBE_FACES; f++) {
+        if (f == (int)c->start_face) continue;
+        uint32_t s = state_of(c, c->start_cell, (CubeFace)f, 0);
+        char path[MAX_PAR + 1];
+        if (c->level[s] == UNSEEN) {
+            fprintf(out, "%-5s  unreachable\n", FACE_NAMES[f]);
+        } else {
+            int k = path_to(c, s, path);
+            int end_cell;
+            CubeFace end_face;
+            if (cube_play(n, c->start_cell, c->start_face, path, k, &end_cell, &end_face) != 0 || end_cell != c->start_cell || end_face != (CubeFace)f) {
+                fprintf(stderr, "census: the macro to face %s does not roll there\n", FACE_NAMES[f]);
+                exit(2);
+            }
+            fprintf(out, "%-5s  %5d  %s\n", FACE_NAMES[f], k, path);
         }
     }
 

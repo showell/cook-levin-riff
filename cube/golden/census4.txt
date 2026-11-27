@@ -93,6 +93,20 @@ the most over the floor, 11, has 2 pattern(s); the first:
     ...#
     #.#.
 
+the par of each tile lit alone
+      6   7   2   5
+      7   8   3   6
+      2   3   4   5
+      5   6   5   8
+
+back at the start cell with every tile dark, the painted face turned
+face   rolls  the first shortest
+down       8  ESSWNNEW
+north      4  ESWN
+south      8  ESENSNWW
+east       8  SESNSWNN
+west       4  SENW
+
 the largest par, 47, has 1 pattern(s); the first:
   hardest: par 47, EEESWNWSENWSWNESWESWESWNESENWNESESWNESWNEWNEWNE
     ####

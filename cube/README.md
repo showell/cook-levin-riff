@@ -186,6 +186,56 @@ The levels farthest over the floor are small and sparse:
                                      #.#.
 ```
 
+### One tile alone, and the macros
+
+The par of each tile lit alone (the census's report prints these grids):
+
+```
+3x3          4x4
+ 6  7  2      6  7  2  5
+ 7  8  3      7  8  3  6
+ 2  3  4      2  3  4  5
+              5  6  5  8
+```
+
+| level | par | a shortest solution |
+|---|---|---|
+| 3 × 3, b2 alone (the centre) | 8 | ESENSNWS |
+| 4 × 4, b2 alone | 8 | ESENSNWS |
+| 4 × 4, c2 alone | 3 | ESE |
+| 4 × 4, b3 alone | 3 | SES |
+| 4 × 4, c3 alone | 4 | ESSE |
+
+ESENSNWS lights b2 with a there-and-back: E, S, E lands the face down on
+c2 (a flip), N, S lands it down on c2 again (the flip undone), and N, W, S
+brings it down on b2.
+
+**The macros:** the shortest roll sequences that end on a1 with every tile
+dark and the painted face turned somewhere else.
+
+| painted face ends | rolls | the first shortest |
+|---|---|---|
+| north | 4 | ESWN |
+| west | 4 | SENW |
+| down | 8 | ESSWNNEW |
+| south | 8 | ESENSNWW |
+| east | 8 | SESNSWNN |
+
+The 4-roll macros are the loop around the 2 × 2 square a1, b1, b2, a2,
+clockwise (ESWN) or anticlockwise (SENW). Neither lands the painted face
+down. Each turns the whole cube a third of a turn about a body diagonal, so
+it cycles the painted face up → north → west → up (or back), and three
+loops, 12 rolls, put the whole cube back as it started: that is where a
+factor of 12 lives. The down macro is the start tile's solution, ESSWNN,
+then E, W to land on a1 again and flip it back.
+
+**No multiple-of-something pattern in the pars.** The single-tile pars on
+4 × 4 take every value from 2 to 8; the par distribution has gaps only at
+par 1 (one roll can't land the face down) and next to the top (3 × 3 has no
+par 25, 4 × 4 none at 46: one tile short of every tile costs 23 or 24 on
+3 × 3, and 44 or 45 on 4 × 4). Lighting b2 doesn't need the 12-roll loop:
+its par is 8.
+
 ### Other starts
 
 `census N starts` runs the census from every cell and face. Every start
