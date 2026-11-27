@@ -1,0 +1,344 @@
+-- sat/walkthrough.shale: the small SAT examples the book works by hand,
+-- printed by a program so the book's build can hold them byte for byte.
+-- It needs no solver: its unit propagation is its own, a few lines below.
+--
+--   - Tseitin's circuit, out = (a AND b) OR (NOT c), the CNF of
+--     sat/readable/circuit.cnf: its inputs fixed by unit clauses, and
+--     propagation run on it. With a = b = 1 and c = 0 every gate is forced
+--     and every clause holds, the values sat/readable/circuit_model.v gives;
+--     with a = 0 and b = c = 1, propagation forces out = 0 and breaks the
+--     clause (out). That second CNF is written to
+--     sat/walkthrough/circuit_false.cnf, beside its one-line DRAT proof.
+--   - A DRAT proof small enough to check by hand: line 1's two bits with
+--     every opcode ruled out (sat/walkthrough/no_opcode.cnf) and its proof
+--     (no_opcode.drat), each lemma replayed by reverse unit propagation and
+--     each deletion applied, step by step.
+--   - Symmetry breaking on the toy: the clauses "a nada line is followed
+--     by nada", and a count over all 4,096 programs of those they keep and
+--     of the problems those programs still decide.
+--
+-- It writes the files above, then prints the blocks, a blank line between
+-- them. The book's build runs it and src/drat.c on its proofs. From the
+-- repository's root:
+--
+--   shale sat/walkthrough.shale
+--
+-- budget: steps=20000000
+
+use("./readable_form.shale")
+
+const DIR = "sat/walkthrough"
+const CIRCUIT = "sat/readable/circuit.cnf"
+const CIRCUIT_MODEL = "sat/readable/circuit_model.v"
+-- Line 1's bits, hb and lb, and one clause ruling out each opcode: nada
+-- (00), zero (01), decr (10) and mod2 (11).
+const NO_OPCODE = "c line 1 of a program, with each of its four opcodes ruled out\nc hb = 1\nc lb = 2\np cnf 2 4\n1 2 0\n1 -2 0\n-1 2 0\n-1 -2 0\n"
+-- Its proof: the lemma (hb), the two clauses it makes redundant deleted,
+-- then the empty clause.
+const NO_OPCODE_PROOF = "1 0\nd 1 2 0\nd 1 -2 0\n0\n"
+const OPS = {"nada", "zero", "decr", "mod2"}
+
+-- A CNF's names and clauses, each clause a list of literals.
+function read_cnf(path)
+  local text = read(path)
+  local ls = lines(text)
+  local names = dimacs_names(ls, path)
+  local clauses = {}
+  local after_p = false
+  for l in ls do
+    if after_p then
+      local lits = {}
+      for t in dimacs_tokens(l, path, 0) do push(lits, tonumber(t)) end
+      push(clauses, lits)
+    elseif starts_with(l, "p ") then
+      after_p = true
+    end
+  end
+  return {names = names, clauses = clauses, text = text}
+end
+
+function value_word(b)
+  if b then return "true" end
+  return "false"
+end
+
+-- A clause in the readable form: (g1 OR NOT a), or () for the empty one.
+function clause_text(names, clause)
+  local parts = {}
+  for lit in clause do
+    local t = var_text(names, abs(lit))
+    if lit < 0 then t = "NOT " .. t end
+    push(parts, t)
+  end
+  return "(" .. join(parts, " OR ") .. ")"
+end
+
+-- A literal's value under `vals` (a map from the variable's number, as
+-- text, to true or false): true, false, or nil when it has none.
+function lit_value(vals, lit)
+  local k = "" .. abs(lit)
+  if not has_key(vals, k) then return nil end
+  if lit > 0 then return vals[k] end
+  return not vals[k]
+end
+
+-- Unit propagation over `clauses` from `vals`, in passes over the clauses in
+-- order: a clause with every literal false is a conflict; one with every
+-- literal false but one, unset, sets that one true. Each step is pushed to
+-- `said`, readable. Gives {found, clause}: whether a conflict was found, and
+-- its clause.
+function propagate(names, clauses, vals, said)
+  local changed = true
+  while changed do
+    changed = false
+    for c in clauses do
+      local open = nil
+      local opens = 0
+      local holds = false
+      for lit in c do
+        local v = lit_value(vals, lit)
+        if v == nil then
+          opens = opens + 1
+          open = lit
+        elseif v then
+          holds = true
+        end
+      end
+      if not holds then
+        if opens == 0 then
+          push(said, "conflict: every literal of " .. clause_text(names, c) .. " is false")
+          return {found = true, clause = c}
+        end
+        if opens == 1 then
+          vals["" .. abs(open)] = open > 0
+          push(said, var_text(names, abs(open)) .. " = " .. value_word(open > 0) .. ", from " .. clause_text(names, c))
+          changed = true
+        end
+      end
+    end
+  end
+  return {found = false, clause = {}}
+end
+
+-- The circuit with its three inputs fixed, propagated: the block's lines.
+function circuit_case(cnf, a, b, c)
+  local vals = {}
+  local given = {}
+  local inputs = {{"a", a}, {"b", b}, {"c", c}}
+  for i = 1, 3 do
+    vals["" .. i] = inputs[i][2]
+    push(given, inputs[i][1] .. " = " .. value_word(inputs[i][2]))
+  end
+  local said = {"inputs fixed: " .. join(given, ", ")}
+  local conflict = propagate(cnf.names, cnf.clauses, vals, said)
+  return {said = said, conflict = conflict, vals = vals}
+end
+
+-- A CNF's text with unit clauses added after its clauses, the p line's count
+-- raised to match.
+function with_units(text, units)
+  local out = {}
+  for l in lines(text) do
+    local p = re_find(l, "^p cnf ([0-9]+) ([0-9]+)$")
+    if p ~= nil then
+      push(out, "p cnf " .. p.groups[1] .. " " .. (tonumber(p.groups[2]) + #units))
+    else
+      push(out, l)
+    end
+  end
+  for u in units do push(out, u .. " 0") end
+  return join(out, "\n") .. "\n"
+end
+
+-- A DRAT proof replayed over a CNF, each lemma by reverse unit propagation:
+-- the block's lines. Stops unless every lemma passes and the proof ends at
+-- the empty clause.
+function replay(cnf, proof_text)
+  local db = {}
+  for c in cnf.clauses do push(db, c) end
+  local said = {}
+  local line = 0
+  local ended = false
+  for l in lines(proof_text) do
+    line = line + 1
+    local deleting = starts_with(l, "d ")
+    local body = l
+    if deleting then body = sub(l, 3) end
+    local lemma = {}
+    for t in dimacs_tokens(body, "proof", line) do push(lemma, tonumber(t)) end
+    if deleting then
+      local kept = {}
+      local found = false
+      for c in db do
+        if not found and join(c, " ") == join(lemma, " ") then found = true else push(kept, c) end
+      end
+      if not found then fail("walkthrough: the proof deletes " .. clause_text(cnf.names, lemma) .. ", which the database lacks") end
+      db = kept
+      push(said, "line " .. line .. ", `" .. l .. "`: delete " .. clause_text(cnf.names, lemma))
+    else
+      push(said, "line " .. line .. ", `" .. l .. "`: the lemma " .. clause_text(cnf.names, lemma))
+      local vals = {}
+      local assumed = {}
+      for lit in lemma do
+        vals["" .. abs(lit)] = lit < 0
+        push(assumed, var_text(cnf.names, abs(lit)) .. " = " .. value_word(lit < 0))
+      end
+      if #assumed > 0 then push(said, "  suppose " .. join(assumed, ", ")) end
+      local steps = {}
+      local conflict = propagate(cnf.names, db, vals, steps)
+      if not conflict.found then fail("walkthrough: the lemma at line " .. line .. " is no RUP") end
+      for s in steps do push(said, "  " .. s) end
+      push(said, "  so " .. clause_text(cnf.names, lemma) .. " follows by RUP")
+      push(db, lemma)
+      if #lemma == 0 then ended = true end
+    end
+  end
+  if not ended then fail("walkthrough: the proof never reaches the empty clause") end
+  return said
+end
+
+-- A program's verdict on input x, by the machine's rules: nada leaves AX,
+-- zero accepts at 0, decr halts at 0 and else takes 1, mod2 keeps the low
+-- bit; running past the last line rejects.
+function accepts(ops, x)
+  local ax = x
+  for op in ops do
+    if op == 1 and ax == 0 then return true end
+    if op == 2 then
+      if ax == 0 then return false end
+      ax = ax - 1
+    end
+    if op == 3 then ax = ax % 2 end
+  end
+  return false
+end
+
+-- Program n's six opcodes, line 1 first (its base-4 digits).
+function ops_of(n)
+  local ops = {}
+  local left = n
+  for k = 1, 6 do
+    push(ops, 0)
+  end
+  for k = 6, 1, -1 do
+    ops[k] = left % 4
+    left = left // 4
+  end
+  return ops
+end
+
+function problem_of(ops)
+  local code = 0
+  local bit = 1
+  for x = 0, 3 do
+    if accepts(ops, x) then code = code + bit end
+    bit = bit * 2
+  end
+  return code
+end
+
+-- Every nada line followed by nada, as clauses on the program's bits: line
+-- k's bits are x(2k - 1) and x(2k), so "line k is nada" is both 0, and line
+-- k + 1 must then have both 0 too.
+function nada_last_clauses()
+  local cs = {}
+  for k = 1, 5 do
+    local hb = 2 * k - 1
+    local lb = 2 * k
+    push(cs, {hb, lb, -(hb + 2)})
+    push(cs, {hb, lb, -(lb + 2)})
+  end
+  return cs
+end
+
+function clause_holds_for(c, ops)
+  for lit in c do
+    local v = abs(lit)
+    local line = (v + 1) // 2
+    local bit = 0
+    if v % 2 == 1 then
+      if ops[line] >= 2 then bit = 1 end
+    else
+      if ops[line] % 2 == 1 then bit = 1 end
+    end
+    if (lit > 0 and bit == 1) or (lit < 0 and bit == 0) then return true end
+  end
+  return false
+end
+
+function symmetry_block()
+  local cs = nada_last_clauses()
+  local none = new_names()
+  local said = {"line 1 nada gives line 2 nada: " .. clause_text(none, cs[1]) .. ", " .. clause_text(none, cs[2])}
+  local kept = 0
+  local all_problems = {}
+  local kept_problems = {}
+  local for_13 = {}
+  for n = 0, 4095 do
+    local ops = ops_of(n)
+    local p = "" .. problem_of(ops)
+    all_problems[p] = true
+    local holds = true
+    for c in cs do
+      if holds and not clause_holds_for(c, ops) then holds = false end
+    end
+    -- The clauses say exactly "no nada before a line that isn't nada".
+    local trailing = true
+    for k = 1, 5 do
+      if ops[k] == 0 and ops[k + 1] ~= 0 then trailing = false end
+    end
+    if holds ~= trailing then fail("walkthrough: the clauses and the rule differ on program " .. n) end
+    if holds then
+      kept = kept + 1
+      kept_problems[p] = true
+      if p == "13" then push(for_13, n) end
+    end
+  end
+  if join(for_13, ",") ~= "1689" then fail("walkthrough: {0, 2, 3} keeps " .. join(for_13, ",") .. ", where 1689 alone was expected") end
+  push(said, "the 10 clauses for lines 1 to 6 keep " .. kept .. " of the 4096 programs")
+  push(said, "problems decided: " .. count(all_problems) .. " by all 4096, " .. count(kept_problems) .. " by the " .. kept .. " kept")
+  push(said, "{0, 2, 3} keeps its one program, 1689")
+  return said
+end
+
+mkdir(DIR)
+local blocks = {}
+
+-- Tseitin's circuit, a true case and a false case.
+local circuit = read_cnf(CIRCUIT)
+local yes = circuit_case(circuit, true, true, false)
+if yes.conflict.found then fail("walkthrough: the circuit at a = b = 1, c = 0 conflicts") end
+for c in circuit.clauses do
+  local holds = false
+  for lit in c do
+    if lit_value(yes.vals, lit) == true then holds = true end
+  end
+  if not holds then fail("walkthrough: " .. clause_text(circuit.names, c) .. " fails at a = b = 1, c = 0") end
+end
+local model = {}
+for v = 1, 6 do
+  if yes.vals["" .. v] then push(model, "" .. v) else push(model, "-" .. v) end
+end
+if not contains(read(CIRCUIT_MODEL), "\nv " .. join(model, " ") .. " 0\n") then fail("walkthrough: propagation's values differ from " .. CIRCUIT_MODEL) end
+push(yes.said, "every clause has a true literal, (out) among them")
+push(blocks, join(yes.said, "\n"))
+
+local no = circuit_case(circuit, false, true, true)
+if not no.conflict.found or join(no.conflict.clause, " ") ~= "6" then fail("walkthrough: the circuit at a = 0, b = c = 1 is no conflict at (out)") end
+push(blocks, join(no.said, "\n"))
+replace(DIR .. "/circuit_false.cnf", with_units(circuit.text, {"-1", "2", "3"}))
+replace(DIR .. "/circuit_false.drat", "0\n")
+
+-- The small proof, replayed.
+replace(DIR .. "/no_opcode.cnf", NO_OPCODE)
+replace(DIR .. "/no_opcode.drat", NO_OPCODE_PROOF)
+local no_opcode = read_cnf(DIR .. "/no_opcode.cnf")
+push(blocks, sub(to_readable(NO_OPCODE, "no_opcode.cnf"), 1, #to_readable(NO_OPCODE, "no_opcode.cnf") - 1))
+push(blocks, join(replay(no_opcode, NO_OPCODE_PROOF), "\n"))
+
+push(blocks, join(symmetry_block(), "\n"))
+
+for b in blocks do
+  print("```text\n" .. b .. "\n```")
+  print("")
+end
