@@ -11,7 +11,10 @@ adding to `book.md` keeps to these:
   bold claim about what the chapter gives the reader, after a guidepost in
   bold naming its kind (start here, a review of a well-known idea, cool
   math, new theorems, diagrams, big output to skim, history, the tools) and
-  the earlier chapter it needs, or that it stands alone. A lead may promise
+  the earlier chapter it needs, or that it stands alone. The guidepost starts
+  with the chapter's frame: ordinary computation, circuit design,
+  mathematics, complexity theory or SAT solving. A chapter that changes
+  frame partway through says so in one line in italics. A lead may promise
   more than its chapter delivers yet, but never a claim the chapter
   contradicts. The front page lists every chapter with a one-line version
   of its lead, so the book can be skimmed from there.
@@ -22,6 +25,22 @@ adding to `book.md` keeps to these:
   of measured facts: bytes, lines, terms or clauses, what made it, and from
   how small a machine. A DRAT proof may live in the appendix, its label in
   the chapter pointing there.
+- **Program 1689 is the guide.** A chapter that shows the machine in a new
+  form shows program 1689 in it, in a ```text fence titled "1689, here: ...",
+  which the build generates (`src/guide_main.c`) or quotes; the Nibble++
+  chapters follow is_not_14 the same way (`src/guide_plus_main.c`).
+- **A theorem is a proof you can run.** Under each theorem a "Run it" box
+  gives its test binary and the line it prints, and names its tests; the
+  proof's prose stays free of test names and script paths.
+- **For developers.** Before a proof that is hard going for a programmer,
+  one sentence of intuition in programmer terms.
+- **Speed only when it teaches**: a timing stays when it is surprising in an
+  educational way, as the census settling everything in under a second
+  against SAT's 17 s. No scorecards.
+- **The unhappy path is shown, briefly**: where an oracle or a check
+  appears, one false input it refuses, stated plainly.
+- **A table over a paragraph** wherever the paragraph lists what a table
+  shows.
 - **Every number is cited**: a commit's short hash, `README.md`, a golden
   file, or a program run while the book was written, named where the
   number is used. A number nobody re-ran is labelled as the record's.

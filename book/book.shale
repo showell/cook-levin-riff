@@ -686,6 +686,7 @@ function main()
   check_citations()
   check_numbered("Theorem", "Theorems")
   check_numbered("Monstrosity", "Monstrosities")
+  check_run_it()
   if exists(PREPARED) then remove_tree(PREPARED) end
   mkdir(PREPARED)
   local drawn = must(run({"shale", "--root", ".", DRAW, "source=" .. HERE .. "/" .. SOURCE, "prepared=" .. HERE .. "/" .. PREPARED}, {cwd = ROC_APPS, timeout_ms = 120000, tail = 20, want = DOT_WANT}))

@@ -4,11 +4,12 @@ A small book about [cook-levin-riff](https://github.com/showell/cook-levin-riff)
 
 Some problems are easy to check and hard to solve: an answer can be confirmed in moments, but finding one can mean a search that doubles with every step. That gap is what makes computation feel intractable, and it is the question at the heart of P versus NP. This book doesn't answer that question. It makes the gap visible on a machine small enough to hold in your head, and along the way it tries a few ways around it, which sometimes help and sometimes only show how wide the gap is.
 
-The book is meant to be skimmed. Each chapter opens with a guidepost, in bold, saying what kind of chapter it is and what earlier chapter it needs, so you can jump in anywhere. This list is the whole book in one line a chapter, the kind in italics:
+The book is meant to be skimmed. Each chapter opens with a guidepost, in bold, saying what kind of chapter it is and what earlier chapter it needs, so you can jump in anywhere. The guidepost starts with the chapter's frame, the way it looks at the machine: ordinary computation, circuit design, mathematics, complexity theory or SAT solving. Where a chapter changes frame partway through, a line in italics says so. This list is the whole book in one line a chapter, the kind in italics:
 
 **Part I, the toy:**
 
 - {{chapter The machine}}: Steve's whole machine in one page. *Start here.*
+- {{chapter Roc is our lingua franca}}: which language does which job, and why Roc does most of them. *The tools, in brief.*
 - {{chapter Formal languages and machines}}: formal languages and Turing's machine in six rules. *A review of well-known ideas.*
 - {{chapter Deciding in plain Python}}: every answer as a one-line Python lookup. *The tools, in brief.*
 - {{chapter Programs as formal languages}}: all 4,096 programs run, and the problem with one answer. *New theorems.*
@@ -127,7 +128,7 @@ Third, the assertions, in `find_solutions` ([virtual_machine.py, lines 159 to 16
 
 **That agreement is the thesis of this book: the machine and its Cook-Levin translation answer every question the same way.** Everything after it widens the check. The C runs both on all 4,096 programs and all four inputs; the six steps are chained into four polynomials that agree with the machine on all 2^14 points; a SAT solver, given the same machine as a formula, finds exactly the machine's programs; and the Python, the C and the Roc compute the same answers. His Python evaluated the step polynomials one step at a time and stopped short of composing all six into one polynomial; this repository finishes the composition ({{chapter Six steps composed}}).
 
-Steve wrote the first version by hand in Python, in [virtual-machine](https://github.com/showell/virtual-machine): the machine (`virtual_machine.py`), a general polynomial library (`poly.py`) and a stepper that writes one step of the machine as polynomials (`stepper.py`). The machine is Steve's invention; the code in this repository, written by AI coding agents (Claude) with human supervision, departs from the 2023 Python wherever a cleaner choice turned up, and its choices are this book's own. Each language has one role: Python was the inspiration; Roc is our lingua franca, for the mathematics, the Nibble page's machine, the SAT solver and the app that builds this book; C is our oracle and speed demon, the port every claim is tested in.
+Steve wrote the first version by hand in Python, in [virtual-machine](https://github.com/showell/virtual-machine): the machine (`virtual_machine.py`), a general polynomial library (`poly.py`) and a stepper that writes one step of the machine as polynomials (`stepper.py`). The machine is Steve's invention; the code in this repository, written by AI coding agents (Claude) with human supervision, departs from the 2023 Python wherever a cleaner choice turned up, and its choices are this book's own. Each language has one role, which {{chapter Roc is our lingua franca}} sets out.
 
 One program runs through the book as its guide: program 1689 (`zero, decr, decr, zero, decr, zero`), the one program that decides {0, 2, 3}. Each chapter that shows the machine in a new form shows 1689 in it too, in a box headed "1689, here", so a reader who follows the boxes alone sees the whole reduction, from a run to a satisfying assignment. The Nibble++ chapters follow is_not_14's 28-line program the same way, in boxes headed "is_not_14, here".
 
@@ -139,11 +140,11 @@ The Cook-Levin theorem says that satisfiability of Boolean formulas is NP-comple
 
 ### Where the numbers come from
 
-Each number here comes from the repository, a commit, a golden file or a program run, named where it is used. Code is quoted as it stands when the book is built.
+Each number here comes from the repository, a commit, a golden file or a program run, named where it is used. Code is quoted as it stands when the book is built. Under each theorem a "Run it" box gives the command that checks it, from the repository's root once `shale build.shale` has built the tests, and the line it prints; the book's build holds each line to its test file.
 
 ## The machine
 
-**Start here; this chapter stands alone.** Here you get Steve's whole machine in one page: four instructions, a two-bit register and a spec of 26 lines. Every later chapter is this machine seen from another side.
+**Ordinary computation. Start here; this chapter stands alone.** Here you get Steve's whole machine in one page: four instructions, a two-bit register and a spec of 26 lines. Every later chapter is this machine seen from another side.
 
 The machine holds one register, `AX`, of 2 bits, so `AX` is 0, 1, 2 or 3. A run starts with `AX` set to the input. Its program is six instructions, each one of four opcodes, and the machine's programming language, an assembly language, is called Nibble.
 
@@ -242,9 +243,23 @@ start        AX=0    AX=1    AX=2    AX=3
 decides {0, 2, 3}
 ```
 
+## Roc is our lingua franca
+
+**Ordinary computation. The tools, in brief; it needs {{chapter The machine}}.** Here is which programming language does which job in this book, and why Roc does most of them.
+
+Roc is our lingua franca in this book. This is not a book about type systems, but Roc's clear type annotations help us express mathematical concepts. It's also simply a good working language. It has the horsepower for computation and versatility to live in the browser. The Roc port composes all six steps of the machine into four polynomials and checks them at every point ({{chapter The Roc port}}), and the app that builds this book is Roc as well.
+
+Nibble and Nibble++ are Steve's toy languages. They are specifically designed to be small in scope. Nibble fits in your hand. Nibble++ pushes just past brute force. Both come to life in playgrounds that accompany the book, and the machine you click there is the same Roc code this book quotes, compiled to run in your browser. The pinned Roc builds each page's machine as a small wasm module, linked with a C host of 107 lines, `web/platform/host.c`, which holds the allocator. Try [Nibble's puzzles](https://roc.lynrummy.com/nibble/) and the [Nibble++ playground](https://roc.lynrummy.com/nibble/plus.html).
+
+Python is the programming language that inspired the book. We use Python mostly as a historical relic, but it remains an oracle to Roc and occasionally shines as a mainstream programming language whose syntax most programmers understand. Steve's 2023 Python, `virtual_machine.py`, `poly.py` and `stepper.py`, is where the machine and its polynomials began, and its report is still the golden file that the C and the Roc print byte for byte.
+
+C is our utility infielder. We use it for its raw speed and easy linkability. And when rocsat says no program exists, it's a small C program that checks the proof, so the book never has to take Roc's word for Roc's answers. That program is `src/drat.c`, the book's own DRAT checker, which replays each of rocsat's proofs lemma by lemma ({{chapter The solver's work, in full}}).
+
+Finally, JS does what JS does best. JS runs the skin of our toys. It also serves as a final oracle: the same machine, written in plain JavaScript, gives the same answers in the book's last chapter, and runs there on a compiler we happen to have written ourselves (in Roc!). That program, `js/cook_levin.js`, prints the same report and composition byte for byte under node and as an x86-64 program from js-x86 ({{chapter What comes next}}).
+
 ## Formal languages and machines
 
-**A review of well-known ideas; skip it if you know Turing machines.** We explain the one word complexity theory runs on, the formal language, and show a Turing machine deciding one with six rules.
+**Complexity theory. A review of well-known ideas; skip it if you know Turing machines.** We explain the one word complexity theory runs on, the formal language, and show a Turing machine deciding one with six rules.
 
 In computer science a *formal language* is a set of strings. The book spends two words on it because it also has a *programming language*, Nibble, the notation its programs are written in, and the two are different things: a Nibble program decides a formal language. Pick an alphabet, say the digits 0 to 9, and any set of strings over it is a formal language: the decimal numerals of the primes, the palindromes, the strings that are valid Roc programs. A formal language is the cleanest way to state a decision question. "Is 91 prime?" becomes "is the string `91` in the formal language of primes?"
 
@@ -285,13 +300,15 @@ And on `ab`: `even` reads a and moves to `odd`, `odd` reads b and stays `odd`, `
 
 This machine only reads and moves right, so it is also a finite automaton; Turing's machines earn their tape on harder formal languages, such as the strings of a's followed by the same number of b's, where the machine writes marks on the tape to pair each a with a b. The idea carries over unchanged: states, a rule table, a run that ends in accept or reject, and a formal language made of the strings accepted.
 
+*The frame switches here from Turing's machines to this book's.*
+
 ### This book's machine
 
 The machine here is Turing's idea at its smallest. Its tape is one 2-bit register, its inputs are the four strings 0, 1, 2 and 3, and every run halts within six steps, so every question about it is decidable by trying everything. Its formal languages are the 16 subsets of {0, 1, 2, 3}, the problems of the Introduction, which a program, a circuit and a SAT formula each decide alike. A program decides exactly one of them, the set of inputs it accepts. {{chapter Programs as formal languages}} asks which programs decide which problems, by running all of them. The second part of the book asks what deciding costs when trying everything is out of reach, the question Cook and Levin answered.
 
 ## Deciding in plain Python
 
-**The tools, in brief; it stands alone.** You will see that every question the toy answers is a one-line lookup in Python, and that is exactly why the machine is worth taking apart.
+**Ordinary computation. The tools, in brief; it stands alone.** You will see that every question the toy answers is a one-line lookup in Python, and that is exactly why the machine is worth taking apart.
 
 A problem is four answers, one per input, so deciding one takes a line of ordinary code. The code here is `python/decides.py`, which `build.shale` runs on every build: it holds its two versions to each other on all 16 problems and all four inputs, and each one-line test below to its problem.
 
@@ -319,7 +336,7 @@ The want code already says everything about a problem. The Nibble machine takes 
 
 ## Programs as formal languages
 
-**New theorems; it needs {{chapter The machine}}.** We settle which problems the toy decides by running all 4,096 programs, and we find the one problem that exactly one program solves.
+**Ordinary computation. New theorems; it needs {{chapter The machine}}.** We settle which problems the toy decides by running all 4,096 programs, and we find the one problem that exactly one program solves.
 
 Steve settled which programs decide which problems twice in Python: first by construction, then by running everything.
 
@@ -351,17 +368,35 @@ Today's `find_solutions` ([virtual_machine.py, lines 148 to 180](https://github.
 
 **Theorem 1.** Every one of the 16 problems is decided by some six-instruction program.
 
-*Proof by construction.* On today's machine `solve` builds a program of six lines or fewer for 15 problems, and each decides its problem. For {0, 1, 2, 3} it builds seven, `zero, decr, zero, decr, zero, decr, zero`, one past the limit, and Python's report gives `mod2, zero, decr, zero` for it. `tests/test_theorems.c` runs the construction on every problem.
+*Proof by construction.* On today's machine `solve` builds a program of six lines or fewer for 15 problems, and each decides its problem. For {0, 1, 2, 3} it builds seven, `zero, decr, zero, decr, zero, decr, zero`, one past the limit, and Python's report gives `mod2, zero, decr, zero` for it. A test runs the construction on every problem.
 
 *Proof by exhaustion.* `find_solutions` runs all 4,096 programs on `run_progam` and asserts `len(solutions[y]) > 0` for every problem `y` (lines 159 to 160).
 
+```text Run it
+$ out/tcc/test_theorems
+tests/test_theorems.c: 9 tests passed
+the test: the_analytical_solution_decides_every_language
+```
+
 **Theorem 2.** With `nada`, `zero` and `decr` alone, exactly 15 of the 16 problems are decided by a six-instruction program; {0, 1, 2, 3} needs `mod2`.
 
-*Proof.* `tests/test_theorems.c` runs the 3^6 = 729 programs over `nada`, `zero` and `decr` and finds 15 problems, {0, 1, 2, 3} the one missing.
+*Proof.* Run the 3^6 = 729 programs over `nada`, `zero` and `decr`: they decide 15 problems, {0, 1, 2, 3} the one missing.
+
+```text Run it
+$ out/tcc/test_theorems
+tests/test_theorems.c: 9 tests passed
+the test: without_mod2_fifteen_languages_are_decided
+```
 
 **Theorem 3.** The number of programs deciding each problem is the table's programs column, and the 16 counts sum to 4,096.
 
-*Proof.* Each program is filed under the one problem it decides, so the counts partition the 4,096 programs. Python's report gives each count, and `tests/golden/find_solutions.txt` holds that report.
+*Proof.* Each program is filed under the one problem it decides, so the counts partition the 4,096 programs. Python's report gives each count, and the C prints that report byte for byte.
+
+```text Run it
+$ out/tcc/test_golden
+tests/test_golden.c: 1 tests passed
+the test: find_solutions_prints_pythons_output_byte_for_byte
+```
 
 In the table, a problem's code is its inputs as bits: input i accepted sets bit i. A program's length is its instructions before its trailing `nada`s, and the shortest column is the least length among a problem's programs.
 
@@ -386,7 +421,13 @@ In the table, a problem's code is its inputs as bits: input i accepted sets bit 
 
 **Theorem 4.** Each problem's shortest program has the length in the table's shortest column.
 
-*Proof.* `tests/test_theorems.c` measures the length of all 4,096 programs, takes each problem's least, and holds the 16 to the table. The second part proves it again a different way: a SAT solver shows each length one line shorter impossible, with a proof a checker replays ({{chapter The solver's work, in full}}).
+*Proof.* Measure the length of all 4,096 programs and take each problem's least: the 16 are the table's. The second part proves it again a different way: a SAT solver shows each length one line shorter impossible, with a proof a checker replays ({{chapter The solver's work, in full}}).
+
+```text Run it
+$ out/tcc/test_theorems
+tests/test_theorems.c: 9 tests passed
+the test: each_language_has_the_shortest_length_the_book_states
+```
 
 ### The rare one
 
@@ -403,6 +444,12 @@ zero
 
 *Proof.* Python's report gives {0, 2, 3} a count of 1 and this program as its example, and Theorem 3's search is exhaustive. `solve` builds the same program.
 
+```text Run it
+$ out/tcc/test_golden
+tests/test_golden.c: 1 tests passed
+the test: find_solutions_prints_pythons_output_byte_for_byte
+```
+
 **1689, here**, in Steve's Python's report:
 
 {{lines tests/golden/find_solutions.txt from "[0, 2, 3] is solved by 1 possible program" to "it accepts [0, 2, 3]"}}
@@ -415,7 +462,7 @@ The empty problem, { }, has 844 programs, since any program that rejects every i
 
 ## Which instructions are needed
 
-**New theorems; it needs {{chapter Programs as formal languages}}.** We prove that one of the four instructions is dead weight, and that two instructions of another design would decide everything in four lines.
+**Ordinary computation. New theorems; it needs {{chapter Programs as formal languages}}.** We prove that one of the four instructions is dead weight, and that two instructions of another design would decide everything in four lines.
 
 {{chapter Programs as formal languages}} counted what the four opcodes decide together. This chapter takes them apart: which of the four are needed, and what instructions of other designs could do.
 
@@ -423,7 +470,14 @@ The empty problem, { }, has 844 programs, since any program that rejects every i
 
 **Theorem 6.** The six-line programs over `zero`, `decr` and `mod2` decide all 16 problems, and each of the three is needed: dropping `zero` leaves only { } decided, dropping `decr` leaves 3 problems, and dropping `mod2` leaves 15 (Theorem 2). `nada` is redundant: the programs over the other three decide all 16. And every shortest program is made of `zero`, `decr` and `mod2` alone.
 
-*Proof.* `tests/test_theorems.c` runs the 4,096 programs, keeps those whose every instruction is in a given set, and counts the problems they decide, for all four opcodes and for each set of three. Only `zero` accepts, so dropping it leaves every input rejected. Dropping `decr` leaves { }, {0} and {0, 2}: `mod2` brings 2 to 0, and 1 and 3 to 1, where they stay. For the last part, take a `nada` out of a program and close the gap: every input meets the same lines in the same order, so the shorter program decides the same problem. So every line of a shortest program is `zero`, `decr` or `mod2`, and the same test checks each one.
+*Proof.* Run the 4,096 programs, keep those whose every instruction is in a given set, and count the problems they decide, for all four opcodes and for each set of three. Only `zero` accepts, so dropping it leaves every input rejected. Dropping `decr` leaves { }, {0} and {0, 2}: `mod2` brings 2 to 0, and 1 and 3 to 1, where they stay. For the last part, take a `nada` out of a program and close the gap: every input meets the same lines in the same order, so the shorter program decides the same problem. So every line of a shortest program is `zero`, `decr` or `mod2`, and a test checks each one.
+
+```text Run it
+$ out/tcc/test_theorems
+tests/test_theorems.c: 9 tests passed
+the test: zero_decr_and_mod2_are_each_needed_and_together_suffice
+the test: no_shortest_program_uses_nada
+```
 
 ### What it means for a player
 
@@ -435,11 +489,18 @@ The four opcodes are one choice among many. An instruction of any kind says, for
 
 **Theorem 7.** Two instructions of that kind decide all 16 problems in four lines: `decr`, and its twin that accepts at 0 and otherwise takes 1 from `AX`. One instruction, repeated, decides at most 5 problems at any length.
 
-*Proof.* For a problem L, line i + 1 is the twin when i is in L and `decr` otherwise, for i from 0 to 3. Input n reaches 0 on line n + 1, and that line's verdict is L's. `tests/test_theorems.c` builds the 16 programs and runs them. For one instruction it runs all 1,296, each repeated from 0 to 1,296 times on all four inputs, and finds at most 5 problems for each, and 5 for some. Five is also the bound by argument: an accept is for good, so each length's problem contains the one before it, and a chain of subsets of four inputs has at most five members.
+*Proof.* For a problem L, line i + 1 is the twin when i is in L and `decr` otherwise, for i from 0 to 3. Input n reaches 0 on line n + 1, and that line's verdict is L's. A test builds the 16 programs and runs them. For one instruction it runs all 1,296, each repeated from 0 to 1,296 times on all four inputs, and finds at most 5 problems for each, and 5 for some. Five is also the bound by argument: an accept is for good, so each length's problem contains the one before it, and a chain of subsets of four inputs has at most five members.
+
+```text Run it
+$ out/tcc/test_theorems
+tests/test_theorems.c: 9 tests passed
+the test: decr_and_its_accepting_twin_decide_every_language_in_four_lines
+the test: one_instruction_decides_at_most_five_languages_at_any_length
+```
 
 ## Nibble, the puzzle page
 
-**The playground; it stands alone.** This is where you play the machine yourself: sixteen puzzles, one for each problem, ramped so that a newcomer gets through all of them.
+**Ordinary computation, in the browser. The playground; it stands alone.** This is where you play the machine yourself: sixteen puzzles, one for each problem, ramped so that a newcomer gets through all of them.
 
 [Nibble](https://roc.lynrummy.com/nibble/) is a puzzle page with one puzzle for each of the 16 problems: pick instructions until the program accepts exactly the puzzle's inputs and rejects the rest. The search of {{chapter Programs as formal languages}} says every puzzle has an answer, and how many programs are answers.
 
@@ -485,7 +546,13 @@ Each puzzle says how short its best program is, and the lines past that are lock
 
 **Theorem 8.** Every shortest program of a line or more ends in `zero`.
 
-*Proof.* An instruction after a program's last `zero` can only reject, as running off the end does, so a program whose last instruction is `decr` or `mod2` decides the same problem with that instruction cut, in fewer lines. `tests/test_theorems.c` checks it on all 4,096 programs: every shortest program of a line or more ends in `zero`, and longer programs that end otherwise exist.
+*Proof.* An instruction after a program's last `zero` can only reject, as running off the end does, so a program whose last instruction is `decr` or `mod2` decides the same problem with that instruction cut, in fewer lines. A test checks it on all 4,096 programs: every shortest program of a line or more ends in `zero`, and longer programs that end otherwise exist.
+
+```text Run it
+$ out/tcc/test_theorems
+tests/test_theorems.c: 9 tests passed
+the test: every_shortest_program_ends_in_zero
+```
 
 The last puzzle, `is_not_tiny`, also gives its `mod2` on line 2, the line where the solution folds 2 onto 0; the player still picks the `decr` on line 1.
 
@@ -504,7 +571,7 @@ accept | reject | accept | accept
 
 ## The Boolean view
 
-**The machine as logic; it needs {{chapter The machine}}.** We show you the toy the way a chip sees it: one fixed bank of AND, OR and NOT gates, ticking once a line, that sees only bits.
+**Circuit design. The machine as logic; it needs {{chapter The machine}}.** We show you the toy the way a chip sees it: one fixed bank of AND, OR and NOT gates, ticking once a line, that sees only bits.
 
 Everything so far ran the machine as a program, an interpreter reading its lines. This chapter runs the same machine as a computer's hardware does: a clock, and at each tick, one step of the machine, a fixed bank of Boolean gates, AND, OR and the complement, that takes bits in and puts bits out. The gates are the same at every tick, for every program and every input. They read the line's two opcode bits and the four state bits, and they write four state bits. They see bits and only bits: what a program means, which of the 16 problems it decides, even that problems exist, all lies outside them.
 
@@ -556,13 +623,19 @@ Whether a program decides a problem is more gates of the same kind. Run the six 
 
 ## The problems, seen from outside
 
-**Cool math, short; it needs {{chapter The Boolean view}}.** We prove that the 16 puzzles are, in disguise, the 16 logic gates of two inputs, XOR among them.
+**Mathematics. Cool math, short; it needs {{chapter The Boolean view}}.** We prove that the 16 puzzles are, in disguise, the 16 logic gates of two inputs, XOR among them.
 
 {{chapter The Boolean view}} ran the machine as gates that see only bits. We can see more than the gates do. Read an input n as its two bits, n = 2·`hb` + `lb`, and each problem is itself a Boolean function of them: {3} is `hb AND lb`, {1, 2, 3} is `hb OR lb`, {1, 2} is `hb XOR lb`, and {0, 2, 3} is `hb OR NOT lb`. That is a fact about the problems, found by looking at all 16 at once. The machine reaches each answer the long way instead, six ticks of the same gates.
 
 **Theorem 9.** The 16 problems are exactly the 16 Boolean functions of two bits: each problem is one function of `hb` and `lb`, and each function is one problem.
 
-*Proof.* A function of two bits is its four values, one per input, and a problem is the same four answers, so the two are counted alike, 2^4 = 16. `tests/test_theorems.c` evaluates the 16 expressions below at all four inputs, finds each one true at its problem's members alone and the 16 truth tables all different, and finds each problem decided by some program. `src/boolean_main.c` holds each expression to a program run on the machine and prints the table.
+*Proof.* A function of two bits is its four values, one per input, and a problem is the same four answers, so the two are counted alike, 2^4 = 16. A test evaluates the 16 expressions below at all four inputs, finds each one true at its problem's members alone and the 16 truth tables all different, and finds each problem decided by some program.
+
+```text Run it
+$ out/tcc/test_theorems
+tests/test_theorems.c: 9 tests passed
+the test: the_16_languages_are_the_16_boolean_functions_of_two_bits
+```
 
 | code | problem | as hb and lb |
 |---|---|---|
@@ -587,7 +660,7 @@ So the 16 problems, the 16 puzzles of Nibble, are the 16 two-input connectives.
 
 ## One formula for the whole machine
 
-**Cool math; it needs {{chapter The Boolean view}}.** We write the entire machine, every program on every input, as one formula of 14 bits, and watch it grow past half a million characters on paper while it stays 174 gates as a graph.
+**Mathematics. Cool math; it needs {{chapter The Boolean view}}.** We write the entire machine, every program on every input, as one formula of 14 bits, and watch it grow past half a million characters on paper while it stays 174 gates as a graph.
 
 {{chapter The Boolean view}} ran the machine as gates on known bits. Its four step functions never ask what their bits are, so they can be handed something else: formulas. The machine is then one function of 14 bits, f, the input's two and the program's twelve, true where the program accepts the input, and running the step functions on formulas writes f down. The Roc port states f directly, in `roc/Fourteen.roc`:
 
@@ -647,7 +720,7 @@ v1 .. v12          v13 v14  f
 
 ## The SAT solver
 
-**The tools; it stands alone.** We introduce rocsat, the outside oracle this book trusts least and checks most, and the only two questions we ever ask it.
+**SAT solving. The tools; it stands alone.** We introduce rocsat, the outside oracle this book trusts least and checks most, and the only two questions we ever ask it.
 
 Several chapters from here on hand a formula to a SAT solver, [rocsat](https://github.com/mpizenberg/rocsat), written in Roc by Matthieu Pizenberg. It is his project, and its README is the place to read about it: a CDCL solver, the kind that learns a new clause from each contradiction it meets, with a model checker and DRAT proofs beside it. This book uses it as an outside oracle. Its code is separate from the machine's, so when it agrees with the machine, two separate programs agree. This chapter says once what the book asks it, so that each later chapter needs only to name its question.
 
@@ -715,7 +788,7 @@ The script stops at the first answer other than the one it expects. Each script 
 
 ## Checking a claim
 
-**The first SAT encoding; it needs {{chapter One formula for the whole machine}} and {{chapter The SAT solver}}.** We turn a sentence like "program 1689 accepts input 2" into clauses, and a solver that knows only clauses confirms it or refutes it.
+**SAT solving. The first SAT encoding; it needs {{chapter One formula for the whole machine}} and {{chapter The SAT solver}}.** We turn a sentence like "program 1689 accepts input 2" into clauses, and a solver that knows only clauses confirms it or refutes it.
 
 A claim such as "program 1689 accepts input 2" can be checked by a tool that knows only formulas and clauses. This chapter turns f's graph into CNF and asks `rocsat check` about the claim ({{chapter The SAT solver}}).
 
@@ -796,7 +869,7 @@ Every bit here was given; the check only computes. A solver that finds the bits 
 
 ## Parts for a small computer
 
-**Diagrams; it stands alone.** Here we help you visualize Steve's toy as an actual physical machine, built from gates you could buy, starting with each instruction drawn as a circuit.
+**Circuit design. Diagrams; it stands alone.** Here we help you visualize Steve's toy as an actual physical machine, built from gates you could buy, starting with each instruction drawn as a circuit.
 
 This chapter and the two after it build the machine as hardware, a plain digital circuit, from the bottom up. Each part is drawn once with all its gates, and from then on it is a box with named wires in and out. {{chapter The machine as a circuit}} wires the boxes into a stepper, and {{chapter The circuit, in full}} chains the steppers into the whole machine.
 
@@ -927,7 +1000,7 @@ The latches: two ORs
 
 ## The machine as a circuit
 
-**Diagrams, and a listing to skim; it needs {{chapter Parts for a small computer}}.** We wire the parts into one step of the machine, a 59-gate stepper you can trace with a finger, and print every one of its gates.
+**Circuit design. Diagrams, and a listing to skim; it needs {{chapter Parts for a small computer}}.** We wire the parts into one step of the machine, a 59-gate stepper you can trace with a finger, and print every one of its gates.
 
 {{chapter Parts for a small computer}} drew every part with its gates. From here on each part is a box, known by its name and its wires, and this chapter wires the boxes into a *stepper*: one step of the machine. The circuit is combinational: the whole run is laid out in space, and every wire settles at once. {{chapter The Cook-Levin machine}}, in the second part, turns the same circuit around.
 
@@ -1101,7 +1174,7 @@ accepted' = accepted OR accepts_mux.out
 
 ## The circuit, in full
 
-**Diagrams; it needs {{chapter The machine as a circuit}}.** We chain six steppers into the whole machine and set four machines side by side, so that one wire lights up exactly when a program solves a puzzle.
+**Circuit design. Diagrams; it needs {{chapter The machine as a circuit}}.** We chain six steppers into the whole machine and set four machines side by side, so that one wire lights up exactly when a program solves a puzzle.
 
 {{chapter The machine as a circuit}} ends with a stepper as one box. This chapter chains six of them into the machine, then puts four machines side by side to decide a problem. Every drawing is still generated from the netlist of `src/circuit.c`, which records how each box is wired.
 
@@ -1228,7 +1301,7 @@ decides = 1
 
 ## The circuit as equations
 
-**Big output to skim; it needs {{chapter The circuit, in full}}.** You get the whole decider as 1,439 equations, every gate of it, because here seeing is believing.
+**Circuit design. Big output to skim; it needs {{chapter The circuit, in full}}.** You get the whole decider as 1,439 equations, every gate of it, because here seeing is believing.
 
 {{chapter The circuit, in full}} draws the decider as boxes. This chapter writes every gate of it as one Boolean equation, 1,439 in all, as {{chapter The Delightful Monstrosity}} prints every term. The names are those of {{chapter The machine as a circuit}}, led by the core and the step: `core2.step3.hb'` is core 2's high bit of `AX` after line 3. The 16 inputs come first, then each core's input as two constants, `core2.in_hb = 1`, and the last line is `decides`.
 
@@ -1243,7 +1316,7 @@ circuit_main equations: every gate of the decider, in evaluation order
 
 ## From equations to CNF
 
-**Cool math, Cook-Levin in small; it needs {{chapter Checking a claim}} and {{chapter The circuit as equations}}.** We show why naming gates beats multiplying them out: 1,400 clauses that grow in a straight line, against 3,869 whose growth is exponential.
+**Circuit design, then SAT solving. Cool math, Cook-Levin in small; it needs {{chapter Checking a claim}} and {{chapter The circuit as equations}}.** We show why naming gates beats multiplying them out: 1,400 clauses that grow in a straight line, against 3,869 whose growth is exponential.
 
 {{chapter The circuit as equations}} writes the decider as 1,439 gates. This chapter turns those equations into CNF with a small Roc library, `roc/Cnf.roc`, and hands claims about the decider to rocsat, which evaluates them. The encoding is the one {{chapter Checking a claim}} uses on the 14-bit machine, now applied to the whole decider.
 
@@ -1291,6 +1364,8 @@ c core0.step2.lb_mux.low.out = 24
 -24 22 23 0
 ```
 
+*The frame switches here from circuit design to SAT solving.*
+
 ### rocsat evaluates it
 
 `sat/claims.shale` asks `rocsat solve` whether each of three claims' CNFs is satisfiable ({{chapter The SAT solver}}). Every input is fixed by a unit clause, so the solver's search only evaluates. The first two claims are true, and the answer expected is SATISFIABLE. The third, that program 1689 decides {0, 2}, is false, since the program accepts 3 too, and the answer expected is UNSATISFIABLE. The script fails on any other answer, and writes the verdicts to `sat/claims/verdicts.txt`, which the book's build holds here:
@@ -1322,7 +1397,7 @@ decides by distribution equals the circuit at all 65,536 points
 
 ## The step's encodings
 
-**A reference table; read it whenever the counts blur.** We put every version of the machine's step side by side, from Python to polynomials, with its gate count and its variables, so each 34 or 174 in this book has one home.
+**Every frame at once. A reference table; read it whenever the counts blur.** We put every version of the machine's step side by side, from Python to polynomials, with its gate count and its variables, so each 34 or 174 in this book has one home.
 
 The machine's step appears in this book in seven forms, each built for a different job, and each counts its parts its own way. This chapter is the one place they sit side by side. The chapters that introduce them point here.
 
@@ -1358,7 +1433,7 @@ Twenty-four steppers of 34 gates would be 816. The top row's constants fold many
 
 ## P and NP
 
-**A review of well-known ideas; skip it if you know P and NP.** We give you the two classes the rest of the book leans on, at the level of their definitions, with the toy close at hand.
+**Complexity theory. A review of well-known ideas; skip it if you know P and NP.** We give you the two classes the rest of the book leans on, at the level of their definitions, with the toy close at hand.
 
 The toy's every question was settled by trying everything: 4,096 programs on four inputs. That works because the toy is finite. Complexity theory is about formal languages with inputs of every length, where trying everything grows with the input, and it sorts them by how fast the work grows. This chapter gives the two classes the rest of the book leans on, P and NP, at the level of their definitions.
 
@@ -1418,7 +1493,7 @@ The N stands for *nondeterministic*: NP was first defined by machines that guess
 
 ## Nibble, sized
 
-**New definitions; it needs {{chapter P and NP}}.** We grow the toy until complexity theory has something to say about it, and turn three questions about it into formal languages, two in P and one in NP.
+**Complexity theory. New definitions; it needs {{chapter P and NP}}.** We grow the toy until complexity theory has something to say about it, and turn three questions about it into formal languages, two in P and one in NP.
 
 P and NP sort formal languages by how their cost grows with the input's length. The toy's formal languages are finite, and every finite one is in P for an empty reason: a machine can keep all its answers in a table and look each one up in a fixed number of steps. To ask the question precisely, the machine has to grow. Below, three questions about it become formal languages, each with members and non-members at the toy's size.
 
@@ -1473,7 +1548,7 @@ Finding the program is the costly part. Trying every program tries 4^k of them, 
 
 ## Nibble++
 
-**Why we invented a bigger machine; it needs {{chapter The machine}}.** We built Nibble++ because the toy is too small to surprise anyone: with 16 inputs it has 65,536 problems and far too many programs to list, and yet one search of its states settles every problem exactly.
+**Ordinary computation. Why we invented a bigger machine; it needs {{chapter The machine}}.** We built Nibble++ because the toy is too small to surprise anyone: with 16 inputs it has 65,536 problems and far too many programs to list, and yet one search of its states settles every problem exactly.
 
 The toy is small enough to settle by listing every program, 4,096 of them. Nibble++ is the case n = 4 of {{chapter Nibble, sized}}, with programs of any length: inputs 0 to 15, and 2^16 = 65,536 formal languages, the sets of inputs a program can decide. It is too big to list, and small enough to settle exactly by searching the machine's states. `src/plus.c` is its interpreter and `src/census.c` its census.
 
@@ -1609,13 +1684,21 @@ accepted at    1  3  5  7  9 11 13 15 17 19 21 23 25 28  - 28
 
 ## Two theorems about Nibble++
 
-**Cool math, new theorems; it needs {{chapter Nibble++}}.** We prove that the shortest programs of two instructions are counted by the Fibonacci numbers, off by exactly one where the inputs run out.
+**Mathematics. Cool math, new theorems; it needs {{chapter Nibble++}}.** We prove that the shortest programs of two instructions are counted by the Fibonacci numbers, off by exactly one where the inputs run out.
 
-With `zero` and `decr` alone, a short proof gives every formal language's shortest length and the count of formal languages at each length. The census of {{chapter Nibble++}} checks both, and `tests/test_census.c` holds them.
+With `zero` and `decr` alone, a short proof gives every formal language's shortest length and the count of formal languages at each length. The census of {{chapter Nibble++}} checks both.
 
 **Theorem 10.** With `zero` and `decr` alone, the shortest program for a nonempty set S of inputs has exactly max(S) + |S| lines, and the empty set's has 0.
 
+In programmer terms, the program is one countdown that all 16 inputs share: each `decr` lowers every live counter at once, and each `zero` accepts the input whose counter reads 0 right then.
+
 *Proof.* The inputs move in lockstep: after d `decr`s, an input x still running has `AX` = x − d. The `decr` numbered x + 1 finds input x at 0 and rejects it. A `zero` accepts the inputs whose `AX` is 0 when it runs, so a `zero` after exactly d `decr`s accepts input d, and every other input passes it: those above d hold `AX` above 0, and those below d have halted. Inputs above the last such d run to the end and are rejected. So a program decides the set of counts d at which some `zero` runs. For S it needs a `zero` at each member's count, |S| lines, and max(S) `decr`s before the last of them, max(S) lines more. The program that walks d from 0 to max(S), with a `zero` at each member and a `decr` between counts, has exactly max(S) + |S| lines. The empty program decides the empty set.
+
+```text Run it
+$ out/tcc/test_census
+tests/test_census.c: 5 tests passed
+the test: zero_and_decr_alone_take_max_plus_size_lines
+```
 
 ```text is_not_14, here: zero and decr alone
 max(S) + |S| = 15 + 15 = 30 lines, by Theorem 10
@@ -1625,7 +1708,15 @@ the census of all four opcodes:      28 lines
 
 **Theorem 11.** With `zero` and `decr` alone, the number of formal languages whose shortest program has L lines is F(L), the Fibonacci number with F(1) = F(2) = 1, for L from 1 to 16, and F(17) − 1 at L = 17.
 
+It is the stair-climbing puzzle of a programming interview: a walk is a row of 1-line steps (`decr`, an input passed by) and 2-line steps (`zero, decr`, an input accepted) closed by one `zero`, and the rows of 1s and 2s that fill L − 1 lines number F(L).
+
 *Proof.* By Theorem 10, the count at length L is the number of sets S with max(S) + |S| = L. A set with largest member m and k members picks its other k − 1 members from {0, ..., m − 1}, so there are C(m, k − 1) of them, with m = L − k. The count is the sum over k ≥ 1 of C(L − k, k − 1). With j = k − 1 it is the sum over j of C(L − 1 − j, j), the sum along a shallow diagonal of Pascal's triangle, which is F(L). The inputs end at 15, so m is at most 15. For L up to 16 every term has m = L − k ≤ 15. At L = 17 the term k = 1 is the set {16}, past the machine's inputs, and the count is F(17) − 1.
+
+```text Run it
+$ out/tcc/test_census
+tests/test_census.c: 5 tests passed
+the test: fibonacci_counts_hold_where_the_census_says
+```
 
 The census agrees. The last column is {zero, decr, mod2}, for contrast:
 
@@ -1653,9 +1744,9 @@ With `mod2` the counts follow the Fibonacci numbers one place on, F(L + 1), from
 
 ## Shortest programs with mod2 and half
 
-**New theorems; it needs {{chapter Two theorems about Nibble++}}.** We explain every shortest length the census found, all 65,536 of them, by one recursion, and we name the one conjecture still standing.
+**Mathematics. New theorems; it needs {{chapter Two theorems about Nibble++}}.** We explain every shortest length the census found, all 65,536 of them, by one recursion, and we name the one conjecture still standing.
 
-{{chapter Two theorems about Nibble++}} settles `zero` and `decr` alone. This chapter brings in `mod2` and `half`, the split lines, and explains every length the census of {{chapter Nibble++}} finds. The proofs are in `docs/NIBBLE_PLUS_THEORY.md`, and `tests/test_theory_plus.c` holds each theorem to the census on all 65,536 formal languages, in the build.
+{{chapter Two theorems about Nibble++}} settles `zero` and `decr` alone. This chapter brings in `mod2` and `half`, the split lines, and explains every length the census of {{chapter Nibble++}} finds. The proofs are in `docs/NIBBLE_PLUS_THEORY.md`, and a test holds each theorem to the census on all 65,536 formal languages.
 
 ### Walks and splits
 
@@ -1667,7 +1758,14 @@ A formal language S lines up at d for a split line when each block of the inputs
 
 **Theorem 12.** For every opcode set holding `zero` and `decr`, the shortest program for S is the least of its walk, max(S) + |S| lines, and, for each split line f and each d where S lines up for f, the walk to d, f, and the shortest program for the smaller formal language on the smaller machine.
 
-The smaller machines have 8, 4, 2 and 1 inputs, so `src/theory_plus.c` fills four small tables. Its lengths are the census's for all 65,536 formal languages under each of the four opcode sets, and the programs it builds decide their formal languages on `src/plus.c`'s interpreter.
+The smaller machines have 8, 4, 2 and 1 inputs, so the recursion fills four small tables: to a programmer, a dynamic program, each smaller machine's answers computed once and looked up. Its lengths are the census's for all 65,536 formal languages under each of the four opcode sets, and the programs it builds decide their formal languages on the interpreter.
+
+```text Run it
+$ out/tcc/test_theory_plus
+tests/test_theory_plus.c: 7 tests passed
+the test: the_recursion_gives_every_census_length_for_every_opcode_set
+the test: the_recursions_programs_decide_their_formal_languages
+```
 
 ```text is_not_14, here: the recursion's program, Theorem 12
 its walk alone:       30 lines
@@ -1683,6 +1781,12 @@ its split lines: mod2 at line 26
 
 A split line that leaves every `AX` as it was can be dropped, so each split in a shortest program lowers the largest `AX` still running. From 15 that is at most 15, 7, 3, 1, 0: four steps. After `mod2` every value is 0 or 1, which a second `mod2` leaves as it is.
 
+```text Run it
+$ out/tcc/test_theory_plus
+tests/test_theory_plus.c: 7 tests passed
+the test: the_recursions_programs_split_at_most_four_times
+```
+
 ### {zero, decr, mod2}
 
 **Theorem 14.** With {zero, decr, mod2}, every formal language has a shortest program of one of three shapes:
@@ -1691,15 +1795,33 @@ A split line that leaves every `AX` as it was can be dropped, so each split in a
 2. a walk to d, then `mod2, zero`, when S from d on is the inputs of d's parity;
 3. a walk to d, then `mod2, zero, decr, zero`, when S holds every input from d on.
 
+```text Run it
+$ out/tcc/test_theory_plus
+tests/test_theory_plus.c: 7 tests passed
+the test: the_zero_decr_mod2_closed_form_is_the_census
+```
+
 **Theorem 15.** With {zero, decr, mod2}, the number of formal languages whose shortest program has L lines is F(L + 1) for L from 1 to 15, apart from 6 at L = 4, and F(17) − 2 at L = 16.
 
 The count comes from tiles. A walk is a row of tiles, `zero, decr` for a member and `decr` for the rest, and rows of tiles of 1 and 2 lines are counted by Fibonacci numbers. The walks give F(L) and the parity shapes F(L − 1), F(L + 1) together. At length 4 the third shape with an empty walk adds one: `mod2, zero, decr, zero` accepts all 16 inputs. At 16, two formal languages the count places there belong lower, {14} at 15 lines and {12, 14} at 14. This explains the table of {{chapter Two theorems about Nibble++}}.
+
+```text Run it
+$ out/tcc/test_theory_plus
+tests/test_theory_plus.c: 7 tests passed
+the test: the_zero_decr_mod2_counts_are_the_tiling_counts
+```
 
 ### When half helps
 
 **Theorem 16.** With {zero, decr, half}, `half` gives S a program shorter than its walk exactly when S lines up at some d with a pair among its accepted blocks, or S holds 15 and leaves out 12, 13 and 14.
 
-`tests/test_theory_plus.c` counts 38,911 formal languages that `half` helps, 3,414 of them by the second condition alone. That condition is the trick behind {15}: a walk to 11, then `half`, leaves 15 alone at 2, which `decr, decr, zero` accepts.
+The census counts 38,911 formal languages that `half` helps, 3,414 of them by the second condition alone. That condition is the trick behind {15}: a walk to 11, then `half`, leaves 15 alone at 2, which `decr, decr, zero` accepts.
+
+```text Run it
+$ out/tcc/test_theory_plus
+tests/test_theory_plus.c: 7 tests passed
+the test: half_helps_where_its_blocks_line_up
+```
 
 ### Open, and refuted
 
@@ -1717,9 +1839,11 @@ Beyond 16 inputs each theorem here is a conjecture. With an n-bit `AX`, `src/the
 
 ## Nibble++ meets rocsat
 
-**SAT at scale; it needs {{chapter Nibble++}} and {{chapter The SAT solver}}.** We hand the same questions to a SAT solver and watch it refute every 27-line program for the hardest problem, with a 17 MB proof that our own checker replays.
+**SAT solving. SAT at scale; it needs {{chapter Nibble++}} and {{chapter The SAT solver}}.** We hand the same questions to a SAT solver and watch it refute every 27-line program for the hardest problem, with a 17 MB proof that our own checker replays.
 
 {{chapter Nibble++}} settles every formal language's shortest program by searching the machine's states. This chapter puts the same questions to rocsat, as {{chapter The SAT solver}} frames them, in a CNF that `src/plus_sat.c` builds on the toy's gates.
+
+*This section is circuit design; the rest of the chapter is SAT solving.*
 
 ### The machine as a circuit
 
@@ -1757,7 +1881,7 @@ The search is the heart of the chapter. For a formal language W and a length k, 
 
 A model is then a k-line program that decides W, so SATISFIABLE hands back a program. `sat/plus_search.shale` checks each one with `rocsat check`, with `src/drat.c`'s model check and on the interpreter. One line below the census length L, UNSATISFIABLE says that every program of L − 1 lines decides some other formal language. Shorter programs are covered too: a `decr` added after a program's last line keeps its formal language ({{chapter Nibble++}}), so any shorter program for W pads to one of L − 1 lines. The DRAT proof of that answer, replayed by `src/drat.c`, proves L minimal on its own, apart from the census.
 
-The script ran 11 cases spread across the lengths, up to two of the hardest, at 27 and 28 lines. Its file, `sat/plus/search.txt`, also records each solve's time in the run of commit `9ff83c9`; times vary from run to run, so the table leaves them out:
+The script ran 11 cases spread across the lengths, up to two of the hardest, at 27 and 28 lines. Its file is `sat/plus/search.txt`, from the run of commit `9ff83c9`:
 
 | Formal language | Census length L | L lines | L − 1 lines | The proof at L − 1 | Model and proof checked |
 |---|---:|---|---|---:|---|
@@ -1801,7 +1925,7 @@ Three methods agree on every case: the census, a breadth-first search over state
 
 ## is_not_14 needs 28 lines
 
-**A question answered; it needs {{chapter Nibble++ meets rocsat}}.** We answer, two separate ways, a question Steve asked in public: why every 27-line program fails one particular problem.
+**SAT solving, then ordinary computation. A question answered; it needs {{chapter Nibble++ meets rocsat}}.** We answer, two separate ways, a question Steve asked in public: why every 27-line program fails one particular problem.
 
 Steve asked the Roc Zulip, on 2026-11-26: "How do we prove that no 27-line Nibble++ programs can recognize the language is_not_14?" This chapter answers that question in full. The parts are in {{chapter Nibble++}} and {{chapter Nibble++ meets rocsat}}.
 
@@ -1819,9 +1943,11 @@ the census: 374003 states, {0, ..., 13, 15} first at level 28
 
 `plus_sat search 49151 27` writes the opposite claim as the search CNF of {{chapter Nibble++ meets rocsat}}: some 27-line program decides is_not_14, rejecting input 14 and accepting the other 15. The CNF has 18,365 variables and 54,949 clauses, by its header, written while this chapter was written.
 
-rocsat answered UNSATISFIABLE in 17.0 s, and its DRAT proof of 17,192,870 bytes replayed in `src/drat.c` in 26.9 s (`sat/plus/search.txt`, commit `9ff83c9`), and, as in that chapter, the answer covers every shorter program too.
+rocsat answered UNSATISFIABLE in 17.0 s, and its DRAT proof of 17,192,870 bytes replayed in `src/drat.c` (`sat/plus/search.txt`, commit `9ff83c9`). As in that chapter, the answer covers every shorter program too.
 
 The proof is trusted through its checker. `src/drat.c` is the book's own C, apart from rocsat's Roc. It checks each lemma of the proof again and accepts the proof only when every step derives, through to the empty clause.
+
+*The frame switches here from SAT solving to ordinary computation.*
 
 ### The census's proof
 
@@ -1837,7 +1963,7 @@ Both proofs replace the programs with a finite model of the machine, the circuit
 
 ## Guided search
 
-**An experiment; it needs {{chapter Nibble++ meets rocsat}}.** We try to beat the full search by asking the solver about a few inputs at a time, and report plainly where it wins and where it loses.
+**SAT solving. An experiment; it needs {{chapter Nibble++ meets rocsat}}.** We try to beat the full search by asking the solver about a few inputs at a time, and report plainly where it wins and where it loses.
 
 The search of {{chapter Nibble++ meets rocsat}} hands rocsat all 16 runs at once. A guided search, counterexample by counterexample, starts with a few runs and adds the others as they are needed. `plus_sat search-guarded` writes the full search's 16 runs with each run's output held by a selector variable, and `sat/plus_guided.shale` runs the loop on the same 11 cases with one rocsat kept across the rounds: `sat/rocsat_guided.roc`, on rocsat's incremental API, solves under the selectors of the set as assumptions, so the clauses rocsat learns in one round carry to the next. For a formal language W and a length k:
 
@@ -1864,15 +1990,22 @@ The inputs each answer asked about, and the proofs at L − 1 beside the full se
 | {1, ..., 10, 12, 15} | 27 | 16 | 16 | 6,497,632 bytes | 11,954,817 bytes | yes |
 | {0, ..., 13, 15} | 28 | 16 | 16 | 23,675,802 bytes | 17,192,870 bytes | yes |
 
-Every answer agreed with the census, and every proof checked. The short cases settled on 2 to 4 inputs. The long ones needed most of the inputs, and from 24 lines on all 16 at L, so the last round asked the full search's own question with the earlier rounds' lemmas in hand. On 2026-11-27, with the box's load average between 2 and 4, the 11 cases took 156.5 s in all, against 287.9 s for the same loop solving each round from the start (the script at `eacbcff`, run the same hour). The case at 28 lines took 36.1 s at L and 29.2 s at L − 1 (`sat/plus/guided.txt`), against 64.5 s and 39.6 s from the start; the full search, at 8.3 s and 17.0 s in `sat/plus/search.txt`, is still faster there, and the case at 24 lines slowed at L, from 17.7 s to 27.2 s. A proof holds every round's lemmas, so the long cases' proofs grew, to 23,675,802 bytes at 28 lines. `sat/plus.shale` runs the case of {15} in the build.
+Every answer agreed with the census, and every proof checked. The short cases settled on 2 to 4 inputs. The long ones needed most of the inputs, and from 24 lines on all 16 at L, so the last round asked the full search's own question with the earlier rounds' lemmas in hand, and there the full search stays faster (`sat/plus/guided.txt`, `sat/plus/search.txt`). A proof holds every round's lemmas, so the long cases' proofs grew, to 23,675,802 bytes at 28 lines. `sat/plus.shale` runs the case of {15} in the build.
 
 ### When each method wins
 
-Four methods have now answered the same questions, and each wins somewhere. Exhaustive search wins while everything fits in a list: the toy's 4,096 programs run in a moment, where rocsat took 4,143 launches and 62.6 s to count the same solutions ({{chapter Cook-Levin as SAT}}), and the four censuses of Nibble++ settle all 65,536 formal languages in 0.67 s together, against rocsat's 17.0 s to refute one length of one of them. SAT wins when the states outgrow any list and the circuit stays small, since the circuit grows only with the program's length and the machine's width, and each refutation comes with a proof anyone can check. Guided search wins when a few inputs settle the question, as 2 to 4 did for the short cases, and loses when the answer needs nearly all 16. A theorem wins outright where one exists: Theorem 10 gives every shortest length for {zero, decr}, for any number of inputs, by a formula alone, and says why.
+Four methods have now answered the same questions, and each wins somewhere:
+
+| Method | It wins when | Here |
+|---|---|---|
+| Exhaustive search | everything fits in a list | the four censuses settle all 65,536 formal languages of Nibble++ in 0.67 s together; rocsat took 17.0 s to refute one length of one of them |
+| SAT | the states outgrow any list and the circuit stays small | the circuit grows with the program's length and the machine's width alone, and each refutation comes with a proof anyone can check |
+| Guided search | a few inputs settle the question | 2 to 4 inputs settled the short cases; the long ones needed nearly all 16 |
+| A theorem | one exists | Theorem 10 gives every shortest length for {zero, decr}, for any number of inputs, by a formula, and says why |
 
 ## P, NP and Cook-Levin
 
-**A review of the theorem; skip it if you know Cook-Levin.** We state the theorem this whole book riffs on, and say exactly what it means for a machine with a two-bit register.
+**Complexity theory. A review of the theorem; skip it if you know Cook-Levin.** We state the theorem this whole book riffs on, and say exactly what it means for a machine with a two-bit register.
 
 {{chapter P and NP}} defines the two classes, and {{chapter Nibble, sized}} places the toy among them. This chapter states the theorem that ties NP to one formal language, SAT, and says what it means for the toy.
 
@@ -1892,7 +2025,7 @@ The toy is such a checker. Given a problem and a program, it runs the program on
 
 ## Six expressions, composed
 
-**The pivot of Part II; it needs {{chapter The Boolean view}}.** We leave the program's bits unknown, and the machine becomes a formula whose true points are exactly the programs that solve a puzzle; then we name the two roads forward.
+**Circuit design, then mathematics. The pivot of Part II; it needs {{chapter The Boolean view}}.** We leave the program's bits unknown, and the machine becomes a formula whose true points are exactly the programs that solve a puzzle; then we name the two roads forward.
 
 {{chapter The Boolean view}} ran the machine as four Boolean functions of six bits, composed over six steps, with the input and the program fixed. Cook and Levin's move is to stop fixing the program. Keep the same four functions and the same six steps, give the program's twelve bits names in place of values, v1 to v12, and what comes out of the sixth step is a formula where it was a bit. This chapter does that, turns the formula into the question a puzzle asks, and then names the two ways of composing that the rest of this part follows.
 
@@ -1942,6 +2075,8 @@ decides_L(v1, ..., v12) = AND over n in 0..3 of (accepted(n, v) == L(n))
 ```
 
 L(n) is the constant 1 or 0, so each of the four comparisons is `accepted(n, v)` or its complement. The true points of `decides_L` are exactly the programs that decide L.
+
+*The frame switches here from circuit design to mathematics: the same gates, read as algebra.*
 
 ### The payoff
 
@@ -1998,7 +2133,7 @@ Naming is why Cook-Levin's formula stays polynomial in size: each step adds the 
 
 ## Arithmetization
 
-**Cool math; it needs {{chapter Six expressions, composed}}.** We turn logic into arithmetic, NOT as 1 − x and AND as a product, so that one step of the machine becomes four polynomials.
+**Mathematics. Cool math; it needs {{chapter Six expressions, composed}}.** We turn logic into arithmetic, NOT as 1 − x and AND as a product, so that one step of the machine becomes four polynomials.
 
 The stepper writes one step of the machine as polynomials, the first of the two ways to compose in {{chapter Six expressions, composed}}: expand. Each bit of the state is a variable that is only ever 0 or 1, and logic becomes arithmetic:
 
@@ -2048,13 +2183,21 @@ halted+op_hb+(-1)*hb*op_hb+(-1)*lb*op_hb+(-1)*halted*op_hb+(-1)*op_hb*op_lb
 
 In the general ring, where x·x stays x², as Steve's `stepper.py` builds them, the same four have 786, 2,979, 25 and 33 terms. {{chapter The Delightful Monstrosity}} prints both versions whole, and {{chapter The step's encodings}} sets these counts beside the other versions of the step.
 
+*The frame switches here back to ordinary computation: the polynomials run as a machine.*
+
 ### The stepper as a second machine
 
 Evaluated at the bits of a state and an instruction, the four polynomials give the next state's bits. So the stepper is a second implementation of the machine, written as algebra.
 
 **Theorem 17.** On every one of the 4,096 programs and each of the four inputs, the stepper, evaluating the step polynomials one step at a time, accepts exactly when `run_progam` does.
 
-*Proof.* `tests/test_cross_check.c` runs all 16,384 pairs both ways, on the general ring's polynomials, and holds the differences to 0 and the accepting pairs to 5,596. The Python's `find_solutions` makes the same check on each problem's example program alone, 16 programs on 4 inputs.
+*Proof.* Run all 16,384 pairs both ways, on the general ring's polynomials: the two agree on every pair, and 5,596 pairs accept. The Python's `find_solutions` makes the same check on each problem's example program alone, 16 programs on 4 inputs.
+
+```text Run it
+$ out/tcc/test_cross_check
+tests/test_cross_check.c: 1 tests passed
+the test: every_program_on_every_input_the_stepper_agrees_with_run_progam
+```
 
 ```text 1689, here: the step polynomials, evaluated once a line
 input  accepted after line 1 2 3 4 5 6  test_with_stepper
@@ -2066,7 +2209,7 @@ input  accepted after line 1 2 3 4 5 6  test_with_stepper
 
 ## The Boolean ring
 
-**Cool math; it needs {{chapter Arithmetization}}.** We show you the one identity, x² = x, that keeps every polynomial here multilinear, so that composing six steps takes a fraction of a second.
+**Mathematics. Cool math; it needs {{chapter Arithmetization}}.** We show you the one identity, x² = x, that keeps every polynomial here multilinear, so that composing six steps takes a fraction of a second.
 
 A whole program is six steps. Composing them means substituting: step 1's four polynomials go in for the state variables of step 2, and so on, until the final state is four polynomials in the 14 bits of {{chapter Six expressions, composed}}. One polynomial would then hold the whole machine.
 
@@ -2088,7 +2231,7 @@ Each substitution keeps the polynomials multilinear, and the composition of {{ch
 
 ## Six steps composed
 
-**A new theorem, the book's thesis; it needs {{chapter The Boolean ring}}.** We compose all six steps into four polynomials and prove that they agree with the machine at all 16,384 points.
+**Mathematics. A new theorem, the book's thesis; it needs {{chapter The Boolean ring}}.** We compose all six steps into four polynomials and prove that they agree with the machine at all 16,384 points.
 
 `src/compose.c` substitutes the step polynomials into themselves six times (`1146d43`). The Roc port's step, from `roc/Compose.roc`:
 
@@ -2124,7 +2267,7 @@ Each step's term counts, from `roc/golden/composition.txt` and `out/tcc/compose_
 | 5 | 143 | 727 | 878 | 2,568 |
 | 6 | 319 | 2,185 | 2,732 | 10,324 |
 
-The final `hb` has degree 9 and its largest coefficient is 6; `lb` has degree 14 and 21; `halted` 14 and 20; `accepted` 14 and 63. Sixty-three is the largest coefficient of the four final polynomials, so int64 holds each with room to spare. Built with `gcc -O2` and run three times while this chapter was written, on 2026-11-27, `compose_main` composed all six in 44 to 50 ms, 30 to 35 of them in step 6, at a peak of 4,224 KiB resident.
+The final `hb` has degree 9 and its largest coefficient is 6; `lb` has degree 14 and 21; `halted` 14 and 20; `accepted` 14 and 63. Sixty-three is the largest coefficient of the four final polynomials, so int64 holds each with room to spare. In the Boolean ring `compose_main` composed all six in 44 to 50 ms (`gcc -O2`, three runs on 2026-11-27), where the general ring's composition ran past 30 s at step 2 ({{chapter How it got here}}).
 
 ### The proof
 
@@ -2132,7 +2275,15 @@ Fourteen 0/1 variables make 2^14 = 16,384 points, and each point is one input wi
 
 **Theorem 18.** At every one of the 2^14 points, the composed polynomial `accepted` is 1 when the machine accepts that input with that program and 0 when it rejects it.
 
-*Proof.* `tests/test_compose.c` evaluates the four final polynomials at every point and holds them to `run_progam` (its test `the_composed_polynomials_agree_with_the_machine_on_all_2_to_the_14`), and the Roc port's proof agrees (`roc/golden/composition.txt`); {{chapter The Delightful Monstrosity}} shows its run.
+In programmer terms, `accepted` is a lookup table of 16,384 entries written as algebra, and the proof reads every entry.
+
+*Proof.* Evaluate the four final polynomials at every point and compare each with `run_progam`; the Roc port's proof agrees, and {{chapter The Delightful Monstrosity}} shows its run.
+
+```text Run it
+$ out/tcc/test_compose
+tests/test_compose.c: 4 tests passed
+the test: the_composed_polynomials_agree_with_the_machine_on_all_2_to_the_14
+```
 
 The proof is exhaustive: it checks every input with every program. And since a multilinear polynomial is fixed by its values on {0, 1}^14, any implementation whose four polynomials pass it has exactly these four.
 
@@ -2267,7 +2418,7 @@ accepted after six steps, composed by the C's compose_main at the book's build
 
 ## The Cook-Levin machine
 
-**Diagrams, the theorem's construction; it needs {{chapter The circuit, in full}}.** We run the circuit backwards, the move at the heart of Cook-Levin: fix the answer, leave the program unknown, and ask which programs fit.
+**Circuit design, then complexity theory. Diagrams, the theorem's construction; it needs {{chapter The circuit, in full}}.** We run the circuit backwards, the move at the heart of Cook-Levin: fix the answer, leave the program unknown, and ask which programs fit.
 
 The decider of {{chapter The circuit, in full}} is a checker: hand it a problem and a program, and it says true or false. Cook and Levin's idea is to run a checker backwards. Fix the problem, leave the program unknown, pin the output to true, and ask which programs fit. The circuit does the same work as before; only the question changes.
 
@@ -2298,6 +2449,8 @@ settings that light decides: 1
 01 10 10 01 10 01: zero, decr, decr, zero, decr, zero, program 1689
 ```
 
+*The frame switches here from circuit design to complexity theory.*
+
 ### The tableau
 
 Cook's proof draws the run of a checking machine as a grid, the tableau: one row for each moment of the run, each row the machine's whole state, and each row fixed by the row above it through a small local rule. Here the grid has seven rows, the start and the six steps, and four columns, one per core. Each cell is a state of four bits, `hb`, `lb`, `halted` and `accepted`. The top row is known, since core `i` starts with `AX` = `i` and both flags 0, and each cell below it is one stepper applied to the cell above and to that row's line of the unknown program. The local rule is the stepper, drawn from its parts in {{chapter The machine as a circuit}}.
@@ -2316,7 +2469,7 @@ The stepper's gates as the SAT encoding builds them, in `sat_step` (`src/sat.c`)
 
 ## The tableau, filled in
 
-**A picture of the proof; it needs {{chapter The Cook-Levin machine}}.** We print Cook's grid twice, once for one program and once for every program at once, and you can watch a constant carry a fact down a column.
+**Complexity theory. A picture of the proof; it needs {{chapter The Cook-Levin machine}}.** We print Cook's grid twice, once for one program and once for every program at once, and you can watch a constant carry a fact down a column.
 
 ### The tableau of one program
 
@@ -2368,7 +2521,7 @@ Each variable here is a gate's output, and its three clauses tie it to the cell 
 
 ## Cook-Levin as SAT
 
-**A new theorem; it needs {{chapter The tableau, filled in}}.** We write every puzzle as one formula of 416 variables whose solutions are exactly its programs, and prove it by propagation alone.
+**SAT solving. A new theorem; it needs {{chapter The tableau, filled in}}.** We write every puzzle as one formula of 416 variables whose solutions are exactly its programs, and prove it by propagation alone.
 
 `src/sat.c` writes each problem as one Boolean formula in DIMACS CNF, the input format of SAT solvers (`8de51b7`), whose satisfying assignments are exactly the programs that decide the problem: the Cook-Levin construction itself. Expanded as polynomials, the machine's `accepted` alone reached 10,324 terms ({{chapter Six steps composed}}). This chapter takes the other way of {{chapter Six expressions, composed}} and names every wire instead: each gate's output gets a variable, tied to the gate's inputs by three clauses, so the formula grows linearly with the steps.
 
@@ -2428,11 +2581,20 @@ Each of the six lines, on each of the four cores, is such a stepper, wired to th
 
 **Theorem 19.** For each of the 16 problems, the satisfying assignments of its formula, read as programs by their first 12 variables, are exactly the programs that decide it. With the lines past N forced to `nada`, the formula is satisfiable exactly when N is at least the problem's shortest length (Theorem 4).
 
-*Proof.* `tests/test_sat.c` proves the encoding by itself. For every problem it sets the program bits to each of the 4,096 programs and unit-propagates them through the formula. Each gate's inputs come before it, so propagation alone decides every Tseitin variable. The assignments that survive are exactly the programs the machine says decide the problem, 4,096 over the 16 problems (`every_puzzles_models_are_exactly_its_solving_programs`), and with a length bound, exactly those that short (`a_length_bound_admits_the_solving_programs_that_short`).
+Unit propagation is the formula run as a program: once the 12 program bits are given, each gate's clauses compute its output, the way a spreadsheet recomputes its cells.
+
+*Proof.* The proof uses propagation alone. For every problem, set the program bits to each of the 4,096 programs in turn and unit-propagate them through the formula. Each gate's inputs come before it, so propagation alone decides every Tseitin variable. The assignments that survive are exactly the programs the machine says decide the problem, 4,096 over the 16 problems, and with a length bound, exactly those that short.
+
+```text Run it
+$ out/tcc/test_sat
+tests/test_sat.c: 6 tests passed
+the test: every_puzzles_models_are_exactly_its_solving_programs
+the test: a_length_bound_admits_the_solving_programs_that_short
+```
 
 ### rocsat as an oracle
 
-`sat/oracle.shale` asks `rocsat solve` about each problem's formula with the program's bits free (`f977bcc`), so the solver searches ({{chapter The SAT solver}}). Each SATISFIABLE answer is a program, which the script runs on the machine and blocks with a clause before asking again; UNSATISFIABLE, expected once every program is found, ends the count. Each shortest length is then SATISFIABLE, and one line shorter UNSATISFIABLE, as expected, with a DRAT proof our checker replays. That is Theorem 4 again, by Theorem 19. Its last run, on 2026-11-25, started rocsat 4,143 times in 62.6 s and verified 4,096 models and all 15 proofs. `tests/test_sat.c` gets the same counts by propagation; the loop shows the solver as an oracle, blind to the machine.
+`sat/oracle.shale` asks `rocsat solve` about each problem's formula with the program's bits free (`f977bcc`), so the solver searches ({{chapter The SAT solver}}). Each SATISFIABLE answer is a program, which the script runs on the machine and blocks with a clause before asking again; UNSATISFIABLE, expected once every program is found, ends the count. Each shortest length is then SATISFIABLE, and one line shorter UNSATISFIABLE, as expected, with a DRAT proof our checker replays. That is Theorem 4 again, by Theorem 19. Its last run, on 2026-11-25, verified 4,096 models and all 15 proofs. `tests/test_sat.c` gets the same counts by propagation; the loop shows the solver as an oracle, blind to the machine.
 
 ```text 1689, here: the CNF of {0, 2, 3}, and rocsat's answers
 sat 13: 416 variables, 1216 clauses
@@ -2443,7 +2605,7 @@ sat 13 len=5: UNSATISFIABLE, its DRAT proof 286 lemmas
 
 ## Solved by hand
 
-**Worked examples; it needs {{chapter Cook-Levin as SAT}}.** We solve the smallest puzzle's formula on paper and read the first lemmas of the hardest one's proof as plain statements about programs.
+**SAT solving, on paper. Worked examples; it needs {{chapter Cook-Levin as SAT}}.** We solve the smallest puzzle's formula on paper and read the first lemmas of the hardest one's proof as plain statements about programs.
 
 ### {0} in one line
 
@@ -2502,9 +2664,9 @@ The first two restate the length bound, and the next four decode line 6 as `nada
 
 ## The solver's work, in full
 
-**Big output to skim; it needs {{chapter Cook-Levin as SAT}}.** You get a whole SAT formula, its whole answer and two whole proofs of impossibility, each checked again at every build.
+**SAT solving. Big output to skim; it needs {{chapter Cook-Levin as SAT}}.** You get a whole SAT formula, its whole answer and two whole proofs of impossibility, each checked again at every build.
 
-This chapter prints what rocsat was given and what it answered for two problems, whole. Over each box are the counts that `book/app/SatFiles.roc` makes from its text, and the build holds one of them to the source.
+This chapter prints what rocsat was given and answered for two problems, whole, each box under the counts the build makes from it.
 
 ### Where the files come from
 
@@ -2518,7 +2680,7 @@ A DRAT proof is a list of lines, each a clause added, a lemma, or a clause delet
 
 ### All 15 proofs
 
-Each problem whose shortest program has a line or more has one proof; `grumpy`, {} (code 0), is solved by the empty program. The build checks each proof again and holds each row to what it finds. By size:
+Each problem whose shortest program has a line or more has one proof; `grumpy`, {} (code 0), is solved by the empty program. By size:
 
 | code | puzzle | problem | shortest | proof bytes | lemmas | verified |
 |---|---|---|---|---|---|---|
@@ -2538,7 +2700,7 @@ Each problem whose shortest program has a line or more has one proof; `grumpy`, 
 | 2 | `is_one` | {1} | 2 | 8,731 | 566 | yes |
 | 4 | `is_two` | {2} | 3 | 7,440 | 477 | yes |
 
-The proofs run from 7,440 to 14,698 bytes and from 286 to 821 lemmas. The {0} proof has the most lemmas: propagation refutes its formula, and rocsat logs all 416 variables it fixes; `src/drat.c` accepts `0`.
+The {0} proof has the most lemmas: propagation refutes its formula, and rocsat logs all 416 variables it fixes; `src/drat.c` accepts `0`.
 
 ### What the boxes hold
 
@@ -2570,7 +2732,7 @@ rocsat's answer to that CNF, as sat/oracle.shale kept it
 
 ## The oracles
 
-**The cross-checks; it stands alone.** We show you five separate ways of computing the same answers, which is why you can believe the numbers in this book.
+**Ordinary computation. The cross-checks; it stands alone.** We show you five separate ways of computing the same answers, which is why you can believe the numbers in this book.
 
 Every implementation in this repository computes the same answers in its own way, and each is held to the others.
 
@@ -2594,11 +2756,13 @@ digraph {
 
 ### What each one checks
 
-- **Python**, the inspiration, is the source of `tests/golden/find_solutions.txt` and of the step polynomials' strings, `tests/golden/step_*.txt`.
-- **C**, our oracle and speed demon, prints that report byte for byte (`tests/test_golden.c`), checks the stepper against the interpreter on all 4,096 × 4 runs, and proves the composition at all 2^14 points (`tests/test_compose.c`). Its fast tier, run for this book, passed all seventeen test files and the golden check.
-- **Roc**, our lingua franca, prints the same report, the four step polynomials as the C's `bp_str` prints them (`roc/golden/step_polynomials.txt`) and the composition's counts and proof (`roc/golden/composition.txt`). `roc/check.shale` is its gate.
-- **SAT** reaches the 16 counts through `tests/test_sat.c`'s propagation and again through rocsat's blocked models, and each shortest length through an UNSAT, with a DRAT proof that `src/drat.c` verifies, and a SAT.
-- **Nibble's wasm** is the Roc port's machine, compiled for the browser, and `web/page_check.mjs` holds it to the C on all 4,096 × 4 runs and to the 16-puzzle table.
+| Oracle | Its role | What it checks |
+|---|---|---|
+| **Python** | the inspiration | the source of `tests/golden/find_solutions.txt` and of the step polynomials' strings, `tests/golden/step_*.txt` |
+| **C** | our utility infielder | prints that report byte for byte, checks the stepper against the interpreter on all 4,096 × 4 runs, and proves the composition at all 2^14 points; its fast tier, run for this book, passed all seventeen test files and the golden check |
+| **Roc** | our lingua franca | prints the same report, the four step polynomials as the C prints them, and the composition's counts and proof; `roc/check.shale` is its gate |
+| **SAT** | rocsat, an outside solver | the 16 counts, by propagation and by rocsat's blocked models, and each shortest length, by an UNSAT with a checked DRAT proof and a SAT |
+| **Nibble's wasm** | the Roc machine in the browser | held to the C on all 4,096 × 4 runs and to the 16-puzzle table, by `web/page_check.mjs` |
 
 ### Why so many
 
@@ -2606,7 +2770,7 @@ Each pair shares only the machine's rule. The interpreter branches on opcodes, t
 
 ## The Roc port
 
-**The tools; it needs {{chapter The Boolean ring}}.** We show the mathematics written so that it reads like mathematics, and how a race against it made the C four times faster.
+**Ordinary computation. The tools; it needs {{chapter The Boolean ring}}.** We show the mathematics written so that it reads like mathematics, and how a race against it made the C four times faster.
 
 `roc/` is the same machine and the same mathematics in Roc, at the compiler that `roc/roc-version` pins (`6206236`). Its point is that the mathematics reads like mathematics.
 
@@ -2632,7 +2796,21 @@ The proof wants each final polynomial's value at all 16,384 points. `values` get
 
 ### The speed, honestly
 
-On this box, the release build of `composition 6` composes all six steps and runs the proof in about 30 ms, and the C's `compose_main` at -O2, which only composes, took about 260 ms (`README.md`, "The Roc port"). The gap was in the C, and the programming language had little to do with it. The C summed like terms in a hash table it grew and then sorted, while the Roc sums them in a dense table indexed by mask, a straight array write that reads back already in order. Its checked multiply also tested for overflow with two divisions, where Roc's checks the processor's overflow flag. With the same dense table in `src/boolring.c` and GCC's overflow builtin in `src/ring_int.c`, the best of five runs on 2026-11-27 went from 214 ms of CPU to 52 ms, the polynomials byte for byte the same: 161 ms with the table alone, 99 ms with the builtin alone (`README.md`, "The Roc port").
+The Roc port's release build once composed all six steps and ran the proof in about 30 ms, where the C's `compose_main` at -O2, which only composes, took about 260 ms. The gap was in the C's data structures, and the programming language had little to do with it:
+
+| | the C, before | the Roc, and the C after |
+|---|---|---|
+| like terms summed in | a hash table, grown and then sorted | a dense table indexed by mask, read back already in order |
+| a checked multiply tests overflow by | two divisions | the processor's overflow flag (GCC's `__builtin_mul_overflow` in the C) |
+
+The C's CPU time, best of five runs on 2026-11-27, the polynomials byte for byte the same each time (`README.md`, "The Roc port"):
+
+| `compose_main` | CPU time |
+|---|---:|
+| as it was | 214 ms |
+| with the dense table | 161 ms |
+| with the overflow builtin | 99 ms |
+| with both | 52 ms |
 
 ## How it got here
 
@@ -2668,7 +2846,7 @@ The cook-levin-riff log opens on 2026-11-25 with the C port of the machine and t
 
 ## What comes next
 
-**Open steps; it stands alone.** We list the questions still open, and say how to start on your own.
+**Every frame. Open steps; it stands alone.** We list the questions still open, and say how to start on your own.
 
 A few questions stand open:
 
@@ -2676,11 +2854,11 @@ A few questions stand open:
 - **SOLVABLE as the machine grows.** For each fixed width it is in P; whether it stays in P as the width grows is open ({{chapter Nibble, sized}}).
 - **Nondeterminism.** The machine is deterministic. The SAT encoding already treats the program as the unknown, which is the theorem's "a certificate exists"; a machine with choice instructions would make the riff closer to the theorem.
 
-You can use any mainstream programming language to study the toy languages. `js/cook_levin.js` is the machine, the search and the six-step composition in plain JavaScript, and it prints the same report and composition byte for byte under node, and also as an x86-64 program compiled by Steve's own compiler, js-x86, from [roc-js-interpreter](https://github.com/showell/roc-js-interpreter).
+You can use any mainstream programming language to study the toy languages. `js/cook_levin.js` is the machine, the search and the six-step composition in plain JavaScript, and it prints the same report and composition byte for byte under node, and also as an x86-64 program compiled by js-x86, a compiler we wrote ourselves, in Roc, in [roc-js-interpreter](https://github.com/showell/roc-js-interpreter).
 
 ## Appendix: two DRAT proofs
 
-**Big output to skim; it needs {{chapter The solver's work, in full}}.** Here are two proofs of impossibility, whole, lemma by lemma, for anyone who wants to watch a solver rule out every program of a given length.
+**SAT solving. Big output to skim; it needs {{chapter The solver's work, in full}}.** Here are two proofs of impossibility, whole, lemma by lemma, for anyone who wants to watch a solver rule out every program of a given length.
 
 Each is a file of `sat/proofs/`, checked again by `src/drat.c` at every build of this book, as {{chapter The solver's work, in full}} tells.
 
