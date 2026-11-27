@@ -25,7 +25,9 @@ const LEVELS = {{3, "c3 alone", 256, 4}, {3, "b2 alone", 16, 8}, {3, "a1 and b2"
 
 local rocsat = arg("rocsat", "build:rocsat/src/rocsat")
 if not exists(rocsat) then fail("rocsat is not built at " .. rocsat .. ": see README.md, \"SAT\", or give rocsat=PATH") end
-local timeout_ms = arg("timeout_ms", 900000)
+-- Five minutes a case: the gates' CNF takes rocsat far longer than the hand
+-- encoding's (cube/GATES.md), and a timeout is a result, kept.
+local timeout_ms = arg("timeout_ms", 300000)
 mkdir(OUT)
 mkdir("cube/sat")
 must(run({"tcc", "-Wall", "-Werror", "-o", real(OUT) .. "/cube_sat", "cube/cube_sat.c"}, {timeout_ms = 60000, tail = 20}))
