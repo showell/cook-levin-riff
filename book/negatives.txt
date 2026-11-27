@@ -30,7 +30,7 @@ scope: This is not a book about type systems, but Roc's clear type annotations h
 guarantee: And when rocsat says no program exists, it's a small C program that checks the proof, so the book never has to take Roc's word for Roc's answers.
 scope: It makes no claim about NP, and it reduces one machine's questions, never an arbitrary verifier's.
 logic: - NOT x is 1 - x;
-logic: The logic is the stepper's, gate for gate, NOT, AND and OR as in {{chapter Arithmetization}}.
+logic: The logic is the stepper's, gate for gate, NOT, AND and OR as in {{chapter The Boolean view}}.
 logic: Each AND and OR becomes a Tseitin variable, tied to its inputs by three clauses, and a NOT is a literal's sign:
 logic: NOT
 guarantee: No program of five or fewer lines decides {0, 2, 3}.

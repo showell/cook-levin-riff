@@ -94,23 +94,23 @@ settings = {
 	word_limit: 1000,
 }
 
-## The book's three parts, each named above its first chapter in the
+## The book's six parts, each named above its first chapter in the
 ## contents, and the groups of chapters inside them, so the contents can be
-## skimmed. A part's title lives here alone; the manuscript says "the first
-## part" and so on. The front page lists every chapter with its guidepost.
+## skimmed. A part's title lives here alone; the manuscript names a part by
+## its first chapter. The front page lists every chapter with its guidepost.
 parts : List(Pages.Divider)
 parts = [
 	{ before: "The machine", level: Part, title: "Part I: the toy" },
-	{ before: "The machine", level: Category, title: "The machine and its problems" },
+	{ before: "P and NP", level: Part, title: "Part II: P, NP and Cook-Levin" },
+	{ before: "P and NP", level: Category, title: "The classes" },
+	{ before: "P, NP and Cook-Levin", level: Category, title: "The theorem" },
+	{ before: "The Boolean view", level: Part, title: "Part III: Cook-Levin on the toy" },
 	{ before: "The Boolean view", level: Category, title: "The machine as logic" },
 	{ before: "Parts for a small computer", level: Category, title: "The machine as hardware" },
-	{ before: "P and NP", level: Part, title: "Part II: Cook-Levin" },
-	{ before: "P and NP", level: Category, title: "The classes" },
-	{ before: "Nibble++", level: Category, title: "Nibble++, a bigger machine" },
-	{ before: "P, NP and Cook-Levin", level: Category, title: "The theorem" },
-	{ before: "Arithmetization", level: Category, title: "Expanding: the polynomials" },
 	{ before: "The Cook-Levin machine", level: Category, title: "Naming: the tableau and SAT" },
-	{ before: "The oracles", level: Part, title: "Part III: the cross-checks, and the history" },
+	{ before: "Six expressions, composed", level: Part, title: "Part IV: expanding, the polynomials" },
+	{ before: "Nibble++", level: Part, title: "Part V: Nibble++, a bigger machine" },
+	{ before: "The oracles", level: Part, title: "Part VI: the cross-checks, and the history" },
 ]
 
 default_look : Pages.Look

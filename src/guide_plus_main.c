@@ -76,13 +76,13 @@ static void census_box(void) {
     printf("```\n\n");
 }
 
-// Theorem 10's count with zero and decr alone, against the census.
+// Theorem 13's count with zero and decr alone, against the census.
 static void walk_box(void) {
     int most = 15, size = PLUS_INPUTS - 1;
     int walk = theory_walk_length(IS_NOT_14);
     if (walk != most + size) stop("the walk's length is not max(S) + |S|");
     printf("```text is_not_14, here: zero and decr alone\n");
-    printf("max(S) + |S| = %d + %d = %d lines, by Theorem 10\n", most, size, walk);
+    printf("max(S) + |S| = %d + %d = %d lines, by Theorem 13\n", most, size, walk);
     printf("the census of {zero, decr}:          %d lines\n", census_length(ZERO_DECR, NULL));
     printf("the census of all four opcodes:      %d lines\n```\n\n", census_length(ALL_FOUR, NULL));
 }
@@ -94,7 +94,7 @@ static void recursion_box(void) {
     PlusOp ops[PLUS_MAX_LINES * 2];
     int len = theory_witness(&t, IS_NOT_14, ops);
     if (len != theory_shortest(&t, IS_NOT_14) || plus_language(ops, len) != IS_NOT_14) stop("the recursion's program is wrong");
-    printf("```text is_not_14, here: the recursion's program, Theorem 12\n");
+    printf("```text is_not_14, here: the recursion's program, Theorem 15\n");
     printf("its walk alone:       %d lines\n", theory_walk_length(IS_NOT_14));
     printf("the recursion's best: %d lines\n", len);
     program_rows(ops, len);
