@@ -5,11 +5,14 @@
 -- 1. web/puzzles.c (gcc -Wall -Wextra -Werror) writes the puzzle table,
 --    out/web/puzzles.json, and every program's run on every input,
 --    out/web/runs.json, for the check.
--- 2. roc/NibbleWasm.roc, the Roc port's Machine.roc on the platform in
+-- 2. clang (the system's, --target=wasm32-unknown-unknown) compiles
+--    web/platform/host.c, the allocator and the runtime functions Roc
+--    calls, to an object, web/platform/targets/wasm32/host.wasm. Then
+--    roc/NibbleWasm.roc, the Roc port's Machine.roc on the platform in
 --    web/platform, is built by the Roc that roc/roc-version pins
---    (`--target=wasm32 --opt=speed`, an archive), and Zig (zig016:zig)
---    links it with web/platform/host.zig into out/web/nibble.wasm, whose
---    exports are the page's `status`, `after` and `accepts`.
+--    (`--target=wasm32 --opt=speed`), which links it with that object into
+--    out/web/nibble.wasm, whose exports are the page's `status`, `after`
+--    and `accepts` (the platform's `exports:`).
 -- 3. The two pages, the puzzles (index.html) and the sandbox (sandbox.html),
 --    go to out/web/site, each file but the two pages named by its bytes
 --    (`nibble.<hash>.js`, the first 16 hex digits of its sha256), as
@@ -34,8 +37,9 @@
 
 const OUT = "out/web"
 const SITE = "out/web/site"
+-- Where main.roc's `inputs_dir` finds host.wasm (ignored by git).
+const HOST_DIR = "web/platform/targets/wasm32"
 const RAN = "build: the table program this build just compiled"
-const WANT_ZIG = "zig: the wasm host's compiler and linker"
 const WANT_ROC = "roc-pin: the Roc port's pinned compiler"
 const WANT_NODE = "node: the page check, in headless Chromium"
 
@@ -90,27 +94,22 @@ replace(OUT .. "/runs.json", runs.out)
 local puzzles = json_read(table.out).puzzles
 print("ok   web/puzzles.c: " .. #puzzles .. " puzzles, " .. (#runs.out - 3) .. " runs, " .. cc.ms .. " ms to compile")
 
+mkdir(HOST_DIR)
+if exists(HOST_DIR .. "/host.wasm") then remove(HOST_DIR .. "/host.wasm") end
+local h = must(run({"clang", "--target=wasm32-unknown-unknown", "-mbulk-memory", "-O2", "-std=c11", "-Wall", "-Wextra", "-Werror",
+  "-c", "web/platform/host.c", "-o", real(HOST_DIR) .. "/host.wasm"},
+  {timeout_ms = 120000, tail = 20}))
+
 local roc = pinned_roc()
-local archive = real(OUT) .. "/nibble.a"
-if exists(OUT .. "/nibble.a") then remove(OUT .. "/nibble.a") end
-local b = run({roc, "build", "NibbleWasm.roc", "--target=wasm32", "--opt=speed", "--output=" .. archive},
+local wasm_out = real(OUT) .. "/nibble.wasm"
+if exists(OUT .. "/nibble.wasm") then remove(OUT .. "/nibble.wasm") end
+local b = run({roc, "build", "NibbleWasm.roc", "--target=wasm32", "--opt=speed", "--output=" .. wasm_out},
   {cwd = "roc", timeout_ms = 600000, tail = 40, nice = 10, want = WANT_ROC})
-if b.code ~= 0 or contains(b.out, "✗") or contains(b.out, "●") or not exists(OUT .. "/nibble.a") then
+if b.code ~= 0 or contains(b.out, "✗") or contains(b.out, "●") or not exists(OUT .. "/nibble.wasm") then
   print(trim(b.out))
   fail("roc build roc/NibbleWasm.roc exited " .. b.code)
 end
-mkdir("build:zig-global")
-local z = run({real("zig016:zig"), "build-exe", "web/platform/host.zig", archive,
-  "-target", "wasm32-freestanding", "-fno-entry", "--export=status", "--export=after", "--export=accepts", "-O", "ReleaseSmall",
-  "--name", "nibble", "-femit-bin=" .. real(OUT) .. "/nibble.wasm",
-  "--cache-dir", real(OUT) .. "/zig-cache", "--global-cache-dir", real("build:zig-global")},
-  {timeout_ms = 600000, tail = 30, nice = 10, want = WANT_ZIG})
-if z.code ~= 0 then
-  print(z.out)
-  fail("zig build-exe web/platform/host.zig exited " .. z.code)
-end
-remove(OUT .. "/nibble.a")
-print("ok   roc build roc/NibbleWasm.roc --opt=speed: " .. b.ms .. " ms; zig build-exe web/platform/host.zig: " .. z.ms .. " ms; nibble.wasm " .. #read(OUT .. "/nibble.wasm") .. " bytes")
+print("ok   clang web/platform/host.c: " .. h.ms .. " ms; roc build roc/NibbleWasm.roc --opt=speed: " .. b.ms .. " ms; nibble.wasm " .. #read(OUT .. "/nibble.wasm") .. " bytes")
 
 if exists(SITE) then remove_tree(SITE) end
 mkdir(SITE)

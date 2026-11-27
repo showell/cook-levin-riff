@@ -1,4 +1,6 @@
 # Build outputs: build.shale writes every binary under out/.
 /out/
+# web/build.shale compiles web/platform/host.c here, where Roc's link finds it.
+/web/platform/targets/
 # Python's bytecode cache, written when python/fourteen_cnf.py imports steps.py.
 __pycache__/
