@@ -181,9 +181,10 @@ nothing in localStorage, solves `is_one` and `is_even` by one click on
 line 2's `zero` and `grumpy` by one click, then opens puzzles 5 to 16 in
 turn, checks each one's locks (its fixed `zero` among them) and hint, and
 solves it by clicks; then it follows the link to the sandbox and plays it by
-clicks and typed numbers. It saves screenshots to `out/web/page.png`,
-`out/web/page-given.png`, `out/web/page-fixed.png` and
-`out/web/page-sandbox.png`. The page's files are
+clicks and typed numbers, and on to the Nibble++ sandbox (below). It
+saves screenshots to `out/web/page.png`, `out/web/page-given.png`,
+`out/web/page-fixed.png`, `out/web/page-sandbox.png` and
+`out/web/page-plus.png`. The page's files are
 named by their bytes, and its URLs are relative, so `out/web/site` can be
 served from any folder.
 
@@ -194,6 +195,25 @@ accepted set and its name in the puzzle table (program #1689 decides
 `is_not_one`, {0, 2, 3}). A program number from 0 to 4095, typed in, loads
 that program. The two pages link to each other and share `web/machine.js`
 (the wasm, the table and the parts both draw) and `web/nibble.css`.
+
+`web/plus.html` is the same sandbox for Nibble++: `AX` holds 0 to 15, the
+ops are `half`, `zero`, `decr` and `mod2`, and a program is 1 to 30 lines
+(`+ line` and `− line`), opening as thirty `decr`s. Its trace is a row an
+input, 16 of them, showing `AX` after the line the step buttons (Start,
+Back, Step, End) are on, then how each run ends; the box above the program
+is the language it decides, its accepted set and its code of the 65,536.
+Its number is two bits a line, line 1 first, up to 60 bits, so the page
+keeps it as a BigInt; a number typed in loads into the lines there are.
+Its machine is `roc/PlusWasm.roc`, `roc/Plus.roc` behind `status(n, code,
+lines)`, `after(n, code, k)` and `accepts(code, lines)`, a program's code
+being a U64 as `src/plus.h`'s `plus_pack` lays it out; it is built on
+`web/platform/plus.roc`, `main.roc`'s twin over the same `host.c`, to a
+5.3 KB module. `web/plus_runs.c` writes `src/plus.c`'s verdicts on 27,848
+programs (every one of 1 to 7 lines, the four one-op 30-line programs and
+6,000 random ones of 8 to 30 lines), and the check holds the wasm to them
+on every input and at every line. It links to the Nibble sandbox and back,
+and shares `web/nibble.css` but not `web/machine.js`, which loads the
+Nibble wasm and puzzle table as it starts.
 
 ## SAT
 

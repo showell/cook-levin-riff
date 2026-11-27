@@ -4,7 +4,9 @@
 --
 -- 1. web/puzzles.c (gcc -Wall -Wextra -Werror) writes the puzzle table,
 --    out/web/puzzles.json, and every program's run on every input,
---    out/web/runs.json, for the check.
+--    out/web/runs.json, for the check. web/plus_runs.c (the same flags)
+--    writes src/plus.c's verdicts on 27,848 Nibble++ programs, every one
+--    of 1 to 7 lines and 6,004 longer, to out/web/plus_runs.txt.
 -- 2. clang (the system's, --target=wasm32-unknown-unknown) compiles
 --    web/platform/host.c, the allocator and the runtime functions Roc
 --    calls, to an object, web/platform/targets/wasm32/host.wasm. Then
@@ -12,16 +14,18 @@
 --    web/platform, is built by the Roc that roc/roc-version pins
 --    (`--target=wasm32 --opt=speed`), which links it with that object into
 --    out/web/nibble.wasm, whose exports are the page's `status`, `after`
---    and `accepts` (the platform's `exports:`).
--- 3. The two pages, the puzzles (index.html) and the sandbox (sandbox.html),
---    go to out/web/site, each file but the two pages named by its bytes
+--    and `accepts` (the platform's `exports:`). roc/PlusWasm.roc, Plus.roc
+--    on web/platform/plus.roc (main.roc's twin, the same host.wasm), is
+--    built the same way to out/web/plus.wasm, the Nibble++ page's machine.
+-- 3. The three pages, the puzzles (index.html), the sandbox (sandbox.html)
+--    and the Nibble++ sandbox (plus.html), go to out/web/site, each file but the two pages named by its bytes
 --    (`nibble.<hash>.js`, the first 16 hex digits of its sha256), as
 --    roc-apps' site names them: the wasm, the table, the shared stylesheet
 --    nibble.css, the shared module machine.js and each page's script,
---    nibble.js and sandbox.js. Each name a file holds is rewritten to its
---    hashed one before that file is hashed: machine.js's wasm and table,
---    the two scripts' import of machine.js, the pages' script and
---    stylesheet.
+--    nibble.js, sandbox.js and plus.js, and plus.js's wasm, plus.wasm. Each
+--    name a file holds is rewritten to its hashed one before that file is
+--    hashed: machine.js's wasm and table, plus.js's wasm, the two Nibble
+--    scripts' import of machine.js, the pages' script and stylesheet.
 -- 4. web/page_check.mjs holds the wasm to the C's table on all 4,096 x 4
 --    runs and to its 16-puzzle table and order, then loads the page in
 --    headless Chromium at 390px, solves the first puzzle by clicking, sees
@@ -29,9 +33,12 @@
 --    reload start fresh with nothing stored, solves the other three lessons
 --    by one click each, and opens and solves puzzles 5 to 16 by clicks, each
 --    with its fixed zero; then it loads the sandbox and plays it by clicks
---    and by a typed program number. It saves screenshots to
---    out/web/page.png, out/web/page-given.png, out/web/page-fixed.png and
---    out/web/page-sandbox.png.
+--    and by a typed program number. It holds plus.wasm to
+--    out/web/plus_runs.txt, every input and every step, and plays the
+--    Nibble++ sandbox: thirty decrs, steps, an edit, lines removed and
+--    added, typed 60-bit numbers. It saves screenshots to out/web/page.png,
+--    out/web/page-given.png, out/web/page-fixed.png,
+--    out/web/page-sandbox.png and out/web/page-plus.png.
 --
 -- One line a stage. Exits 0 only when every check passes.
 
@@ -93,6 +100,10 @@ local runs = must(run({real(OUT .. "/puzzles"), "runs"}, {timeout_ms = 10000, wh
 replace(OUT .. "/runs.json", runs.out)
 local puzzles = json_read(table.out).puzzles
 print("ok   web/puzzles.c: " .. #puzzles .. " puzzles, " .. (#runs.out - 3) .. " runs, " .. cc.ms .. " ms to compile")
+must(run({"gcc", "-std=c11", "-O2", "-Wall", "-Wextra", "-Werror", "-o", real(OUT) .. "/plus_runs", "web/plus_runs.c"},
+  {timeout_ms = 120000, tail = 20}))
+must(run({real(OUT .. "/plus_runs"), real(OUT) .. "/plus_runs.txt"}, {timeout_ms = 30000, tail = 10, want = RAN}))
+print("ok   web/plus_runs.c: " .. count_lines(OUT .. "/plus_runs.txt") .. " Nibble++ programs judged by src/plus.c")
 
 -- Bulk memory makes host.c's memcpy a memory.copy, not an import.
 mkdir(HOST_DIR)
@@ -111,6 +122,14 @@ if b.code ~= 0 or contains(b.out, "✗") or contains(b.out, "●") or not exists
   fail("roc build roc/NibbleWasm.roc exited " .. b.code)
 end
 print("ok   clang web/platform/host.c: " .. h.ms .. " ms; roc build roc/NibbleWasm.roc --opt=speed: " .. b.ms .. " ms; nibble.wasm " .. #read(OUT .. "/nibble.wasm") .. " bytes")
+if exists(OUT .. "/plus.wasm") then remove(OUT .. "/plus.wasm") end
+local pb = run({roc, "build", "PlusWasm.roc", "--target=wasm32", "--opt=speed", "--output=" .. real(OUT) .. "/plus.wasm"},
+  {cwd = "roc", timeout_ms = 600000, tail = 40, nice = 10, want = WANT_ROC})
+if pb.code ~= 0 or contains(pb.out, "✗") or contains(pb.out, "●") or not exists(OUT .. "/plus.wasm") then
+  print(trim(pb.out))
+  fail("roc build roc/PlusWasm.roc exited " .. pb.code)
+end
+print("ok   roc build roc/PlusWasm.roc --opt=speed: " .. pb.ms .. " ms; plus.wasm " .. #read(OUT .. "/plus.wasm") .. " bytes")
 
 if exists(SITE) then remove_tree(SITE) end
 mkdir(SITE)
@@ -124,14 +143,19 @@ local css = hashed_copy("nibble", "css", {})
 local import = {"from \"./machine.js\"", "from \"./" .. shared .. "\""}
 local js = hashed_copy("nibble", "js", {import})
 local sandbox_js = hashed_copy("sandbox", "js", {import})
+local plus_wasm = hashed_name("plus", "wasm")
+copy(OUT .. "/plus.wasm", SITE .. "/" .. plus_wasm)
+local plus_js = hashed_copy("plus", "js", {{"fetch(\"plus.wasm\")", "fetch(\"" .. plus_wasm .. "\")"}})
 local sheet = {"href=\"nibble.css\"", "href=\"" .. css .. "\""}
 replace(SITE .. "/index.html", rename_in(rename_in(read("web/index.html"), "src=\"nibble.js\"", "src=\"" .. js .. "\"", "web/index.html"),
   sheet[1], sheet[2], "web/index.html"))
 replace(SITE .. "/sandbox.html", rename_in(rename_in(read("web/sandbox.html"), "src=\"sandbox.js\"", "src=\"" .. sandbox_js .. "\"", "web/sandbox.html"),
   sheet[1], sheet[2], "web/sandbox.html"))
-print("ok   " .. SITE .. ": index.html, sandbox.html, " .. join({js, sandbox_js, shared, css, wasm, json}, ", "))
+replace(SITE .. "/plus.html", rename_in(rename_in(read("web/plus.html"), "src=\"plus.js\"", "src=\"" .. plus_js .. "\"", "web/plus.html"),
+  sheet[1], sheet[2], "web/plus.html"))
+print("ok   " .. SITE .. ": index.html, sandbox.html, plus.html, " .. join({js, sandbox_js, plus_js, shared, css, wasm, plus_wasm, json}, ", "))
 
-local check = run({"node", "web/page_check.mjs", real(SITE), real(OUT .. "/puzzles.json"), real(OUT .. "/runs.json"), real(OUT) .. "/page.png"},
-  {timeout_ms = 90000, tail = 30, want = WANT_NODE})
+local check = run({"node", "web/page_check.mjs", real(SITE), real(OUT .. "/puzzles.json"), real(OUT .. "/runs.json"), real(OUT .. "/plus_runs.txt"), real(OUT) .. "/page.png"},
+  {timeout_ms = 120000, tail = 30, want = WANT_NODE})
 print(trim(check.out))
 if check.code ~= 0 then fail("web/page_check.mjs exited " .. check.code) end

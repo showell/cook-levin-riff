@@ -1,6 +1,6 @@
 // page_check: the Nibble playground, held to the C.
 //
-//   node web/page_check.mjs <site-dir> <puzzles.json> <runs.json> <screenshot.png>
+//   node web/page_check.mjs <site-dir> <puzzles.json> <runs.json> <plus_runs.txt> <screenshot.png>
 //
 // web/build.shale runs it on what it built. It:
 //
@@ -44,8 +44,20 @@
 //   is_not_one's {0, 2, 3}; clears it; types program numbers into its box
 //   and sees each load as the wasm runs it, and one past 4095 refused;
 //   opens and closes the machine code's "?"; sees nothing scroll sideways
-//   and nothing stored; saves a screenshot (`-sandbox`); and follows its
-//   link back to the puzzles.
+//   and nothing stored; saves a screenshot (`-sandbox`);
+// - holds the Nibble++ wasm (plus.<hash>.wasm) to src/plus.c on
+//   <plus_runs.txt>, web/plus_runs.c's sample: its language, each input's
+//   status, and `after` at every line against each prefix's language;
+// - follows the sandbox's link to the Nibble++ sandbox, plus.html, and sees
+//   it open as thirty decrs deciding { } (input n rejected at line n + 1),
+//   with the machine's tips; steps to the start, three lines on and back,
+//   the stepped line marked; edits line 1 to zero ({0}) with the step kept;
+//   saves a screenshot (`-plus`); removes lines down to one and adds them
+//   back; types numbers in (7 into two lines, 16 refused, 30-line numbers
+//   past 2^53 loaded as the wasm runs them, 4^30 refused); opens and closes
+//   the "?"; resets to thirty decrs; sees nothing scroll sideways and
+//   nothing stored; and follows its links back to the sandbox and the
+//   puzzles.
 //
 // The browser is started as roc-apps' tools/chromium.mjs starts it (its
 // flags and its folder under TMPDIR, for Shale's confinement); this is a
@@ -56,9 +68,9 @@ import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { extname, join } from "node:path";
 
-const [site, puzzlesFile, runsFile, shotFile] = process.argv.slice(2);
+const [site, puzzlesFile, runsFile, plusRunsFile, shotFile] = process.argv.slice(2);
 if (!shotFile) {
-  console.error("usage: node web/page_check.mjs <site-dir> <puzzles.json> <runs.json> <screenshot.png>");
+  console.error("usage: node web/page_check.mjs <site-dir> <puzzles.json> <runs.json> <plus_runs.txt> <screenshot.png>");
   process.exit(2);
 }
 
@@ -192,6 +204,47 @@ for (let i = 0; i < puzzles.length; i++) {
 const grumpy = puzzles[3];
 expect([0, 2, 3].every((op) => solves(grumpy, op)) && !solves(grumpy, 1), "grumpy isn't solved by nada, decr and mod2 alone, and not zero");
 expect(table.ops.map((o) => o.name).join(" ") === "nada zero decr mod2", "the table's opcodes are nada zero decr mod2");
+
+// ── the Nibble++ wasm against src/plus.c ─────────────────────────────────
+// web/plus_runs.c's sample, a line a program: its lines, its code, its
+// language and each prefix's language, in hex. The wasm's `accepts` is the
+// language, `status` accepts exactly its members, and `after` at line k has
+// accepted exactly the members of prefix k's language; a halted run stays
+// as it halted, and `after` at the last line ends as `status` does.
+const PLUS_LINES = 30;
+const plusWasmFile = files.find((f) => /^plus\.[0-9a-f]{16}\.wasm$/.test(f));
+if (!plusWasmFile) { console.error(`page_check: no hashed plus wasm in ${site}`); process.exit(1); }
+const pm = (await WebAssembly.instantiate(readFileSync(join(site, plusWasmFile)))).instance.exports;
+const plusSample = readFileSync(plusRunsFile, "utf8").trim().split("\n").map((l) => {
+  const [lines, code, lang, ...prefix] = l.split(" ");
+  return { lines: parseInt(lines, 16), code: BigInt(`0x${code}`), lang: parseInt(lang, 16), prefix: prefix.map((p) => parseInt(p, 16)) };
+});
+let EVERY = 0;
+for (let len = 1; len <= 7; len++) EVERY += 4 ** len;
+expect(plusSample.length === EVERY + 4 + 6000, `plus_runs.txt holds ${plusSample.length} programs, not ${EVERY + 6004}`);
+expect(plusSample.filter((p) => p.lines === PLUS_LINES).length === 4004, "plus_runs.txt hasn't 4,004 thirty-line programs");
+let plusRuns = 0, plusSteps = 0, plusMismatches = 0;
+for (const p of plusSample) {
+  if (p.prefix.length !== p.lines || p.prefix[p.lines - 1] !== p.lang) plusMismatches++;
+  if (pm.accepts(p.code, p.lines) !== p.lang) plusMismatches++;
+  for (let n = 0; n < 16; n++) {
+    plusRuns++;
+    const status = pm.status(n, p.code, p.lines);
+    if ((status === 1) !== Boolean((p.lang >> n) & 1)) plusMismatches++;
+    let was = pm.after(n, p.code, 0);
+    if (was !== n) plusMismatches++;
+    for (let k = 1; k <= p.lines; k++) {
+      plusSteps++;
+      const w = pm.after(n, p.code, k);
+      const halted = (w >> 4) & 1, st = (w >> 5) & 3;
+      if ((halted === 1 && st === 1) !== Boolean((p.prefix[k - 1] >> n) & 1)) plusMismatches++;
+      if (((was >> 4) & 1) === 1 && w !== was) plusMismatches++;
+      was = w;
+    }
+    if (((was >> 5) & 3) !== status || (((was >> 4) & 1) === 1) !== (status !== 0)) plusMismatches++;
+  }
+}
+expect(plusMismatches === 0, `${plusMismatches} Nibble++ verdicts differ between the wasm and src/plus.c`);
 
 // ── the page, in Chromium ────────────────────────────────────────────────
 const TYPES = { ".html": "text/html", ".css": "text/css", ".js": "text/javascript", ".wasm": "application/wasm", ".json": "application/json" };
@@ -574,6 +627,111 @@ try {
   expect(sandboxWidths.page <= sandboxWidths.pageBox && sandboxWidths.trace <= sandboxWidths.traceBox, `at ${WIDTH}px the sandbox scrolls sideways: ${JSON.stringify(sandboxWidths)}`);
   expect((await evaluate("localStorage.length")) === 0, "the sandbox stored something in localStorage");
   await screenshot(shotFile.replace(/\.png$/, "-sandbox.png"));
+
+  // ── the Nibble++ sandbox ──
+  await follow("#plus-link");
+  expect((await evaluate("document.title")) === "Nibble++ sandbox", `the sandbox's Nibble++ link opens \`${await evaluate("document.title")}\``);
+  // A program as the page shows it: its bits, its number, its language.
+  const plusOps = ["half", "zero", "decr", "mod2"];
+  const plusCode = (prog) => prog.reduce((sum, op, i) => sum | (BigInt(op) << BigInt(2 * i)), 0n);
+  const plusSet = (lang) => { const s = Array.from({ length: 16 }, (_, n) => n).filter((n) => (lang >> n) & 1); return s.length ? `{${s.join(", ")}}` : "{ }"; };
+  const plusWant = (prog) => `${prog.map((op) => op.toString(2).padStart(2, "0")).join(" ")}  (#${prog.reduce((s, op) => s * 4n + BigInt(op), 0n)}) | ${plusSet(pm.accepts(plusCode(prog), prog.length))} #${pm.accepts(plusCode(prog), prog.length)}`;
+  const plusShows = async () => `${await text("machine-code")} | ${await text("decided-set")} #${await text("decided-code")}`;
+  const plusOnOps = () => evaluate("[...document.querySelectorAll('.slot')].map((r) => r.querySelector('button.on')?.dataset.op ?? '-').join(' ')");
+  const column = (col) => evaluate(`[...document.querySelectorAll('#trace tbody td[data-col="${col}"]')].map((c) => c.textContent).join(" | ")`);
+  const thirtyDecrs = Array(PLUS_LINES).fill(2);
+  // It opens as thirty decrs, which reject every input: n at line n + 1.
+  expect((await plusOnOps()) === Array(PLUS_LINES).fill("decr").join(" "), `the Nibble++ sandbox opens as \`${await plusOnOps()}\``);
+  expect((await plusShows()) === plusWant(thirtyDecrs) && (await text("decided-set")) === "{ }", `the fresh Nibble++ sandbox shows \`${await plusShows()}\`, not \`${plusWant(thirtyDecrs)}\``);
+  expect((await text("machine-code")).endsWith("(#768614336404564650)"), `thirty decrs' number reads \`${await text("machine-code")}\``);
+  expect((await text("decided")) === "This program decides the language { }, #0 of 65,536: it accepts those inputs and rejects the rest.", `the fresh Nibble++ language reads \`${await text("decided")}\``);
+  expect((await text("line-count")) === "30 lines" && (await evaluate("document.getElementById('add-line').disabled")), "thirty lines don't say so, or + line isn't shut");
+  const plusFree = await evaluate("[...document.querySelectorAll('.slot')].map((r) => [...r.querySelectorAll('button')].filter((b) => !b.disabled).length).join('')");
+  expect(plusFree === "4".repeat(PLUS_LINES), `the Nibble++ lines' free buttons are \`${plusFree}\``);
+  const decrTip = await evaluate("document.querySelector('[data-slot=\"29\"][data-op=\"decr\"]').title");
+  expect(decrTip === `decr: 0->R, ${Array.from({ length: 15 }, (_, n) => `${n + 1}->${n}`).join(", ")} (R rejects)`, `line 30's decr tip is \`${decrTip}\``);
+  const halfTip = await evaluate("document.querySelector('[data-slot=\"0\"][data-op=\"half\"]').title");
+  expect(halfTip === `half: ${Array.from({ length: 16 }, (_, n) => `${n}->${n >> 1}`).join(", ")}`, `line 1's half tip is \`${halfTip}\``);
+  expect((await evaluate("document.querySelectorAll('#trace tbody tr').length")) === 16, "the Nibble++ trace hasn't a row an input");
+  const ends = Array.from({ length: 16 }, (_, n) => `reject at line ${n + 1}`).join(" | ");
+  expect((await column("result")) === ends, `thirty decrs' results are \`${await column("result")}\``);
+  expect((await text("step-label")) === "after line 30 of 30", `the trace opens \`${await text("step-label")}\``);
+  // Stepping: the start is the inputs, and three lines on, inputs 0 to 2
+  // have rejected and the rest are 3 less, line 3 marked.
+  await click("#step-start");
+  expect((await column("now")) === Array.from({ length: 16 }, (_, n) => `AX=${n}`).join(" | ") && (await text("step-label")) === "after line 0 of 30", `at the start the trace shows \`${await column("now")}\``);
+  for (let k = 0; k < 3; k++) await click("#step-next");
+  const third = Array.from({ length: 16 }, (_, n) => (n < 3 ? `reject (line ${n + 1})` : `AX=${n - 3}`)).join(" | ");
+  expect((await column("now")) === third, `after three steps the trace shows \`${await column("now")}\`, not \`${third}\``);
+  expect((await evaluate("[...document.querySelectorAll('.slot.current')].map((r) => r.dataset.line).join(' ')")) === "2", "after three steps line 3 isn't the one marked");
+  await click("#step-back");
+  expect((await text("step-label")) === "after line 2 of 30", `Back leaves \`${await text("step-label")}\``);
+  await click("#step-next");
+  // Editing a line keeps the step: zero on line 1 accepts 0 there.
+  await click('[data-slot="0"][data-op="zero"]');
+  const edited = [1, ...Array(PLUS_LINES - 1).fill(2)];
+  expect((await plusShows()) === plusWant(edited) && (await text("decided-set")) === "{0}", `zero on line 1 shows \`${await plusShows()}\``);
+  expect((await column("now")).startsWith("accept (line 1) | reject (line 3) | AX=0 | AX=1 | AX=2 | "), `after zero on line 1, step 3 shows \`${await column("now")}\``);
+  await screenshot(shotFile.replace(/\.png$/, "-plus.png"));
+  await click("#step-end");
+  expect((await text("step-label")) === "after line 30 of 30", `End leaves \`${await text("step-label")}\``);
+  // Down to two lines, then half, zero: {0, 1}.
+  for (let k = PLUS_LINES; k > 2; k--) await click("#remove-line");
+  expect((await text("line-count")) === "2 lines" && (await text("step-label")) === "after line 2 of 2", `twenty-eight removals leave \`${await text("line-count")}\`, \`${await text("step-label")}\``);
+  await click('[data-slot="0"][data-op="half"]');
+  await click('[data-slot="1"][data-op="zero"]');
+  expect((await plusShows()) === "00 01  (#1) | {0, 1} #3", `half, zero shows \`${await plusShows()}\``);
+  await click("#remove-line");
+  await click("#remove-line");
+  expect((await text("line-count")) === "1 line" && (await evaluate("document.getElementById('remove-line').disabled")), "one line doesn't say so, or − line isn't shut");
+  await click("#add-line");
+  // A typed number loads into the lines there are: 7 is zero, mod2; 16 is
+  // past two lines' 15.
+  async function plusType(said) {
+    await evaluate("document.getElementById('program-number').value = ''");
+    await click("#program-number");
+    await page("Input.insertText", { text: said });
+    await click("#load-button");
+  }
+  await plusType("7");
+  expect((await plusShows()) === plusWant([1, 3]) && (await plusOnOps()) === "zero mod2", `typing 7 into two lines shows \`${await plusShows()}\``);
+  await plusType("16");
+  expect((await plusShows()) === plusWant([1, 3]) && (await evaluate("document.getElementById('program-number').classList.contains('bad')")), "typing 16 into two lines loads it, or leaves the box unmarked");
+  for (let k = 2; k < PLUS_LINES; k++) await click("#add-line");
+  expect((await plusShows()) === plusWant([1, 3, ...Array(PLUS_LINES - 2).fill(2)]), `lines added after zero, mod2 show \`${await plusShows()}\``);
+  // Thirty-line numbers past 2^53, the sample's and the largest, load as the
+  // wasm runs them; one past the largest is refused.
+  const picks = plusSample.filter((p) => p.lines === PLUS_LINES).slice(4, 9).map((p) => Array.from({ length: PLUS_LINES }, (_, k) => Number((p.code >> BigInt(2 * k)) & 3n)));
+  for (const prog of [...picks, Array(PLUS_LINES).fill(3)]) {
+    const n = prog.reduce((s, op) => s * 4n + BigInt(op), 0n);
+    await plusType(String(n));
+    expect((await plusShows()) === plusWant(prog) && (await plusOnOps()) === prog.map((op) => plusOps[op]).join(" "), `typing ${n} shows \`${await plusShows()}\`, not \`${plusWant(prog)}\``);
+  }
+  await plusType(String(4n ** 30n));
+  expect((await evaluate("document.getElementById('program-number').classList.contains('bad')")) && (await plusOnOps()) === Array(PLUS_LINES).fill("mod2").join(" "), "typing 4^30 loads something, or leaves the box unmarked");
+  // A program that accepts some: the sample's first thirty-line one with a
+  // language past { }, its results each the wasm's.
+  const rich = plusSample.find((p) => p.lines === PLUS_LINES && p.lang !== 0 && p.lang !== 0xffff);
+  if (rich) {
+    const prog = Array.from({ length: PLUS_LINES }, (_, k) => Number((rich.code >> BigInt(2 * k)) & 3n));
+    await plusType(String(prog.reduce((s, op) => s * 4n + BigInt(op), 0n)));
+    expect((await text("decided-set")) === plusSet(rich.lang), `program ${rich.code.toString(16)} decides \`${await text("decided-set")}\`, not the C's ${plusSet(rich.lang)}`);
+    const accepted = (await column("result")).split(" | ").map((r) => r.startsWith("accept"));
+    expect(accepted.every((a, n) => a === Boolean((rich.lang >> n) & 1)), `program ${rich.code.toString(16)}'s results aren't the C's`);
+  }
+  // The machine code's "?" opens its line and closes it.
+  await click("#code-help");
+  expect(!(await evaluate("document.getElementById('code-explain').hidden")) && (await text("code-explain")).startsWith("The machine code:"), "the Nibble++ ? doesn't open its explanation");
+  await click("#code-help");
+  expect(await evaluate("document.getElementById('code-explain').hidden"), "the Nibble++ ? doesn't close its explanation");
+  await click("#reset");
+  expect((await plusShows()) === plusWant(thirtyDecrs) && (await text("step-label")) === "after line 30 of 30", `Reset leaves \`${await plusShows()}\``);
+  const plusWidths = await evaluate(`(() => { const s = document.scrollingElement, t = document.getElementById("trace"), tb = t.querySelector("table");
+    return { page: s.scrollWidth, pageBox: s.clientWidth, trace: t.scrollWidth, traceBox: t.clientWidth, table: tb.scrollWidth, tableBox: tb.clientWidth }; })()`);
+  expect(plusWidths.page <= plusWidths.pageBox && plusWidths.trace <= plusWidths.traceBox && plusWidths.table <= plusWidths.tableBox, `at ${WIDTH}px the Nibble++ sandbox scrolls sideways: ${JSON.stringify(plusWidths)}`);
+  expect((await evaluate("localStorage.length")) === 0, "the Nibble++ sandbox stored something in localStorage");
+  await follow("#sandbox-link");
+  expect((await evaluate("document.title")) === "Nibble sandbox", `the Nibble++ sandbox's Nibble link opens \`${await evaluate("document.title")}\``);
   await follow("#puzzles-link");
   expect((await text("title")) === `Puzzle 1 of 16: ${first.name}`, `the sandbox's Puzzles link opens \`${await text("title")}\``);
   expect(thrown.length === 0, `the page threw: ${thrown.join("; ")}`);
@@ -589,4 +747,4 @@ try {
 if (failures > 0) { console.error(`page_check: ${failures} of ${checks} checks failed`); process.exit(1); }
 const hardest = puzzles[puzzles.length - 1];
 const fixedCount = puzzles.filter((p, i) => i >= LESSONS.length && p.fixed).length;
-console.log(`ok   page_check: the wasm matches the C on all ${PROGRAMS * 4} runs and its ${puzzles.length}-puzzle table (${first.name} ${first.count} programs, shortest ${first.shortest}; ... ${hardest.name} ${hardest.count}, shortest ${hardest.shortest}); in Chromium at ${WIDTH}px with no sideways scroll the first puzzle was solved by clicks, a reload started fresh with nothing stored, is_one and is_even were solved by line 2's zero and grumpy by one click, and puzzles 5 to 16 opened with their locks and were solved by clicks, ${fixedCount} of them with a fixed zero; the sandbox opened free as #0 deciding grumpy, showed #1689 deciding is_not_one {0, 2, 3} by clicks and by its typed number, and loaded typed numbers as the wasm runs them (${checks} checks)`);
+console.log(`ok   page_check: the wasm matches the C on all ${PROGRAMS * 4} runs and its ${puzzles.length}-puzzle table (${first.name} ${first.count} programs, shortest ${first.shortest}; ... ${hardest.name} ${hardest.count}, shortest ${hardest.shortest}); in Chromium at ${WIDTH}px with no sideways scroll the first puzzle was solved by clicks, a reload started fresh with nothing stored, is_one and is_even were solved by line 2's zero and grumpy by one click, and puzzles 5 to 16 opened with their locks and were solved by clicks, ${fixedCount} of them with a fixed zero; the sandbox opened free as #0 deciding grumpy, showed #1689 deciding is_not_one {0, 2, 3} by clicks and by its typed number, and loaded typed numbers as the wasm runs them; the Nibble++ wasm matches src/plus.c on ${plusSample.length} programs (${plusRuns} runs, ${plusSteps} steps), and the Nibble++ sandbox opened as thirty decrs deciding { }, stepped, edited, shrank to half, zero deciding {0, 1}, grew back, and loaded typed 60-bit numbers as the wasm runs them (${checks} checks)`);
