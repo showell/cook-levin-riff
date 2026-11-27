@@ -1,0 +1,33 @@
+cube 4x4: the Hamiltonian lemma on the 65535 non-empty sets
+  par at the floor 3|T| - 1: 1472 sets
+  a Hamiltonian path from c1 or a3: 1472 sets (from both 252, c1 only 610, a3 only 610)
+  each path's program (EE or SS, then three rolls a step) rolled to its set in 3|T| - 1: 1724 of 1724 paths
+  a Hamiltonian path, but none from c1 or a3: 2820 sets, every one over the floor
+  the two agree on 65535 of 65535 sets
+  the empty set: par 0, the formula's -1 plus one; the lemma is for non-empty sets
+
+every tile lit but one: floor 44
+dark  colour  a1-colour cells lit  par  path from c1 or a3
+a1    a1's                      7   45  no
+b1    other                     8   44  yes
+c1    a1's                      7   45  no
+d1    other                     8   44  yes
+a2    other                     8   44  yes
+b2    a1's                      7   45  no
+c2    other                     8   44  yes
+d2    a1's                      7   45  no
+a3    a1's                      7   45  no
+b3    other                     8   44  yes
+c3    a1's                      7   45  no
+d3    other                     8   44  yes
+a4    other                     8   44  yes
+b4    a1's                      7   45  no
+c4    other                     8   44  yes
+d4    a1's                      7   45  no
+par 44 exactly where 8 lit cells are a1's colour, else 45: yes
+
+the reduction on every grid graph G in a 4 x 4 box:
+  turned away (under 3 cells, in pieces, or u lacking a neighbour): 60487, none with a Hamiltonian cycle: yes
+  reduced: 5049, 196 with a Hamiltonian cycle, on boards up to 7 x 7
+  both tips of T of degree 1, one at c1: 5049 of 5049
+  a Hamiltonian cycle in G exactly when T has a path from c1 or a3: 5049 of 5049

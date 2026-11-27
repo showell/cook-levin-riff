@@ -1,0 +1,26 @@
+cube 3x3: the Hamiltonian lemma on the 511 non-empty sets
+  par at the floor 3|T| - 1: 88 sets
+  a Hamiltonian path from c1 or a3: 88 sets (from both 14, c1 only 37, a3 only 37)
+  each path's program (EE or SS, then three rolls a step) rolled to its set in 3|T| - 1: 102 of 102 paths
+  a Hamiltonian path, but none from c1 or a3: 83 sets, every one over the floor
+  the two agree on 511 of 511 sets
+  the empty set: par 0, the formula's -1 plus one; the lemma is for non-empty sets
+
+cube 3x3: the state graph, 27648 states and 73728 rolls that stay on the board
+  in-degree equals out-degree: 27648 of 27648 states
+  every state reached from each cell and face with nothing lit: 54 of 54 searches
+  so the graph is strongly connected (flipping a fixed set in every pattern maps it onto itself)
+  eccentricity by start cell, one grid a painted face:
+    up     32 33 32  33 36 33  32 33 32
+    down   32 33 32  33 32 33  32 33 32
+    north  34 35 34  31 32 31  32 31 32
+    south  32 31 32  31 32 31  34 35 34
+    east   32 31 34  31 32 35  32 31 34
+    west   34 31 32  35 32 31  34 31 32
+  eccentricity of the start, a1 face up: 32
+  the diameter D3: 36
+
+every tile lit, by the column tour from c1:
+  3x3: 26 rolls, the floor 26: every tile lit
+  4x4: 47 rolls, the floor 47: every tile lit
+  5x5: 74 rolls, the floor 74: every tile lit

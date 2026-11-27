@@ -30,6 +30,11 @@
 --                              census4.txt, and cube/oracle.py checks
 --                              its every par and solution by two
 --                              searches and a simulator of its own.
+--                              cube/complexity.c holds those pars to
+--                              the Hamiltonian lemma, and the 3 x 3
+--                              state graph to its diameter
+--                              (cube/COMPLEXITY.md), each report held to
+--                              cube/golden/complexity3.txt and 4.txt.
 --                              sat/check_readable.shale round-trips
 --                              every committed CNF and model in sat/
 --                              through the readable form, and holds the
@@ -195,6 +200,29 @@ for n in {3, 4} do
   local want_said = "cube/oracle.py: 4x4: 65536 solutions rolled, 60760 rolled again past a halt, 65536 pars by 1 search, with halting and without"
   if n == 3 then want_said = "cube/oracle.py: 3x3: 512 solutions rolled, 437 rolled again past a halt, 512 pars by 2 searches, with halting and without" end
   failures = failures + check(exited_0(py) and said == want_said, "python3: cube " .. n .. ": " .. said .. ", " .. py.ms .. " ms, " .. how_it_ended(py))
+end
+
+-- The cube's complexity checks (cube/COMPLEXITY.md): the Hamiltonian lemma
+-- against every par the tier's first census wrote, the 3 x 3 state graph
+-- and its diameter, and the sets with one dark tile, each report held to
+-- its golden; then a par planted one over the floor must be refused.
+local complexity = compiled(builds[1], "cube/complexity.c")
+if complexity == nil then
+  failures = failures + 1
+else
+  for n in {3, 4} do
+    local pars = OUT .. "/" .. builds[1] .. "/cube_pars" .. n .. ".txt"
+    local r = run({real(complexity), "" .. n, real(pars)}, {timeout_ms = 60000, whole = 65536, want = RAN})
+    local golden = "cube/golden/complexity" .. n .. ".txt"
+    failures = failures + check(exited_0(r) and r.out == read(golden), builds[1] .. ": cube complexity " .. n .. "'s stdout is " .. golden .. ": " .. #r.out .. " bytes of " .. #read(golden) .. ", " .. r.ms .. " ms, " .. how_it_ended(r))
+  end
+  -- c1 alone (pattern 4) meets the floor at par 2; planted at 3, the lemma
+  -- must find it a counterexample.
+  local planted = OUT .. "/" .. builds[1] .. "/cube_pars3_planted.txt"
+  replace(planted, read(OUT .. "/" .. builds[1] .. "/cube_pars3.txt"))
+  edit(planted, "\n4 2 EE\n", "\n4 3 EE\n")
+  local p = run({real(complexity), "3", real(planted)}, {timeout_ms = 60000, whole = 65536, want = RAN})
+  failures = failures + check(get(p, "code", -1) == 1 and find(p.out, "COUNTEREXAMPLE: par 3, floor 2, Hamiltonian path from c1 or a3: yes") ~= nil, builds[1] .. ": cube complexity refuses c1 alone planted at par 3, " .. how_it_ended(p))
 end
 
 for file in PYTHON do
