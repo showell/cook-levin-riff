@@ -235,7 +235,7 @@ static void search_holds_witness(uint32_t y) {
 // language one input away, it propagates to a model with that input's
 // selector false and the rest true, and to a conflict with all 16 true.
 static void search_guarded_holds_witness(uint32_t y) {
-    PlusOp ops[LONGEST];
+    PlusOp ops[LONGEST] = {PLUS_HALF};
     int len = census_witness(&census, y, ops);
     if (len == 0) return;
     signed char given[2 * LONGEST + PLUS_INPUTS + 1] = {0};
