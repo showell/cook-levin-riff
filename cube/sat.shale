@@ -1,0 +1,147 @@
+-- cube/sat.shale: rocsat on the rolling cube's CNF (cube/cube_sat.c), each
+-- answer checked: a SAT model's rolls by `cube_sat check` (the rules'
+-- checker) and its `v` lines by `drat model`; an UNSAT by its DRAT proof,
+-- checked by src/drat.c.
+--
+--   shale cube/sat.shale grid=4   five 4x4 levels: SAT at the census's par,
+--                                 UNSAT at par - 1
+--   shale cube/sat.shale grid=5   5x5 levels, past the census: k from the
+--                                 floor 3 * lit - 1 up, UNSAT until the
+--                                 first SAT, which is the par
+--
+-- It writes one line a case to cube/sat/grid<N>.txt, with rocsat's and the
+-- checker's times. The build doesn't run it. From the repository's root;
+-- rocsat is the one sat/oracle.shale runs, built in build:rocsat.
+-- budget: steps=50000000 read_bytes=400000000 arena_bytes=400000000
+
+const WANT_RAN = "cube: cube_sat and drat, just compiled by this script"
+const WANT_ROCSAT = "cube: rocsat, built in build:rocsat from its pinned nightly"
+const OUT = "out/cube/sat"
+const CUBE_SAT = "out/cube/sat/cube_sat"
+const DRAT = "out/cube/sat/drat"
+
+-- {name, pattern, par}: the 4x4 levels, their pars from cube/golden/census4.txt.
+const GRID4 = {{"d4", 32768, 8}, {"diagonal", 33825, 18}, {"checkerboard", 42405, 32}, {"border", 63903, 35}, {"every tile", 65535, 47}}
+-- {name, pattern}: the 5x5 levels.
+const GRID5 = {{"e5", 16777216}, {"diagonal", 17043521}, {"the four corners", 17825809}, {"a plus", 4357252}}
+
+local rocsat = arg("rocsat", "build:rocsat/src/rocsat")
+if not exists(rocsat) then fail("rocsat is not built at " .. rocsat .. ": see README.md, \"SAT\", or give rocsat=PATH") end
+local grid = arg("grid", 4)
+local timeout_ms = arg("timeout_ms", 900000)
+mkdir(OUT)
+mkdir("cube/sat")
+must(run({"tcc", "-Wall", "-Werror", "-o", real(OUT) .. "/cube_sat", "cube/cube_sat.c"}, {timeout_ms = 60000, tail = 20}))
+must(run({"tcc", "-Wall", "-Werror", "-o", real(OUT) .. "/drat", "src/drat_main.c"}, {timeout_ms = 60000, tail = 20}))
+local t = {rocsat = rocsat, timeout_ms = timeout_ms}
+
+function lit_count(p)
+  local k = 0
+  local left = p
+  while left > 0 do
+    k = k + left % 2
+    left = left // 2
+  end
+  return k
+end
+
+-- The rolls of a model: roll t from variables 2t - 1 (high) and 2t (low).
+function rolls_of(out, k)
+  local bits = {}
+  for v = 1, 2 * k do push(bits, -1) end
+  for l in re_lines(out, "^v ") do
+    for w in words(l.text) do
+      local x = parse_int(w)
+      if x ~= nil and x ~= 0 and abs(x) <= 2 * k then
+        if x > 0 then bits[x] = 1 else bits[-x] = 0 end
+      end
+    end
+  end
+  local letters = {"N", "E", "S", "W"}
+  local rolls = ""
+  for t = 1, k do
+    if bits[2 * t - 1] < 0 or bits[2 * t] < 0 then fail("the model leaves roll " .. t .. "'s bits out") end
+    rolls = rolls .. letters[2 * bits[2 * t - 1] + bits[2 * t] + 1]
+  end
+  if rolls == "" then return "-" end
+  return rolls
+end
+
+-- One case: the level at exactly k rolls. Gives {verdict, line, ms}, the
+-- line saying how it was checked; any check that fails stops the run.
+function solve(t, n, name, pattern, k)
+  local base = OUT .. "/" .. n .. "-" .. pattern .. "-k" .. k
+  local cnf = base .. ".cnf"
+  replace(cnf, must(run({real(CUBE_SAT), "cnf", "" .. n, "" .. pattern, "" .. k}, {timeout_ms = 60000, whole = 20000000, want = WANT_RAN})).out)
+  local h = re_find(join(head_lines(cnf, 2), "\n"), "p cnf ([0-9]+) ([0-9]+)")
+  local size = h.groups[1] .. " vars, " .. h.groups[2] .. " clauses"
+  local proof = base .. ".drat"
+  if exists(proof) then remove(proof) end
+  local r = run({real(t.rocsat), "solve", real(cnf), real(proof)}, {timeout_ms = t.timeout_ms, whole = 400000, want = WANT_ROCSAT, nice = 19})
+  local code = get(r, "code", -1)
+  local stats = re_find(r.out, "(?:^|\n)c (conflicts=[^\n ]*)")
+  local said = n .. "x" .. n .. " " .. name .. " (" .. pattern .. "), k=" .. k .. ", " .. size .. ": "
+  local conflicts = ""
+  if stats ~= nil then conflicts = ", " .. stats.group end
+  if code == 10 then
+    local model = base .. ".model"
+    replace(model, r.out)
+    local rolls = rolls_of(r.out, k)
+    local checked = run({real(CUBE_SAT), "check", "" .. n, "" .. pattern, rolls}, {timeout_ms = 60000, tail = 2, want = WANT_RAN})
+    if get(checked, "code", -1) ~= 0 then fail(said .. "the model's rolls " .. rolls .. " do not solve it") end
+    local m = run({real(DRAT), "model", real(cnf), real(model)}, {timeout_ms = 60000, tail = 2, want = WANT_RAN})
+    if get(m, "code", -1) ~= 0 then fail(said .. "drat model refused it: " .. trim(m.out)) end
+    return {verdict = "SAT", ms = r.ms, line = said .. "SAT in " .. r.cpu_ms .. " ms" .. conflicts .. "; " .. rolls .. " solves it; drat model: ok"}
+  elseif code == 20 then
+    if not exists(proof) then fail(said .. "UNSAT with no proof") end
+    local c = run({real(DRAT), "check", real(cnf), real(proof)}, {timeout_ms = 1800000, tail = 3, want = WANT_RAN, nice = 19})
+    if get(c, "code", -1) ~= 0 then fail(said .. "drat refused the proof: " .. trim(c.out)) end
+    return {verdict = "UNSAT", ms = r.ms, line = said .. "UNSAT in " .. r.cpu_ms .. " ms" .. conflicts .. "; proof " .. stat(proof).size .. " bytes, drat check in " .. c.cpu_ms .. " ms: " .. trim(c.out)}
+  elseif not has_key(r, "code") and r.ended == "timeout" then
+    return {verdict = "timeout", ms = r.ms, line = said .. "no answer in " .. t.timeout_ms .. " ms"}
+  end
+  print(r.out)
+  fail(said .. "rocsat ended " .. r.ended .. ", exit " .. code)
+end
+
+local results = "cube/sat/grid" .. grid .. ".txt"
+local said = {}
+-- Written as it goes, so a long run's cases so far are kept.
+function say(said, results, line)
+  print(line)
+  push(said, line)
+  replace(results, join(said, "\n") .. "\n")
+end
+
+if grid == 4 then
+  for c in GRID4 do
+    local at = solve(t, 4, c[1], c[2], c[3])
+    if at.verdict ~= "SAT" then fail(at.line .. "; the census says par " .. c[3]) end
+    say(said, results, at.line)
+    local below = solve(t, 4, c[1], c[2], c[3] - 1)
+    if below.verdict ~= "UNSAT" then fail(below.line .. "; the census says par " .. c[3]) end
+    say(said, results, below.line)
+    yield()
+  end
+elseif grid == 5 then
+  for c in GRID5 do
+    local k = 3 * lit_count(c[2]) - 1
+    local done = false
+    while not done do
+      local s = solve(t, 5, c[1], c[2], k)
+      say(said, results, s.line)
+      if s.verdict == "SAT" then
+        say(said, results, "5x5 " .. c[1] .. ": par " .. k .. ", every k from the floor " .. (3 * lit_count(c[2]) - 1) .. " up to it UNSAT")
+        done = true
+      elseif s.verdict == "timeout" then
+        say(said, results, "5x5 " .. c[1] .. ": stopped at k=" .. k)
+        done = true
+      end
+      k = k + 1
+      yield()
+    end
+  end
+else
+  fail("grid must be 4 or 5, not " .. grid)
+end
+print("cube/sat.shale: " .. #said .. " lines written to " .. results)

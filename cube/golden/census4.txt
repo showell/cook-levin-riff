@@ -86,6 +86,13 @@ over  patterns
   10        28
   11         2
 
+the most over the floor, 11, has 2 pattern(s); the first:
+  farthest over: par 28, ESSSENWWSENNNWEESESWNNESSWNW
+    #..#
+    .#..
+    ...#
+    #.#.
+
 the largest par, 47, has 1 pattern(s); the first:
   hardest: par 47, EEESWNWSENWSWNESWESWESWNESENWNESESWNESWNEWNEWNE
     ####

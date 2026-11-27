@@ -37,6 +37,8 @@ variables, and composing six steps gives the whole program as polynomials.
   `src/sat_main.c` is its command line, and `sat/oracle.shale` checks it
   against rocsat (below, "SAT").
 - `src/plus.c`, `src/census.c`, `src/plus_sat.c`: Nibble++ (below, "Nibble++").
+- `cube/`: the rolling cube, the third toy: its rules, its census, a Python
+  oracle and its CNF ([`cube/README.md`](cube/README.md)).
 - `web/`: the playground (below).
 - `js/`: the machine, the search and the composition in JavaScript, run by
   node, roc-js-interpreter's VM and its x86-64 compiler (below,
@@ -116,6 +118,17 @@ when `out/rocsat_guided` already holds it, built from the same sources).
 It writes `sat/plus/guided.txt` beside the full search's numbers; the build
 runs one of its cases, {15}, in `sat/plus.shale`. The three share
 `sat/plus_rocsat.shale`.
+
+## The rolling cube
+
+The third toy: one cube on an n × n grid, rolled N, E, S or W, flipping the
+tile under it whenever its one painted face lands down. A level is the
+tiles to light; its par is the fewest rolls. `cube/census.c` finds every
+pattern's par on 3 × 3 and 4 × 4 by breadth-first search, `build.shale`
+holds its reports to `cube/golden/` and `cube/oracle.py` checks every par
+and solution, and `cube/sat.shale` cross-checks the CNF of "solved in k
+rolls?" against the census with rocsat and checked DRAT proofs. The rules,
+the tables and what they say are in [`cube/README.md`](cube/README.md).
 
 ## Playground
 The machine's assembly language is called **Nibble**. `web/` is a puzzle

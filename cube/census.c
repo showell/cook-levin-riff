@@ -238,6 +238,13 @@ static void report(FILE *out, const Census *c) {
     }
     fprintf(out, "\nrolls over the floor 3 * lit - 1, for the patterns with a tile lit\nover  patterns\n");
     for (int e = 0; e <= over_top; e++) fprintf(out, "%4d  %8ld\n", e, over[e]);
+    for (uint32_t p = 1; p < c->patterns; p++) {
+        if (c->par[p] != UNSEEN && c->par[p] - (3 * popcount(p) - 1) == over_top) {
+            fprintf(out, "\nthe most over the floor, %d, has %ld pattern(s); the first:\n", over_top, over[over_top]);
+            print_level(out, c, "farthest over", p);
+            break;
+        }
+    }
 
     // The hardest levels: the first in pattern order is the example.
     uint32_t hardest = 0;
