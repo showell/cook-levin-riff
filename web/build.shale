@@ -127,6 +127,21 @@ for l in lines(trim(checked.out)) do
 end
 print("ok   web/plus_names.c: " .. named.ms .. " ms; plus_names_check: " .. join(coverage, ", ") .. "; plus_names.bin " .. stat(OUT .. "/plus_names.bin").size .. " bytes, the names of cost 4 or less")
 
+-- The cube page's data: the census on 4 x 4, its report held to its golden,
+-- its every pattern's par and solution made the page's table, and cube.c's
+-- runs of web/cube_data.c's sample for the check.
+must(run({"gcc", "-std=c11", "-O2", "-Wall", "-Wextra", "-Werror", "-o", real(OUT) .. "/census", "cube/census.c"},
+  {timeout_ms = 120000, tail = 20}))
+local census = must(run({real(OUT .. "/census"), "4", real(OUT) .. "/cube_pars4.txt"},
+  {timeout_ms = 120000, whole = 65536, want = RAN, cpu_budget_ms = 10000, stage = "cube census 4"}))
+if census.out ~= read("cube/golden/census4.txt") then fail("web/build.shale: census 4's report is not cube/golden/census4.txt") end
+must(run({"gcc", "-std=c11", "-O2", "-Wall", "-Wextra", "-Werror", "-o", real(OUT) .. "/cube_data", "web/cube_data.c"},
+  {timeout_ms = 120000, tail = 20}))
+local cube_pars = must(run({real(OUT .. "/cube_data"), "pars", real(OUT .. "/cube_pars4.txt"), real(OUT) .. "/cube_pars.bin"},
+  {timeout_ms = 60000, tail = 5, want = RAN}))
+must(run({real(OUT .. "/cube_data"), "runs", real(OUT) .. "/cube_runs.txt"}, {timeout_ms = 60000, tail = 5, want = RAN}))
+print("ok   cube/census.c 4: " .. census.ms .. " ms, its report cube/golden/census4.txt; " .. trim(cube_pars.out) .. "; cube_pars.bin " .. stat(OUT .. "/cube_pars.bin").size .. " bytes; " .. count_lines(OUT .. "/cube_runs.txt") .. " sample runs by cube/cube.c")
+
 -- Bulk memory makes host.c's memcpy a memory.copy, not an import.
 mkdir(HOST_DIR)
 if exists(HOST_DIR .. "/host.wasm") then remove(HOST_DIR .. "/host.wasm") end
@@ -152,6 +167,14 @@ if pb.code ~= 0 or contains(pb.out, "✗") or contains(pb.out, "●") or not exi
   fail("roc build roc/PlusWasm.roc exited " .. pb.code)
 end
 print("ok   roc build roc/PlusWasm.roc --opt=speed: " .. pb.ms .. " ms; plus.wasm " .. #read(OUT .. "/plus.wasm") .. " bytes")
+if exists(OUT .. "/cube.wasm") then remove(OUT .. "/cube.wasm") end
+local cb = run({roc, "build", "CubeWasm.roc", "--target=wasm32", "--opt=speed", "--output=" .. real(OUT) .. "/cube.wasm"},
+  {cwd = "roc", timeout_ms = 600000, tail = 40, nice = 10, want = WANT_ROC})
+if cb.code ~= 0 or contains(cb.out, "✗") or contains(cb.out, "●") or not exists(OUT .. "/cube.wasm") then
+  print(trim(cb.out))
+  fail("roc build roc/CubeWasm.roc exited " .. cb.code)
+end
+print("ok   roc build roc/CubeWasm.roc --opt=speed: " .. cb.ms .. " ms; cube.wasm " .. #read(OUT .. "/cube.wasm") .. " bytes")
 
 if exists(SITE) then remove_tree(SITE) end
 mkdir(SITE)
@@ -178,9 +201,22 @@ replace(SITE .. "/sandbox.html", rename_in(rename_in(read("web/sandbox.html"), "
   sheet[1], sheet[2], "web/sandbox.html"))
 replace(SITE .. "/plus.html", rename_in(rename_in(read("web/plus.html"), "src=\"plus.js\"", "src=\"" .. plus_js .. "\"", "web/plus.html"),
   sheet[1], sheet[2], "web/plus.html"))
-print("ok   " .. SITE .. ": index.html, sandbox.html, plus.html, " .. join({js, sandbox_js, plus_js, shared, css, wasm, plus_wasm, plus_names, json}, ", "))
+local cube_wasm = hashed_name("cube", "wasm")
+copy(OUT .. "/cube.wasm", SITE .. "/" .. cube_wasm)
+local cube_bin = hashed_name("cube_pars", "bin")
+copy(OUT .. "/cube_pars.bin", SITE .. "/" .. cube_bin)
+local cube_js = hashed_copy("cube", "js", {{"fetched(\"cube.wasm\")", "fetched(\"" .. cube_wasm .. "\")"},
+  {"fetched(\"cube_pars.bin\")", "fetched(\"" .. cube_bin .. "\")"}})
+replace(SITE .. "/cube.html", rename_in(rename_in(read("web/cube.html"), "src=\"cube.js\"", "src=\"" .. cube_js .. "\"", "web/cube.html"),
+  sheet[1], sheet[2], "web/cube.html"))
+print("ok   " .. SITE .. ": index.html, sandbox.html, plus.html, cube.html, " .. join({js, sandbox_js, plus_js, cube_js, shared, css, wasm, plus_wasm, plus_names, json, cube_wasm, cube_bin}, ", "))
 
 local check = run({"node", "web/page_check.mjs", real(SITE), real(OUT .. "/puzzles.json"), real(OUT .. "/runs.json"), real(OUT .. "/plus_runs.txt"), real(OUT) .. "/page.png", real(OUT .. "/plus_names.tsv")},
   {timeout_ms = 120000, tail = 30, want = WANT_NODE})
 print(trim(check.out))
 if check.code ~= 0 then fail("web/page_check.mjs exited " .. check.code) end
+
+local cube_check = run({"node", "web/cube_check.mjs", real(SITE), real(OUT .. "/cube_runs.txt"), real(OUT .. "/cube_pars4.txt"), real("cube/golden/census4.txt"), real(OUT) .. "/cube.png"},
+  {timeout_ms = 120000, tail = 30, want = WANT_NODE})
+print(trim(cube_check.out))
+if cube_check.code ~= 0 then fail("web/cube_check.mjs exited " .. cube_check.code) end
