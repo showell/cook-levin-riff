@@ -4,6 +4,15 @@ The third toy machine, after Nibble and Nibble++. Their shortest programs
 turned out to write themselves (`docs/NIBBLE_PLUS_THEORY.md`). The cube is
 a toy you can picture, and its puzzles are meant to have no recipe.
 
+**The board is 4 × 4.** A program's meaning is only which tiles end lit:
+one of 65,536 sets. Where the cube ends and which way its paint faces are
+details of the machine, so the end is free. The 3 × 3 board is a small
+check; 5 × 5 is where SAT takes over from brute force.
+
+**The headline:** on 4 × 4, from a1 with the painted face up, all 65,536
+lit sets are reachable (none unreachable), with pars from 0 to 47 (the
+table below, "The census").
+
 ## The rules
 
 | | |
@@ -37,8 +46,8 @@ Rolling north tips the cube over its north bottom edge: the top goes north,
 north goes down, down goes south, south comes up; east and west stay. The
 other three rolls are the same, turned.
 
-**Where the cube ends.** "Anywhere" is the simplest choice, so a pattern's
-par is the first level of the search with that pattern at any cell and face.
+**Where the cube ends** is free, so a pattern's par is the first level of
+the search with that pattern at any cell and face.
 
 ## Files
 
@@ -78,8 +87,9 @@ prints with `cube_check`, and checks each pattern against the floor below.
 
 ## The census
 
-From a1, painted face up. Every state is reached, so every pattern is
-reachable: there are no unreachable patterns on either grid.
+From a1, painted face up. The 4 × 4 board is the toy; 3 × 3 sits beside it
+as the small check. Every state is reached, so every lit set is reachable:
+there are no unreachable sets on either grid.
 
 | | 3 × 3 | 4 × 4 |
 |---|---|---|
