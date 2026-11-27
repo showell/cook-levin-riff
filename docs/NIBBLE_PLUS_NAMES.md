@@ -104,8 +104,10 @@ Every one of the 65,536 languages has a name of cost 6 or less:
 The page keeps the 54,461 names of cost 4 or less (83%). Past cost 4 a
 name is mostly single numbers and ranges, usually longer than the set it
 names (`is_from_3_to_4_or_from_7_to_8_or_from_11_to_12_or_1_or_14`), so
-the page shows the set alone: "This program decides the language {0, 2,
-4, 5, 7, 8, 11}". Even at cost 3 and 4 most names lean on ranges and
+the page shows the set alone: "This program decides the language {1, 3,
+4, 7, 8, 11, 12, 15}" (`is_mult_of_4_or_odd_and_has_bit_1_or_1_except_0`,
+cost 5), the one language of the 260 that the page's 7-line programs
+decide without a name in the table. Even at cost 3 and 4 most names lean on ranges and
 numbers; the vocabulary's predicates carry the small and structured sets.
 
 Some names: the three hardest languages for a program, each needing 28
@@ -115,37 +117,6 @@ lines, are `is_not_14` {0–13, 15}, `is_not_13` {0–12, 14, 15} and
 is `is_mult_of_4_or_small_prime_or_at_least_14`; {0, 2, 4, 5, 7, 8, 11}
 costs 5 (`is_medium_prime_or_mult_of_8_or_2_or_4`), so the page doesn't
 name it.
-
-## The elegance rating
-
-Under the language, the page rates how elegant the program is. It is a
-joke, but a joke with a rule: the rating is the cost of the language's
-name, and nothing else. How long the program is, or how many of its lines
-do nothing, doesn't count.
-
-| the name's cost | stars | its lines |
-|---|---|---|
-| 1 | ★★★★★ | "Dijkstra would nod." "Says it in one word." "Clean as a whistle." |
-| 2 | ★★★★☆ | "Clean enough to frame." "Two words, no wasted breath." "Neat, with a little flourish." |
-| 3 | ★★★☆☆ | "It works, and it knows it." "Respectable. Mostly." "Fine print, but legible." |
-| 4 | ★★☆☆☆ | "A program only its author could love." "Reads like a tax form." "Has strong opinions about some numbers." |
-| no name on the page | ★☆☆☆☆ | "Spaghetti, al dente." "There's no short way to say this." "A list pretending to be a rule." |
-
-A language gets the line its number picks (the number mod 3), so it
-always reads the same. Six languages have a line of their own, with the
-stars their cost gives (all cost 1):
-
-- `grumpy`: "Accepts nothing. Commitment issues? No: standards."
-- `always_true`: "Accepts everything. Not picky, just kind."
-- `is_even`: "Every other number, starting at zero. Textbook."
-- `is_odd`: "Odd, in the best possible way."
-- `is_prime`: "Prime real estate."
-- a single number, `is_9`: "Only 9 will do. Picky, and proud of it."
-
-The page reads the cost from the table: a name's tokens but `and`, `or`
-and `except` (whose number counts instead). `plus_names_check` holds that
-count to the tsv's cost for every name, and the page check pins ratings
-of five, three, two and one star, three of the specials among them.
 
 ## The page's table
 
@@ -163,6 +134,6 @@ joined by `_`, after `is_` unless it starts with `has_`, `lacks_`,
 `out/web/plus_names.tsv`, every name with its code and cost, which it has
 parsed back to its set: each atom from its definition (a prime by trial
 division, the Fibonacci numbers by their recursion), the cost recounted.
-The page check (`web/page_check.mjs`) loads programs for six known
-languages and sees their names, and one past the table and sees its set
-alone.
+The page check (`web/page_check.mjs`) clicks in 7-line programs for
+three named languages and sees their names, and the one past the table
+and sees its set alone.

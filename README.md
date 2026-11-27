@@ -196,25 +196,22 @@ accepted set and its name in the puzzle table (program #1689 decides
 that program. The two pages link to each other and share `web/machine.js`
 (the wasm, the table and the parts both draw) and `web/nibble.css`.
 
-`web/plus.html` is the same sandbox for Nibble++: `AX` holds 0 to 15, the
+`web/plus.html` is a lean sandbox for Nibble++: `AX` holds 0 to 15, the
 ops are `zero`, `decr`, `mod2` and `half`, shown in that order (the
 workhorses first; the codes stay half 0, zero 1, decr 2, mod2 3), and a
-program is 1 to 30 lines (`+ line` and `− line`), opening as `zero`,
-`decr`, `zero`, `decr`, `zero` and 25 `decr`s, which decide {0, 1, 2}. Its trace is a row an
-input, 16 of them, showing `AX` after the line the step buttons (Start,
-Back, Step, End) are on, then how each run ends; the box above the program
-is the language it decides: its name, its accepted set (runs written as
-ranges, {0–13, 15}) and its code of the 65,536. The names are predicates,
-`is_small_fib` or `is_prime_or_mult_of_4`, each the cheapest that denotes
-its set exactly; `web/plus_names.c` names all 65,536 ahead of time, the
-page's table `plus_names.bin` keeps the 54,461 of cost 4 or less, and
+program is exactly 7 lines, opening as `zero`, `decr`, `zero`, `decr`,
+`zero`, `decr`, `decr`, which decide {0, 1, 2}. Top to bottom it shows the
+language the program decides (its name, its accepted set with runs written
+as ranges, {0–13, 15}, and its code of the 65,536), the machine code with
+the program's number and a "?" that explains them, the 7 lines' buttons,
+and the ops' legend. The names are predicates, `is_small_fib` or
+`is_prime_or_mult_of_4`, each the cheapest that denotes its set exactly;
+`web/plus_names.c` names all 65,536 ahead of time, the page's table
+`plus_names.bin` keeps the 54,461 of cost 4 or less, and
 `web/plus_names_check.c` parses every name back to its set
-(`docs/NIBBLE_PLUS_NAMES.md`). Under the box, an elegance rating, a joke
-with a rule: five stars for a name of cost 1 down to two for cost 4, one
-for a language the table doesn't name, and a dry line to go with them
-(`docs/NIBBLE_PLUS_NAMES.md`, "The elegance rating").
-Its number is two bits a line, line 1 first, up to 60 bits, so the page
-keeps it as a BigInt; a number typed in loads into the lines there are.
+(`docs/NIBBLE_PLUS_NAMES.md`). Of the 260 languages 7-line programs
+decide, one has no name in the table and is shown by its set alone. The
+number is two bits a line, line 1 first: 14 bits, 0 to 16,383.
 Its machine is `roc/PlusWasm.roc`, `roc/Plus.roc` behind `status(n, code,
 lines)`, `after(n, code, k)` and `accepts(code, lines)`, a program's code
 being a U64 as `src/plus.h`'s `plus_pack` lays it out; it is built on
