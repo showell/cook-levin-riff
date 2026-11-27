@@ -8,7 +8,7 @@
 --     roc/roc-version pins (~/tools/roc-<pin>/roc, never one on the PATH);
 --   - `roc check` of each app, with no error and no warning (no ✗ or ●);
 --   - `roc test` of each app, its expects' count held exactly to EXPECTS
---     (NibbleWasm.roc and PlusWasm.roc, the pages' machines, are checked
+--     (NibbleWasm.roc, PlusWasm.roc and CubeWasm.roc, the pages' machines, are checked
 --     and tested here; their wasm builds and their checks against the C are
 --     web/build.shale's;
 --     ClaimCnf.roc's include Cnf.roc's and hold the whole decider's CNF
@@ -29,11 +29,12 @@
 
 const WANT = "roc-pin: the Roc port's pinned compiler"
 const RAN = "roc-check: an app this gate just built"
-const APPS = {"ClaimCnf.roc", "Cnf.roc", "Composition.roc", "FindSolutions.roc", "Fourteen.roc", "NibbleWasm.roc", "PlusCensus.roc", "PlusWasm.roc", "StepPolynomials.roc"}
+const APPS = {"ClaimCnf.roc", "Cnf.roc", "Composition.roc", "FindSolutions.roc", "Fourteen.roc", "CubeWasm.roc", "NibbleWasm.roc", "PlusCensus.roc", "PlusWasm.roc", "StepPolynomials.roc"}
 const EXPECTS = {
   {app = "ClaimCnf.roc", count = 13},
   {app = "Cnf.roc", count = 9},
   {app = "Composition.roc", count = 30},
+  {app = "CubeWasm.roc", count = 23},
   {app = "FindSolutions.roc", count = 28},
   {app = "Fourteen.roc", count = 5},
   {app = "NibbleWasm.roc", count = 21},
