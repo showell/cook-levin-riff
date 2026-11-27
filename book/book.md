@@ -3066,7 +3066,7 @@ Fifty-one minutes after the C port's first commit, the composition Steve had sto
 
 ## What comes next
 
-**Every frame. Tools and history; it stands alone.** We list the questions still open, and say how to start on your own.
+**Every frame. Tools and history; it stands alone.** We list the questions still open, say how to start on your own, and name three ways to lighten the solver's work.
 
 A few questions stand open:
 
@@ -3075,6 +3075,25 @@ A few questions stand open:
 - **Nondeterminism.** The machine is deterministic. The SAT encoding already treats the program as the unknown, which is the theorem's "a certificate exists"; a machine with choice instructions would make the riff closer to the theorem.
 
 You can use any mainstream programming language to study the toy languages. `js/cook_levin.js` is the machine, the search and the six-step composition in plain JavaScript, and it prints the same report and composition byte for byte under node, and also as an x86-64 program compiled by js-x86, a compiler we wrote ourselves, in Roc, in [roc-js-interpreter](https://github.com/showell/roc-js-interpreter).
+
+### Ways we could make the solver's work lighter
+
+Each idea here holds for every puzzle alike, so the solver still finds each puzzle's answer itself, and each would help any solver of rocsat's kind.
+
+**Symmetry breaking.** Many programs are twins: `nada` leaves the machine as it was, so moving a program's `nada` lines to its end keeps what it decides. Clauses that say "a `nada` line is followed by `nada`", two for each pair of neighbouring lines, keep one twin of each family, and the solver searches fewer programs. `sat/walkthrough.shale` counts them over all 4,096:
+
+```text
+line 1 nada gives line 2 nada: (x1 OR x2 OR NOT x3), (x1 OR x2 OR NOT x4)
+the 10 clauses for lines 1 to 6 keep 1093 of the 4096 programs
+problems decided: 16 by all 4096, 16 by the 1093 kept
+{0, 2, 3} keeps its one program, 1689
+```
+
+Each SATISFIABLE answer stays SATISFIABLE, and each UNSATISFIABLE one stays UNSATISFIABLE. The count of solutions changes, so the oracle's count of programs would keep the formula as it is.
+
+**Better encodings.** A smaller step shrinks all 24 of its copies at once. The encoder already folds constants and shares gates, so a puzzle's formula has 404 gates where 24 steppers of 34 would have 816 ({{chapter The Cook-Levin machine}}), and `sat_step`'s 34 AND and OR gates are fewer than the mux circuit's 43 ({{chapter Appendix: the step's encodings}}). Each AND or OR gate saved is three clauses fewer in every copy of the step that builds it.
+
+**Fewer inputs at a time.** {{chapter Guided search}} asks about a few inputs at once and adds an input each round the found program gets it wrong, so each round asks the solver to satisfy a few of the 16 runs.
 
 ## Appendix: the step's encodings
 
