@@ -1,10 +1,8 @@
-4x4 d4 (32768), k=8, 518 vars, 2830 clauses: SAT in 22 ms, conflicts=640; ESWSEEES solves it; drat model: ok
-4x4 d4 (32768), k=7, 458 vars, 2483 clauses: UNSAT in 24 ms, conflicts=415; proof 42289 bytes, drat check in 10 ms: verified: 938 lemmas (0 by RAT), 1412 deletions, over 458 variables and 2483 clauses; the empty clause at line 2350
-4x4 diagonal (33825), k=18, 1118 vars, 6300 clauses: SAT in 185 ms, conflicts=3901; SEESNNWWESESESNNWW solves it; drat model: ok
-4x4 diagonal (33825), k=17, 1058 vars, 5953 clauses: UNSAT in 502 ms, conflicts=8338; proof 973095 bytes, drat check in 416 ms: verified: 12344 lemmas (0 by RAT), 11392 deletions, over 1058 variables and 5953 clauses; the empty clause at line 23736
-4x4 checkerboard (42405), k=32, 1958 vars, 11158 clauses: SAT in 10218 ms, conflicts=95100; EESWWNESSWSEENNENWSWSEENSSWWNEES solves it; drat model: ok
-4x4 checkerboard (42405), k=31, 1898 vars, 10811 clauses: UNSAT in 15191 ms, conflicts=120171; proof 17718079 bytes, drat check in 15852 ms: verified: 130664 lemmas (0 by RAT), 130187 deletions, over 1898 variables and 10811 clauses; the empty clause at line 260851
-4x4 border (63903), k=35, 2138 vars, 12199 clauses: SAT in 46851 ms, conflicts=193532; EESWNSWNESWESWESWNESNESNESWNEWNEWNE solves it; drat model: ok
-4x4 border (63903), k=34, 2078 vars, 11852 clauses: UNSAT in 53723 ms, conflicts=277762; proof 45339772 bytes, drat check in 52409 ms: verified: 312847 lemmas (0 by RAT), 313748 deletions, over 2078 variables and 11852 clauses; the empty clause at line 626595
-4x4 every tile (65535), k=47, 2858 vars, 16363 clauses: SAT in 372287 ms, conflicts=1358821; SSESWNESWNEENWSENESWWSENESWNEWNEWNESWNSWNSWNESW solves it; drat model: ok
-4x4 every tile (65535), k=46, 2798 vars, 16016 clauses: no answer in 900000 ms
+4x4 d4 (32768), k=8, 527 vars, 3527 clauses: SAT in 14 ms, conflicts=231; ESWSEEES solves it; drat model: ok
+4x4 d4 (32768), k=7, 466 vars, 3093 clauses: UNSAT in 17 ms, conflicts=221; proof 29395 bytes, drat check in 7 ms: verified: 648 lemmas (0 by RAT), 917 deletions, over 466 variables and 3093 clauses; the empty clause at line 1565
+4x4 diagonal (33825), k=18, 1137 vars, 7867 clauses: SAT in 450 ms, conflicts=8342; ESSEWWNNSESESEWWNN solves it; drat model: ok
+4x4 diagonal (33825), k=17, 1076 vars, 7433 clauses: UNSAT in 850 ms, conflicts=11443; proof 1712245 bytes, drat check in 899 ms: verified: 18670 lemmas (0 by RAT), 18270 deletions, over 1076 variables and 7433 clauses; the empty clause at line 36940
+4x4 checkerboard (42405), k=32, 1991 vars, 13943 clauses: SAT in 11288 ms, conflicts=87248; EESWWNSSEESWWNESENWNNEESWWSSNEES solves it; drat model: ok
+4x4 checkerboard (42405), k=31, 1930 vars, 13509 clauses: UNSAT in 73643 ms, conflicts=423331; proof 71824189 bytes, drat check in 86280 ms: verified: 426150 lemmas (0 by RAT), 428839 deletions, over 1930 variables and 13509 clauses; the empty clause at line 854989
+4x4 border (63903), k=35, 2174 vars, 15245 clauses: SAT in 24932 ms, conflicts=150335; SSENWENWSENSENSENWSEWSEWSENWSNWSNWS solves it; drat model: ok
+4x4 border (63903), k=34, 2113 vars, 14811 clauses: UNSAT in 172164 ms, conflicts=660008; proof 157911209 bytes, drat check in 195041 ms: verified: 670538 lemmas (0 by RAT), 675878 deletions, over 2113 variables and 14811 clauses; the empty clause at line 1346416

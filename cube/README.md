@@ -412,17 +412,26 @@ proof with `src/drat.c`. The build doesn't run it.
 The results are in `sat/grid4.txt` and `sat/grid5.txt`, one line a case;
 the tables below are their times on this box (2 cores, 2026-11-27, niced,
 beside other work). Every SAT model's rolls solved its level, and every
-DRAT proof checked, all by RUP alone.
+DRAT proof checked, all by RUP alone. The 4 × 4 table's first four levels
+are the halting encoding's; every tile, and the 5 × 5 table, are the
+encoding's before halting (no roll off the grid at all), not rerun: the
+halt costs rocsat up to three times as long on the bigger UNSATs, every tile
+took 372 s before it, and at 46 rolls it had no answer in 15 minutes. The
+answers can't differ, since a halted solution has a shorter one on the
+grid.
 
 ### 4 × 4, against the census
 
 | level | par | SAT at par | UNSAT at par − 1 | proof | DRAT check |
 |---|---|---|---|---|---|
-| d4 alone | 8 | 22 ms | 24 ms | 42 KB | 10 ms |
-| the diagonal | 18 | 0.19 s | 0.50 s | 0.97 MB | 0.42 s |
-| the checkerboard | 32 | 10.2 s | 15.2 s | 17.7 MB | 15.9 s |
-| the border | 35 | 46.9 s | 53.7 s | 45.3 MB | 52.4 s |
-| every tile | 47 | 372 s | no answer in 900 s | | |
+| d4 alone | 8 | 14 ms | 17 ms | 29 KB | 7 ms |
+| the diagonal | 18 | 0.45 s | 0.85 s | 1.7 MB | 0.90 s |
+| the checkerboard | 32 | 11.3 s | 73.6 s | 71.8 MB | 86.3 s |
+| the border | 35 | 24.9 s | 172 s | 158 MB | 195 s |
+| every tile (before halting) | 47 | 372 s | no answer in 900 s | | |
+
+Before halting was encoded, the checkerboard's UNSAT took 15.2 s and the
+border's 53.7 s.
 
 Each SAT at the par and each UNSAT one roll short agrees with the census.
 The one miss is telling: every tile at 46 rolls is UNSAT by the floor's
