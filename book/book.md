@@ -1042,7 +1042,7 @@ Clause 438, counted from 0, is the last of the 439, `160 0`: f = 1. So program 1
 
 The one complaint is a proof. The first 438 clauses say only that each gate equals its gate's AND or OR, so once the 14 bits are fixed, exactly one assignment satisfies them, the one the gates compute. At input 1 that assignment has v160 false, so every assignment that keeps the gates' clauses breaks f = 1. `python/fourteen_cnf.py`, run by `build.shale`, checks the same at all 16,384 points: the computed assignment keeps every gate's clauses, and it keeps f = 1 exactly where the machine accepts. The book's build holds the blocks here to its output, and rocsat's lines to `sat/fourteen/verdicts.txt`, which `sat/fourteen.shale` writes.
 
-Every bit here was given; the check only computes. A solver that finds the bits when they are left unknown is where {{chapter Cook-Levin as SAT}} takes the same encoding.
+Every bit here was given, so the check only computes: a tool that knows clauses alone read the machine's verdict on all four inputs.
 
 ## Parts for a small computer
 
@@ -2663,7 +2663,7 @@ lines where it differs from the census's program: 26 (mod2, the census decr) 27 
 at 27 lines: UNSATISFIABLE
 ```
 
-Three methods agree on every case: the census, a breadth-first search over states in `src/census.c`; rocsat's search over assignments, in Roc; and `src/drat.c`'s replay of each refutation. Each is its own code, so each shortest length in the table is confirmed three separate ways.
+Each shortest length in the table stands on three separate programs: the census's breadth-first search over states in `src/census.c`, rocsat's search over assignments, in Roc, and `src/drat.c`'s replay of each refutation.
 
 ## is_not_14 needs 28 lines
 
@@ -2747,7 +2747,7 @@ Four methods have now answered the same questions, and each wins somewhere:
 | Guided search | a few inputs settle the question | 2 to 4 inputs settled the short cases; the long ones needed nearly all 16 |
 | A theorem | one exists | Theorem 13 gives every shortest length for {zero, decr}, for any number of inputs, by a formula, and says why |
 
-Each method earns its place here, and the census stays the judge the others answer to.
+On Nibble++ the census settles every question fastest, and each of the others adds something of its own: a proof anyone can check, a smaller question, or a reason.
 
 ## The oracles
 
@@ -2785,7 +2785,7 @@ digraph {
 
 ### Why so many
 
-Each pair shares only the machine's rule. The interpreter branches on opcodes, the stepper evaluates polynomials, the composition substitutes them, the SAT encoding propagates clauses, and rocsat searches. A bug would have to land the same way in all of them to pass.
+Each pair shares only the machine's rule. The interpreter branches on opcodes, the stepper evaluates polynomials, the composition substitutes them, the SAT encoding propagates clauses, and rocsat searches, so a bug would have to land the same way five times to pass.
 
 ## The Roc port
 
