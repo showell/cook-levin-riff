@@ -7,19 +7,16 @@ adding to `book.md` keeps to these:
   and say why a step matters. A machine with a two-bit register whose
   composed polynomial runs to 510,387 characters is worth a sentence of
   amazement, stated with its number.
-- **Every chapter opens with a lead**: one to three sentences that make a
-  bold claim about what the chapter gives the reader, after a guidepost in
-  bold naming its kind, one of six fixed kinds (start here; a review; new
-  results; the machine in a new form, named by what is newly seen, as in
-  "The machine as gates" or "The machine as a grid"; big output to skim;
-  tools and history), which the front page explains once, and the earlier chapter it
-  needs, or that it stands alone. A "needs" always points backward. The guidepost starts
-  with the chapter's frame: ordinary computation, circuit design,
-  mathematics, complexity theory or SAT solving. A chapter that changes
-  frame partway through says so in one line in italics. A lead may promise
-  more than its chapter delivers yet, but never a claim the chapter
-  contradicts. The front page lists every chapter with a one-line version
-  of its lead, so the book can be skimmed from there.
+- **Every chapter opens with a lead**: one to three whole sentences, in
+  plain conversational prose, that say what the chapter is about and why
+  it is interesting, for a reader arriving cold. A lead carries no label,
+  no bold and no fragment. Where the chapter leans on an earlier one, the
+  lead may say so in a natural clause ("the stepper from {{chapter The
+  machine as a circuit}}"), and only where that helps; a pointer always
+  points backward. A lead may promise more than its chapter delivers yet,
+  but never a claim the chapter contradicts. The front page lists every
+  chapter with a one-line version of its lead, so the book can be skimmed
+  from there.
 - **Big output goes at the end of its chapter**, framed by its scale and
   with a word that skimming it is the point; prose never sits below it.
   Each is labelled proudly, like a theorem, `**Monstrosity N: <title>.**`,

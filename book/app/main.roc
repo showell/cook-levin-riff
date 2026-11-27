@@ -97,7 +97,7 @@ settings = {
 ## The book's six parts, each named above its first chapter in the
 ## contents, and the groups of chapters inside them, so the contents can be
 ## skimmed. A part's title lives here alone; the manuscript names a part by
-## its first chapter. The front page lists every chapter with its guidepost.
+## its first chapter. The front page lists every chapter with a one-line description.
 parts : List(Pages.Divider)
 parts = [
 	{ before: "The machine", level: Part, title: "Part I: the toy" },
