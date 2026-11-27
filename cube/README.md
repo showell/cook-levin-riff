@@ -107,18 +107,30 @@ are: tile n lit is bit n, so a program's lit set, its result, is a 16-bit
 number. The canvas shows each tile's number on it and the chess names
 along the edges.
 
-**The layout:** three panes side by side, the canvas as tall as the
-window, sized for a short laptop screen (1366 × 650) with no page scroll.
-The first is the title and a Help link (`cube_help.html`: the rules, the
-numbering, the names, the views, par, the halt, L and the samples), the
-program (the text box with its machine code under it, the roll buttons
-laid out as arrow keys, Play, Back, Forward, Reset and Clear), five
-samples, and the listing, which fills the rest of the pane and scrolls in
-it. The middle is the canvas, with the paint's compass in its corner. The
-last is the readout: the length, "8 of 45 rolls", the lit set as a
-numbered map and as a number in decimal and binary, the census's par,
-"par 8; yours is 8", its name, and where the cube is. At a phone's width
-the panes stack, the canvas first.
+**The layout:** a bar along the top (the title, the five samples and a
+Help link, `cube_help.html`: the rules, the numbering, the names, the
+views, par, the halt, L and the samples), then the canvas, with the
+paint's compass in its corner, and beside it **the chain**, which a move
+runs down in reading order:
+
+1. the move: the roll buttons laid out as arrow keys, Play, Back,
+   Forward, Reset and Clear;
+2. the listing, the program a line a roll, which fills the rest of the
+   pane, scrolls in it, and fills from the bottom, so the newest line is
+   always just above the letters;
+3. the program as letters (the text box, where a program is typed), its
+   length, "8 of 45 rolls", and its machine code;
+4. the name of the question its lit set answers, with the set as a
+   number in decimal and binary beside it, the census's par, "par 8;
+   yours is 8", and the halt, when there is one.
+
+A move (a key, a button, a click on a tile, a typed program) lights the
+roll's button and runs a highlight down the four links in turn
+(`pulseChain` in `cube.js`). Nothing in the chain repeats the canvas: the
+lit tiles and where the cube stands are the canvas's to show. The canvas
+is sized to leave the chain its room, for a short laptop screen (1366 ×
+650) and a wide short one (1920 × 700) with no page scroll. At a phone's
+width the panes stack, the canvas first.
 
 **The name.** A lit set is a set of numbers, so a program answers a
 question about 0 to 15 by lighting the tiles whose answer is yes, as a
@@ -151,7 +163,7 @@ after it (U, D, N, S, E or W), and what it did: the tile it lit or
 darkened, the halt, or skipped after a halt. Line 0 is the start. The
 current line is highlighted as you step, and a click on a line shows the
 run there. One function, `listingLine` in `cube.js`, says how a line
-reads. Under the text box, the machine code: the opcodes line 1 first,
+reads. Under the letters, the machine code: the opcodes line 1 first,
 and the number they make read as one binary number (`#25  01 10 01` for
 ESE).
 
@@ -189,14 +201,16 @@ holds the table and L to the census, and plays the page in headless
 Chromium: the samples, stepping, typed programs, the keys, clicks and a drag
 on the tiles, the halt three ways, L refused, the numbered tiles, the lit
 set as a number and its name, the listing and the machine code against the
-wasm's run, the compass, the glow and a landing, and the fit with no
-scroll:
+wasm's run, the compass, the glow and a landing, each move changing every
+link of the chain and its highlight running down in order, and the fit:
+the chain's links in order, the listing above the fold, the samples
+outside the chain, and no scroll:
 
-| window | panes | canvas |
-|---|---|---|
-| 1366 × 650 | three side by side, nothing scrolls | 746 × 634 |
-| 1920 × 700 | three side by side, nothing scrolls | 1240 × 684 |
-| 390 × 844 (a phone) | one column, nothing scrolls sideways | 358 × 281 |
+| window | panes | canvas | listing |
+|---|---|---|---|
+| 1366 × 650 | the canvas and the chain side by side, nothing scrolls | 632 × 505 | 286 px tall |
+| 1920 × 700 | the canvas and the chain side by side, nothing scrolls | 750 × 600 | 336 px tall |
+| 390 × 844 (a phone) | one column, nothing scrolls sideways | 358 × 281 | 30% of the screen |
 
 ## The census
 

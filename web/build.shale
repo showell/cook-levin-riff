@@ -64,8 +64,10 @@
 --    cube_pars.bin and L to the census, and plays cube.html in headless
 --    Chromium: halting, L, clicks on the tiles, the lit set's names (held
 --    to out/web/plus_names.tsv), the listing's lines and opcodes, the glow,
---    the compass and the landings, three panes with no scroll at 1366 x 650
---    and 1920 x 700, one column at a phone's width, and the help page;
+--    the compass and the landings, each move run down the chain beside the
+--    canvas, the chain in order with its listing above the fold and no
+--    scroll at 1366 x 650 and 1920 x 700, the samples outside the chain,
+--    one column at a phone's width, and the help page;
 --    screenshots out/web/cube.png, cube-rolling.png, cube-halt.png,
 --    cube-glow.png, cube-landing.png, cube-wide.png and cube-phone.png.
 --
