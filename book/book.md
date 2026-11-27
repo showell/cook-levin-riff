@@ -2427,7 +2427,7 @@ Each problem whose shortest program has a line or more has one proof; `grumpy`, 
 | 2 | `is_one` | {1} | 2 | 8,731 | 566 | yes |
 | 4 | `is_two` | {2} | 3 | 7,440 | 477 | yes |
 
-The proofs run from 7,440 to 14,698 bytes and from 286 to 821 lemmas. The {0} proof has the most lemmas: propagation alone refutes its formula, and rocsat logs all 416 variables it fixes, `src/drat.c` accepting `0` alone.
+The proofs run from 7,440 to 14,698 bytes and from 286 to 821 lemmas. The {0} proof has the most lemmas: propagation refutes its formula, and rocsat logs all 416 variables it fixes; `src/drat.c` accepts `0`.
 
 ### What the boxes hold
 

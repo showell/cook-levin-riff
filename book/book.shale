@@ -602,7 +602,7 @@ function check_numbered(word, plural)
   local named = 0
   for m in re_find_all(text, "(?:" .. word .. "|" .. plural .. ") ([0-9]+)((?:(?:, | and | to )[0-9]+)*)") do
     local numbers = {m.groups[1]}
-    for k in re_find_all(m.groups[2], "[0-9]+") do push(numbers, k.group) end
+    for k in re_find_all(m.groups[2], "([0-9]+)") do push(numbers, k.group) end
     for n in numbers do
       named = named + 1
       if not has_key(stated, n) then push(wrong, word .. " " .. n .. " is named and never given") end
