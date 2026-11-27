@@ -1,5 +1,6 @@
-# tables.py: the tables and facts the book prints, from the census's pars on
-# the 4 x 4 board and the search in shortest.py on the small boards.
+# tables.py: the tables and facts the book prints, from the C flood's pars on
+# the 4 x 4 board (cube/census.c) and the flood in shortest.py on the small
+# boards.
 #
 #   python3 cube_book/tables.py cube_book/build/pars4.txt
 #
@@ -10,7 +11,7 @@
 # of which the book's prose must hold.
 import sys
 
-from shortest import START, roll, search, shortest
+from shortest import START, flood, roll, shortest
 
 FACES = ["up", "down", "north", "south", "east", "west"]
 N = 4
@@ -54,21 +55,36 @@ def table(rows, right=()):
     return "\n".join([out[0], rule] + out[1:])
 
 
-def trace(rolls):
-    """A program's run on 4 x 4, a line a roll: where the cube is, where the
-    paint points, the lit cells and the lit set as a number."""
-    rows = [("Roll", "The cube on", "The paint", "Lit cells", "Lit set")]
+def opcode(r):
+    """A roll's opcode, its two bits: N 00, E 01, S 10, W 11."""
+    return format("NESW".index(r), "02b")
+
+
+def row_of(state):
+    """Where the cube is, as a tile's name and number."""
+    i = state[0] * N + state[1]
+    return f"{tile(N, i)}, {i}"
+
+
+def trace(rolls, shown_from=1):
+    """A program's run on 4 x 4, a line a roll: its opcode, where the cube is,
+    where the paint points, the lit tiles and the lit set as a number. The
+    rolls before `shown_from` are one line, the state they leave."""
+    rows = [("Roll", "Opcode", "The cube on", "The paint", "Lit tiles", "Lit set")]
     state = START
-    rows.append(("start", "a1, 0", "up", "—", "0"))
-    for k, r in enumerate(rolls, 1):
+    if shown_from == 1:
+        rows.append(("start", "", "a1, 0", "up", "—", "0"))
+    else:
+        state = play(N, rolls[:shown_from - 1])
+        rows.append((f"1–{shown_from - 1}: {rolls[:shown_from - 1]}", "", row_of(state), state[2], cells(state[3]), str(state[3])))
+    for k, r in enumerate(rolls[shown_from - 1:], shown_from):
         after = roll(N, state, r)
         if after is None:
-            rows.append((f"{k}: {r}", "off the board", "halted", cells(state[3]), str(state[3])))
+            rows.append((f"{k}: {r}", opcode(r), "off the board", "halted", cells(state[3]), str(state[3])))
             break
         state = after
-        i = state[0] * N + state[1]
-        rows.append((f"{k}: {r}", f"{tile(N, i)}, {i}", state[2], cells(state[3]), str(state[3])))
-    return table(rows, right=(4,))
+        rows.append((f"{k}: {r}", opcode(r), row_of(state), state[2], cells(state[3]), str(state[3])))
+    return table(rows, right=(5,))
 
 
 # The challenges: questions about the numbers 0 to 15, each lit set the
@@ -92,7 +108,7 @@ CHALLENGES = [
 
 
 def challenges(pars):
-    rows = [("Question", "Lit cells", "Lit set", "Par", "A shortest program")]
+    rows = [("Question", "Lit tiles", "Lit set", "Par", "A shortest program")]
     for name, numbers in CHALLENGES:
         lit = lit_of(numbers)
         par, rolls = pars[lit]
@@ -103,7 +119,7 @@ def challenges(pars):
 def corners(n):
     """Each cell of the board and the faces the paint points at there."""
     seen = {}
-    for row, col, face, lit in search(n):
+    for row, col, face, lit in flood(n):
         seen.setdefault(tile(n, row * n + col), set()).add(face)
     rows = ["| The cube on | The paint points |", "|---|---|"]
     for i in range(n * n):
@@ -124,8 +140,29 @@ def floors(pars):
     return table(rows, right=(0, 1, 2))
 
 
+def single_tiles(pars):
+    """Each tile's par when it is lit alone, laid out as the board, with the
+    column letters and row numbers of the book's numbering diagram."""
+    out = ["```text", "      " + "   ".join("abcd")]
+    for row in range(N):
+        out.append(f"  {row + 1}" + "".join(f"{pars[1 << (row * N + c)][0]:4}" for c in range(N)))
+    return "\n".join(out + ["```"])
+
+
+def by_size(best):
+    """On a small board, the least and greatest par of the lit sets of each
+    size."""
+    rows = [("Lit tiles", "Least par", "Greatest par")]
+    sized = {}
+    for p, rolls in best.items():
+        sized.setdefault(bin(p).count("1"), []).append(len(rolls))
+    for m in sorted(sized):
+        rows.append((str(m), str(min(sized[m])), str(max(sized[m]))))
+    return table(rows, right=(0, 1, 2))
+
+
 def sizes():
-    rows = [("Board", "Tiles", "Lit sets", "States")]
+    rows = [("Board", "Tiles", "Lit sets", "States in all (tiles × 6 × lit sets)")]
     for n in (2, 3, 4, 5):
         rows.append((f"{n} × {n}", str(n * n), commas(2 ** (n * n)), commas(n * n * len(FACES) * 2 ** (n * n))))
     return table(rows, right=(1, 2, 3))
@@ -142,12 +179,11 @@ def read_pars(path):
 
 def main():
     pars = read_pars(sys.argv[1])
-    every = pars[lit_of(range(N * N))]
     but_last = pars[lit_of(range(N * N - 1))]
     pair = lit_of([0, 5])
     back = [rolls for rolls in ("EW", "SN") if play(N, rolls) == START]
     powers = [1 << i for i in (1, 2, 4, 8)]
-    best3 = shortest(3)
+    best3 = shortest(flood(3))
     eight = sorted({len(r) for p, r in best3.items() if bin(p).count("1") == 8})
     fewer = max(len(r) for p, r in best3.items() if bin(p).count("1") <= 7)
     assert fewer < 25 < min(len(r) for p, r in best3.items() if bin(p).count("1") == 9)
@@ -159,20 +195,23 @@ def main():
         trace("ESSWNN"),
         trace("ESENNSSS"),
         challenges(pars),
-        trace(pars[lit_of([5])][1]),
+        single_tiles(pars),
+        trace(pars[lit_of([5])][1], shown_from=5),
         corners(2),
         floors(pars),
+        by_size(best3),
         sizes(),
         "\n".join([
             "facts",
-            f"every tile takes {every[0]} rolls",
-            f"{commas(4 ** every[0])} programs of {every[0]} rolls",
+            f"4^{but_last[0]} = {commas(4 ** but_last[0])} programs of {but_last[0]} rolls",
             f"every tile but d4 in {but_last[0]} rolls",
+            ", ".join(f"{r} {opcode(r)}" for r in "NESW"),
             f"{commas(sum(powers))} = {' + '.join(str(p) for p in powers)}",
             f"cost {pars[pair][0]} rolls against a floor of {3 * 2 - 1}",
+            f"`{pars[pair][1]}` lights them",
             f"the programs {' and '.join(f'`{rolls}`' for rolls in back)} both bring the cube back to the start",
-            f"sets of eight lit tiles have par {' or '.join(str(k) for k in eight)}",
-            f"seven or fewer have par at most {fewer}",
+            f"every set of eight lit tiles has par {' or '.join(str(k) for k in eight)}",
+            f"all nine take {len(best3[lit_of(range(9))])}",
             f"the {commas(2 ** (N * N))} lit sets",
             f"`ESENWS` lights {' and '.join(tile(N, i) for i in (5, 6))} both",
         ]),
