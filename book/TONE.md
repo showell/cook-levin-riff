@@ -10,8 +10,9 @@ adding to `book.md` keeps to these:
 - **Every chapter opens with a lead**: one to three sentences that make a
   bold claim about what the chapter gives the reader, after a guidepost in
   bold naming its kind, one of six fixed kinds (start here; a review; new
-  results; the machine shown another way; big output to skim; tools and
-  history), which the front page explains once, and the earlier chapter it
+  results; the machine in a new form, named by what is newly seen, as in
+  "The machine as gates" or "The machine as a grid"; big output to skim;
+  tools and history), which the front page explains once, and the earlier chapter it
   needs, or that it stands alone. A "needs" always points backward. The guidepost starts
   with the chapter's frame: ordinary computation, circuit design,
   mathematics, complexity theory or SAT solving. A chapter that changes
