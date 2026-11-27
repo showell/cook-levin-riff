@@ -86,9 +86,9 @@ This list is the whole book in one line a chapter, the kind in italics:
 
 ## Introduction
 
-**Every frame. Start here; it stands alone.** Some problems are easy to check and hard to solve: an answer can be confirmed in moments, but finding one can mean a search that doubles with every step. That gap is what makes computation feel intractable, and it is the question at the heart of P versus NP. This book doesn't answer that question. It makes the gap visible on a machine small enough to hold in your head, a toy designed by Steve Howell, and along the way it tries a few ways around it, which sometimes help and sometimes only show how wide the gap is. Its thesis, checked at every step: the toy and its Cook-Levin translation, as gates, clauses or polynomials, answer every question the same way.
+**Every frame. Start here; it stands alone.** Some problems are easy to check and hard to solve: an answer can be confirmed in moments, but finding one can mean a search that doubles with every step. That gap is what makes computation feel intractable, and it is the question at the heart of P versus NP. This book doesn't answer that question. It makes the gap visible on a machine small enough to hold in your head, a toy designed by Steve Howell (six-line programs on four inputs, 4,096 programs in all), and along the way it tries a few ways around it, which sometimes help and sometimes only show how wide the gap is. Then we grow the machine into Nibble++ and find out what surprises.
 
-**The thesis.** The Cook-Levin theorem turns any fast checker into one Boolean formula, so that a question about the checker becomes a question about the formula. This book does that to a toy machine, all the way through, and checks every step. **Its thesis: the machine and its Cook-Levin translation answer every question the same way**, whether the machine runs as a program, is wired as gates, is written as clauses for a SAT solver or is composed into polynomials. The method is a developer's: brute force first, since the toy is small enough to run everything, and refinement after, once the brute force has shown what is there. Steve's 2023 Python first checked that agreement on a handful of programs; this repository checks it on all of them, and finishes the composition he stopped short of ({{chapter Six steps composed}}).
+**The thesis.** The Cook-Levin theorem turns any fast checker into one Boolean formula, so that a question about the checker becomes a question about the formula. This book does that to a toy machine, all the way through, and checks every step. **Its thesis: the machine and its Cook-Levin translation answer every question the same way**, whether the machine runs as a program, is wired as gates, is written as clauses for a SAT solver or is composed into polynomials, so the gap you see belongs to the problem itself. The method is a developer's: brute force first, since the toy is small enough to run everything, and refinement after, once the brute force has shown what is there. Steve's 2023 Python first checked that agreement on a handful of programs; this repository checks it on all of them, and finishes the composition he stopped short of ({{chapter Six steps composed}}).
 
 **The machine is called Nibble.** Steve Howell invented it in March 2023: one two-bit register, `AX`, four instructions, `nada`, `zero`, `decr` and `mod2`, and programs exactly six lines long. Nibble is also the name of its assembly language and of the puzzle page where you can play it. A program accepts some of the inputs 0 to 3 and rejects the rest, so it decides one of 16 problems, and there are only 4,096 programs, so every claim about the machine can be checked by running all of them. Its bigger sibling, Nibble++, has a four-bit `AX` and programs of any length: 65,536 problems, and far too many programs to list, which is where brute force starts to strain. {{chapter The machine}} gives the rules in one page.
 
@@ -96,7 +96,7 @@ This list is the whole book in one line a chapter, the kind in italics:
 
 **Program 1689 is your guide.** It is `zero, decr, decr, zero, decr, zero`, the one program that decides {0, 2, 3}. In base 4, 1689 is 122121, one digit a line, with `zero` as 1 and `decr` as 2: the number is the program. Each chapter that shows the machine in a new form shows 1689 in it too, in a box headed "1689, here", so a reader who follows the boxes alone sees the whole reduction, from a run to a satisfying assignment. The Nibble++ chapters follow is_not_14's 28-line program the same way, in boxes headed "is_not_14, here".
 
-**The monstrosities.** This machine fits on an index card: one two-bit register, four instructions, six lines. Yet it keeps producing monsters, and we have numbered them proudly, like theorems. The question "does this program accept this input?", composed through six steps, becomes one polynomial of 510,387 characters (Monstrosity 5). Wiring the same machine as gates takes 1,439 equations (Monstrosity 1). Ask whether the 4-bit Nibble++ can decide is_not_14 in 27 lines, and the answer, that every 27-line program fails, comes backed by a proof of 17,192,870 bytes that our own checker replays line by line (Monstrosity 6), while the answer at 28 lines is a program of 56 bits that you check by running it. That gap is NP's in miniature: a yes has a short certificate, and the best known evidence the other way can be enormous. Skim the monsters, marvel, and move on: each one is the hidden complexity in simple things, and the front page lists all six.
+**The monstrosities.** This machine fits on an index card: one two-bit register, four instructions, six lines. Yet it keeps producing monsters, and we have numbered them proudly, like theorems. The question "does this program accept this input?", composed through six steps, becomes one polynomial of 510,387 characters (Monstrosity 5). Wiring the same machine as gates takes 1,439 equations (Monstrosity 1). Ask whether the 4-bit Nibble++ can decide is_not_14 in 27 lines, and the answer, that every 27-line program fails, comes backed by a proof of 17,192,870 bytes that our own checker replays line by line (Monstrosity 6), while the answer at 28 lines is a program of 56 bits that you check by running it. That gap is NP's in miniature: a yes has a short certificate, and the best known evidence the other way can be enormous. Skim them, marvel, and move on: each is the hidden complexity in simple things.
 
 Steve wrote the first version by hand in Python, in [virtual-machine](https://github.com/showell/virtual-machine): the machine (`virtual_machine.py`), a general polynomial library (`poly.py`) and a stepper that writes one step of the machine as polynomials (`stepper.py`). The machine is Steve's invention; the code in this repository, written by AI coding agents (Claude) with human supervision, departs from the 2023 Python wherever a cleaner choice turned up, and its choices are this book's own. Each language has one role, which {{chapter The languages in this book}} sets out.
 
@@ -186,7 +186,7 @@ Read it once for each input:
 
 So the program accepts {3} and rejects the rest. Every input's run ends by line 4, so lines 5 and 6 could hold any opcodes. That is one reason most problems have many programs.
 
-Steve's own view of `nada` and of the design, in his words: "nada is kinda not a real instruction under my machine. It just makes it so that every program is exactly 12 bits. It's also worth saying that the language was designed to have some complexity. It's using an imperfect machine to solve the problem somewhat by design." {{chapter Which instructions are needed}} makes both points exact: `nada` is redundant (Theorem 6), and two instructions of another design would decide every problem in four lines (Theorem 7).
+Steve's own view of `nada` and of the design, in his words: "nada is kinda not a real instruction under my machine. It just makes it so that every program is exactly 12 bits. It's also worth saying that the language was designed to have some complexity. It's using an imperfect machine to solve the problem somewhat by design." {{chapter Which instructions are needed}} makes both points exact: `nada` is redundant (Theorem 7), and two instructions of another design would decide every problem in four lines (Theorem 8).
 
 ### Counting
 
@@ -212,6 +212,79 @@ decides {0, 2, 3}
 ```
 
 That's the whole machine. Every chapter after this is the same six lines, seen from somewhere new.
+
+## Nibble, the puzzle page
+
+**Ordinary computation, in the browser. The machine in a new form, as a puzzle; it stands alone.** This is where you play the machine yourself: sixteen puzzles, one for each problem, ramped so that a newcomer gets through all of them.
+
+[Nibble](https://roc.lynrummy.com/nibble/) is a puzzle page with one puzzle for each of the 16 problems: pick instructions until the program accepts exactly the puzzle's inputs and rejects the rest. The search of {{chapter Programs as formal languages}} says every puzzle has an answer, and how many programs are answers.
+
+### What runs in the page
+
+The page runs the Roc port's machine. `roc/NibbleWasm.roc` exports three functions built on `roc/Machine.roc`, compiled to an 8.3 KB wasm module by the pinned Roc with a small C host (`web/platform/host.c`), and the puzzle table is printed by the C's `web/puzzles.c`, which files every program under the problem it decides and finds each puzzle's shortest program (`README.md`, "Playground"). The JavaScript in the page draws; the machine's verdicts are Roc's. The page's check, `web/page_check.mjs`, holds the Roc wasm to the C on all 4,096 programs and all four inputs, so every build of the page is also a cross-check of the two ports, then plays every puzzle in headless Chromium by clicks.
+
+### Playing a puzzle
+
+Every pick runs the program at once on all four inputs, so the trace always shows the program as it stands. A trace shows each input's `AX` after every step, then how each run ended, what the puzzle wants, and a row marking each input correct or wrong. A wrong program's verdict names every way it is wrong, as in "Your program falsely accepts 0. It falsely rejects 1 and 3." When the program is right, the page says so above the program, folds the instruction buttons away so the whole trace shows, and says how many of the 4,096 programs solve the puzzle. Beside the buttons, the program's machine code shows its twelve bits, two a line, and its number. Each opcode button's tip says what it does to each `AX`: `decr` is "0->R, 1->0, 2->1, 3->2". A reload starts fresh at puzzle 1.
+
+### The lessons
+
+The first four puzzles are lessons, one opcode each:
+
+- **`is_tiny`** ({0}): one line, `zero`.
+- **`is_one`** ({1}): line 1 is given as `decr`, and the player picks line 2.
+- **`is_even`** ({0, 2}): line 1 is given as `mod2`, and the player picks line 2.
+- **`grumpy`** ({ }), "Reject all inputs": one line that opens as `zero`. Any of `nada`, `decr` or `mod2` solves it, since only `zero` ever accepts.
+
+A given line is drawn locked, in light blue, and the hint names it: "Line 1 is already fixed as decr. Your job: fix line 2."
+
+### The ramp
+
+The other twelve ramp by effort: the length of the shortest program, with each `mod2` in it counted as one line more, since `mod2` takes more thought. A tie goes to the puzzle free of `mod2`, then to fewer `zero`s, then to more solutions. The table that `web/puzzles.c` prints puts them in this order:
+
+| # | puzzle | problem | shortest | programs |
+|---|---|---|---|---|
+| 5 | `is_two` | {2} | 3 | 248 |
+| 6 | `is_small` | {0, 1} | 3 | 172 |
+| 7 | `is_huge` | {3} | 4 | 63 |
+| 8 | `is_middling` | {1, 2} | 4 | 74 |
+| 9 | `is_odd` | {1, 3} | 3 | 520 |
+| 10 | `is_big` | {2, 3} | 5 | 13 |
+| 11 | `is_extreme` | {0, 3} | 5 | 12 |
+| 12 | `is_not_huge` | {0, 1, 2} | 5 | 13 |
+| 13 | `is_not_two` | {0, 1, 3} | 4 | 150 |
+| 14 | `always_true` | {0, 1, 2, 3} | 4 | 104 |
+| 15 | `is_not_one` | {0, 2, 3} | 6 | 1 |
+| 16 | `is_not_tiny` | {1, 2, 3} | 5 | 15 |
+
+Each puzzle says how short its best program is, and the lines past that are locked to `nada`. Past the lessons, every puzzle's last open line is fixed as `zero`, by this theorem:
+
+**Theorem 1.** Every shortest program of a line or more ends in `zero`.
+
+*Proof.* An instruction after a program's last `zero` can only reject, as running off the end does, so a program whose last instruction is `decr` or `mod2` decides the same problem with that instruction cut, in fewer lines. A test checks it on all 4,096 programs: every shortest program of a line or more ends in `zero`, and longer programs that end otherwise exist.
+
+```text Run it
+$ out/tcc/test_theorems
+tests/test_theorems.c: 9 tests passed
+the test: every_shortest_program_ends_in_zero
+```
+
+The last puzzle, `is_not_tiny`, also gives its `mod2` on line 2, the line where the solution folds 2 onto 0; the player still picks the `decr` on line 1.
+
+### Help for a newcomer
+
+The page's intro, behind a Help link after puzzle 1, says what a formal language is here (the page's word for a problem), how the machine runs a program four times to find the language it recognizes, and works `decr, zero` through to {1}.
+
+### The sandbox
+
+A second page, the [sandbox](https://roc.lynrummy.com/nibble/sandbox.html), drops the puzzles. All six lines are open, each starting as `nada`, and the page shows the trace on the four inputs and the problem the program decides, by its set and its name. A program can also be typed in by its number, from 0 to 4095. It runs on the same machine as the puzzles.
+
+```text 1689, here: the sandbox, with 1689 typed in
+01 10 10 01 10 01  (#1689) | is_not_one {0, 2, 3}
+accept | reject | accept | accept
+```
+
+Play a few puzzles before reading on; the rest of the book asks how hard they really are.
 
 ## Deciding in plain Python
 
@@ -243,7 +316,7 @@ The want code already says everything about a problem. The Nibble machine takes 
 
 ## The languages in this book
 
-**Ordinary computation. Tools and history; it needs {{chapter The machine}}.** Here are the languages this book studies and the languages it is written in, with the job each one does.
+**Ordinary computation. Tools and history; it needs {{chapter The machine}}.** The languages that matter most here are four instructions long; here they are, and the languages we study them with, each with its job.
 
 In this book you will see code from languages like Roc, Python, C, and JS. But these are the tools, not the subject, of this book. The subject is a different set of languages: the toy's own, the formal languages its programs decide, and the notations the machine is rewritten into, from formulas to polynomials.
 
@@ -355,7 +428,7 @@ Today's `find_solutions` ([virtual_machine.py, lines 148 to 180](https://github.
 
 ### The theorems
 
-**Theorem 1.** Every one of the 16 problems is decided by some six-instruction program.
+**Theorem 2.** Every one of the 16 problems is decided by some six-instruction program.
 
 *Proof by construction.* On today's machine `solve` builds a program of six lines or fewer for 15 problems, and each decides its problem. For {0, 1, 2, 3} it builds seven, `zero, decr, zero, decr, zero, decr, zero`, one past the limit, and Python's report gives `mod2, zero, decr, zero` for it. A test runs the construction on every problem.
 
@@ -367,7 +440,7 @@ tests/test_theorems.c: 9 tests passed
 the test: the_analytical_solution_decides_every_language
 ```
 
-**Theorem 2.** With `nada`, `zero` and `decr` alone, exactly 15 of the 16 problems are decided by a six-instruction program; {0, 1, 2, 3} needs `mod2`.
+**Theorem 3.** With `nada`, `zero` and `decr` alone, exactly 15 of the 16 problems are decided by a six-instruction program; {0, 1, 2, 3} needs `mod2`.
 
 *Proof.* Run the 3^6 = 729 programs over `nada`, `zero` and `decr`: they decide 15 problems, {0, 1, 2, 3} the one missing.
 
@@ -377,7 +450,7 @@ tests/test_theorems.c: 9 tests passed
 the test: without_mod2_fifteen_languages_are_decided
 ```
 
-**Theorem 3.** The number of programs deciding each problem is the table's programs column, and the 16 counts sum to 4,096.
+**Theorem 4.** The number of programs deciding each problem is the table's programs column, and the 16 counts sum to 4,096.
 
 *Proof.* Each program is filed under the one problem it decides, so the counts partition the 4,096 programs. Python's report gives each count, and the C prints that report byte for byte.
 
@@ -408,7 +481,7 @@ In the table, a problem's code is its inputs as bits: input i accepted sets bit 
 | 14 | {1, 2, 3} | 15 | 5 |
 | 15 | {0, 1, 2, 3} | 104 | 4 |
 
-**Theorem 4.** Each problem's shortest program has the length in the table's shortest column.
+**Theorem 5.** Each problem's shortest program has the length in the table's shortest column.
 
 *Proof.* Measure the length of all 4,096 programs and take each problem's least: the 16 are the table's. {{chapter Cook-Levin as SAT}} proves it again a different way: a SAT solver shows each length one line shorter impossible, with a proof a checker replays ({{chapter The solver's work, in full}}).
 
@@ -420,7 +493,7 @@ the test: each_language_has_the_shortest_length_the_book_states
 
 ### The rare one
 
-**Theorem 5.** {0, 2, 3} is decided by exactly one program, and that program uses all six lines. It is program 1689:
+**Theorem 6.** {0, 2, 3} is decided by exactly one program, and that program uses all six lines. It is program 1689:
 
 ```text
 zero
@@ -431,7 +504,7 @@ decr
 zero
 ```
 
-*Proof.* Python's report gives {0, 2, 3} a count of 1 and this program as its example, and Theorem 3's search is exhaustive. `solve` builds the same program.
+*Proof.* Python's report gives {0, 2, 3} a count of 1 and this program as its example, and Theorem 4's search is exhaustive. `solve` builds the same program.
 
 ```text Run it
 $ out/tcc/test_golden
@@ -459,7 +532,7 @@ A problem may have 883 programs or only one, and the lone one, program 1689, gui
 
 ### The four opcodes
 
-**Theorem 6.** The six-line programs over `zero`, `decr` and `mod2` decide all 16 problems, and each of the three is needed: dropping `zero` leaves only { } decided, dropping `decr` leaves 3 problems, and dropping `mod2` leaves 15 (Theorem 2). `nada` is redundant: the programs over the other three decide all 16. And every shortest program is made of `zero`, `decr` and `mod2` alone.
+**Theorem 7.** The six-line programs over `zero`, `decr` and `mod2` decide all 16 problems, and each of the three is needed: dropping `zero` leaves only { } decided, dropping `decr` leaves 3 problems, and dropping `mod2` leaves 15 (Theorem 3). `nada` is redundant: the programs over the other three decide all 16. And every shortest program is made of `zero`, `decr` and `mod2` alone.
 
 *Proof.* Run the 4,096 programs, keep those whose every instruction is in a given set, and count the problems they decide, for all four opcodes and for each set of three. Only `zero` accepts, so dropping it leaves every input rejected. Dropping `decr` leaves { }, {0} and {0, 2}: `mod2` brings 2 to 0, and 1 and 3 to 1, where they stay. For the last part, take a `nada` out of a program and close the gap: every input meets the same lines in the same order, so the shorter program decides the same problem. So every line of a shortest program is `zero`, `decr` or `mod2`, and a test checks each one.
 
@@ -472,13 +545,13 @@ the test: no_shortest_program_uses_nada
 
 ### What it means for a player
 
-The last part of Theorem 6 is a lemma a player can use. A puzzle with three open lines offers 4^3 = 64 programs to try, but once `nada` is set aside it offers 3^3 = 27. A player who clicks through those 27, knowing only the buttons, will find the answer. That is the toy's version of the question {{chapter P, NP and Cook-Levin}} asks: whether finding an answer can ever be easier than trying the possibilities.
+The last part of Theorem 7 is a lemma a player can use. A puzzle with three open lines offers 4^3 = 64 programs to try, but once `nada` is set aside it offers 3^3 = 27. A player who clicks through those 27, knowing only the buttons, will find the answer. That is the toy's version of the question {{chapter P, NP and Cook-Levin}} asks: whether finding an answer can ever be easier than trying the possibilities.
 
 ### Instructions of any kind
 
 The four opcodes are one choice among many. An instruction of any kind says, for each value of `AX`, what happens there: a new value, or accept, or reject. That makes 6^4 = 1,296 instructions, and the toy's four are among them.
 
-**Theorem 7.** Two instructions of that kind decide all 16 problems in four lines: `decr`, and its twin that accepts at 0 and otherwise takes 1 from `AX`. One instruction, repeated, decides at most 5 problems at any length.
+**Theorem 8.** Two instructions of that kind decide all 16 problems in four lines: `decr`, and its twin that accepts at 0 and otherwise takes 1 from `AX`. One instruction, repeated, decides at most 5 problems at any length.
 
 *Proof.* For a problem L, line i + 1 is the twin when i is in L and `decr` otherwise, for i from 0 to 3. Input n reaches 0 on line n + 1, and that line's verdict is L's. A test builds the 16 programs and runs them. For one instruction it runs all 1,296, each repeated from 0 to 1,296 times on all four inputs, and finds at most 5 problems for each, and 5 for some. Five is also the bound by argument: an accept is for good, so each length's problem contains the one before it, and a chain of subsets of four inputs has at most five members.
 
@@ -490,79 +563,6 @@ the test: one_instruction_decides_at_most_five_languages_at_any_length
 ```
 
 So the toy carries one instruction more than it needs, and a different design would settle every problem in four lines.
-
-## Nibble, the puzzle page
-
-**Ordinary computation, in the browser. The machine as a puzzle; it stands alone.** This is where you play the machine yourself: sixteen puzzles, one for each problem, ramped so that a newcomer gets through all of them.
-
-[Nibble](https://roc.lynrummy.com/nibble/) is a puzzle page with one puzzle for each of the 16 problems: pick instructions until the program accepts exactly the puzzle's inputs and rejects the rest. The search of {{chapter Programs as formal languages}} says every puzzle has an answer, and how many programs are answers.
-
-### What runs in the page
-
-The page runs the Roc port's machine. `roc/NibbleWasm.roc` exports three functions built on `roc/Machine.roc`, compiled to an 8.3 KB wasm module by the pinned Roc with a small C host (`web/platform/host.c`), and the puzzle table is printed by the C's `web/puzzles.c`, which files every program under the problem it decides and finds each puzzle's shortest program (`README.md`, "Playground"). The JavaScript in the page draws; the machine's verdicts are Roc's. The page's check, `web/page_check.mjs`, holds the Roc wasm to the C on all 4,096 programs and all four inputs, so every build of the page is also a cross-check of the two ports, then plays every puzzle in headless Chromium by clicks.
-
-### Playing a puzzle
-
-Every pick runs the program at once on all four inputs, so the trace always shows the program as it stands. A trace shows each input's `AX` after every step, then how each run ended, what the puzzle wants, and a row marking each input correct or wrong. A wrong program's verdict names every way it is wrong, as in "Your program falsely accepts 0. It falsely rejects 1 and 3." When the program is right, the page says so above the program, folds the instruction buttons away so the whole trace shows, and says how many of the 4,096 programs solve the puzzle. Beside the buttons, the program's machine code shows its twelve bits, two a line, and its number. Each opcode button's tip says what it does to each `AX`: `decr` is "0->R, 1->0, 2->1, 3->2". A reload starts fresh at puzzle 1.
-
-### The lessons
-
-The first four puzzles are lessons, one opcode each:
-
-- **`is_tiny`** ({0}): one line, `zero`.
-- **`is_one`** ({1}): line 1 is given as `decr`, and the player picks line 2.
-- **`is_even`** ({0, 2}): line 1 is given as `mod2`, and the player picks line 2.
-- **`grumpy`** ({ }), "Reject all inputs": one line that opens as `zero`. Any of `nada`, `decr` or `mod2` solves it, since only `zero` ever accepts.
-
-A given line is drawn locked, in light blue, and the hint names it: "Line 1 is already fixed as decr. Your job: fix line 2."
-
-### The ramp
-
-The other twelve ramp by effort: the length of the shortest program, with each `mod2` in it counted as one line more, since `mod2` takes more thought. A tie goes to the puzzle free of `mod2`, then to fewer `zero`s, then to more solutions. The table that `web/puzzles.c` prints puts them in this order:
-
-| # | puzzle | problem | shortest | programs |
-|---|---|---|---|---|
-| 5 | `is_two` | {2} | 3 | 248 |
-| 6 | `is_small` | {0, 1} | 3 | 172 |
-| 7 | `is_huge` | {3} | 4 | 63 |
-| 8 | `is_middling` | {1, 2} | 4 | 74 |
-| 9 | `is_odd` | {1, 3} | 3 | 520 |
-| 10 | `is_big` | {2, 3} | 5 | 13 |
-| 11 | `is_extreme` | {0, 3} | 5 | 12 |
-| 12 | `is_not_huge` | {0, 1, 2} | 5 | 13 |
-| 13 | `is_not_two` | {0, 1, 3} | 4 | 150 |
-| 14 | `always_true` | {0, 1, 2, 3} | 4 | 104 |
-| 15 | `is_not_one` | {0, 2, 3} | 6 | 1 |
-| 16 | `is_not_tiny` | {1, 2, 3} | 5 | 15 |
-
-Each puzzle says how short its best program is, and the lines past that are locked to `nada`. Past the lessons, every puzzle's last open line is fixed as `zero`, by this theorem:
-
-**Theorem 8.** Every shortest program of a line or more ends in `zero`.
-
-*Proof.* An instruction after a program's last `zero` can only reject, as running off the end does, so a program whose last instruction is `decr` or `mod2` decides the same problem with that instruction cut, in fewer lines. A test checks it on all 4,096 programs: every shortest program of a line or more ends in `zero`, and longer programs that end otherwise exist.
-
-```text Run it
-$ out/tcc/test_theorems
-tests/test_theorems.c: 9 tests passed
-the test: every_shortest_program_ends_in_zero
-```
-
-The last puzzle, `is_not_tiny`, also gives its `mod2` on line 2, the line where the solution folds 2 onto 0; the player still picks the `decr` on line 1.
-
-### Help for a newcomer
-
-The page's intro, behind a Help link after puzzle 1, says what a formal language is here (the page's word for a problem), how the machine runs a program four times to find the language it recognizes, and works `decr, zero` through to {1}.
-
-### The sandbox
-
-A second page, the [sandbox](https://roc.lynrummy.com/nibble/sandbox.html), drops the puzzles. All six lines are open, each starting as `nada`, and the page shows the trace on the four inputs and the problem the program decides, by its set and its name. A program can also be typed in by its number, from 0 to 4095. It runs on the same machine as the puzzles.
-
-```text 1689, here: the sandbox, with 1689 typed in
-01 10 10 01 10 01  (#1689) | is_not_one {0, 2, 3}
-accept | reject | accept | accept
-```
-
-Play a few puzzles before reading on: the next part asks how hard they really are.
 
 ## P and NP
 
@@ -707,7 +707,7 @@ Either way, the checker is the whole of it: twelve bits of certificate, four inp
 
 ## The Boolean view
 
-**Circuit design. The machine as gates; it needs {{chapter The machine}}.** We show you the toy the way a chip sees it: one fixed bank of AND, OR and NOT gates, ticking once a line, that sees only bits.
+**Circuit design. The machine in a new form, as gates; it needs {{chapter The machine}}.** We show you the toy the way a chip sees it: one fixed bank of AND, OR and NOT gates, ticking once a line, that sees only bits.
 
 Everything so far ran the machine as a program, an interpreter reading its lines. This chapter runs the same machine as a computer's hardware does: a clock, and at each tick, one step of the machine, a fixed bank of Boolean gates, AND, OR and the complement, that takes bits in and puts bits out. The gates are the same at every tick, for every program and every input. They read the line's two opcode bits and the four state bits, and they write four state bits. They see bits and only bits: what a program means, which of the 16 problems it decides, even that problems exist, all lies outside them.
 
@@ -798,222 +798,9 @@ the test: the_16_languages_are_the_16_boolean_functions_of_two_bits
 
 So the 16 problems, the 16 puzzles of Nibble, are the 16 two-input connectives.
 
-## One formula for the whole machine
-
-**Mathematics. The machine as one formula; it needs {{chapter The Boolean view}}.** We write the entire machine, every program on every input, as one formula of 14 bits: 174 gates as a graph, which written out as text would run past half a million characters, so we show its first two lines and count the rest.
-
-{{chapter The Boolean view}} ran the machine as gates on known bits. Its four step functions never ask what their bits are, so they can be handed something else: formulas. The machine is then one function of 14 bits, f, the input's two and the program's twelve, true where the program accepts the input, and running the step functions on formulas writes f down. What is new is that one object holds every run at once, all 4,096 programs on all four inputs, for a tool to ask about together. The Roc port states f directly, in `roc/Fourteen.roc`:
-
-{{function roc/Fourteen.roc f}}
-
-### Formulas as values
-
-`python/steps.py` keeps a formula as a graph of nodes, each a variable, a constant, or a complement, AND or OR of nodes before it. Its operators are the step functions' `~`, `&` and `|`. They fold the plain cases away (a constant, a doubled complement, x AND x, and x OR (¬x AND y), which is x OR y), and a node already built is reused, so equal parts of a formula are one node:
-
-{{lines python/steps.py from "class F:" to "            return self | other.args[1]"}}
-
-### Six steps, every bit unknown
-
-Name the 14 bits v1 to v14: v1 to v12 the program's, two a line, line 1 first, so that v1 to v12 read as the program's number. Start from the input's two unknowns with both flags 0, and run the six steps, each on its line's two unknowns (`python/fourteen_cnf.py`):
-
-{{lines python/fourteen_cnf.py from "def formula():" to "    return state[3]"}}
-
-What comes back is f. After line 1 the four state bits are short enough to read:
-
-```text
-hb'       = ((NOT v1 AND NOT v2 AND v13) OR (NOT v1 AND v2 AND v13) OR (v1 AND NOT v2 AND v13 AND v14))
-lb'       = ((NOT v1 AND NOT v2 AND v14) OR (NOT v1 AND v2 AND v14) OR (v1 AND v2 AND v14) OR (v1 AND NOT v2 AND v13 AND NOT v14))
-halted'   = (v1 AND NOT v2 AND NOT v13 AND NOT v14)
-accepted' = (NOT v1 AND v2 AND NOT v13 AND NOT v14)
-```
-
-`accepted'` is line 1 being `zero` (`NOT v1 AND v2`) on an `AX` of 0 (`NOT v13 AND NOT v14`). `hb'` is the high bit kept by `nada`, kept by `zero`, or kept by a `decr` from 3; `mod2` clears it. After line 2, `accepted` has the line-1 bits pasted in wherever it uses them:
-
-```text
-((NOT v1 AND v2 AND NOT v13 AND NOT v14) OR (NOT (v1 AND NOT v2 AND NOT v13 AND NOT v14) AND NOT v3 AND v4 AND NOT ((NOT v1 AND NOT v2 AND v13) OR (NOT v1 AND v2 AND v13) OR (v1 AND NOT v2 AND v13 AND v14)) AND NOT ((NOT v1 AND NOT v2 AND v14) OR (NOT v1 AND v2 AND v14) OR (v1 AND v2 AND v14) OR (v1 AND NOT v2 AND v13 AND NOT v14))))
-```
-
-It reads: line 1 accepted, or line 1 left the machine running, line 2 is `zero`, and `AX` after line 1 is 0.
-
-### Graph and tree
-
-Written out as text, each line's formula repeats the last line's state bits wherever it uses them, and the text grows about six-fold a line. Kept as a graph, the same formula grows by about 35 gates a line:
-
-| after line | gates in the graph | written out, characters |
-|---|---|---|
-| 1 | 6 | 39 |
-| 2 | 34 | 335 |
-| 3 | 69 | 2,213 |
-| 4 | 104 | 14,115 |
-| 5 | 139 | 89,478 |
-| 6 | 174 | 566,784 |
-
-The last row is f: 174 gates, or 566,784 characters written out, for a machine whose register holds 2 bits. The two excerpts above are all of the text this book prints; the count is the point. {{chapter Checking a claim}} works with the graph, and {{chapter Appendix: the step's encodings}} says why its CNF names 146 of the 174.
-
-```text 1689, here: f at its four points
-v1 .. v12          v13 v14  f
-01 10 10 01 10 01   0   0  1
-01 10 10 01 10 01   0   1  0
-01 10 10 01 10 01   1   0  1
-01 10 10 01 10 01   1   1  1
-```
-
-Half a million characters for a two-bit machine, as Boolean text. The polynomial `accepted` of {{chapter The delightful monstrosity}} also runs past half a million characters, 510,387, and it is a different object: a sum of 10,324 terms with integer coefficients, like terms already summed. Keep that number in mind when the formula goes to a solver.
-
-## The SAT solver
-
-**SAT solving. Tools and history; it stands alone.** We introduce rocsat, the outside oracle this book trusts least and checks most, and the only two questions we ever ask it.
-
-Several chapters from here on hand a formula to a SAT solver, [rocsat](https://github.com/mpizenberg/rocsat), written in Roc by Matthieu Pizenberg. It is his project, and its README is the place to read about it: a CDCL solver, the kind that learns a new clause from each contradiction it meets, with a model checker and DRAT proofs beside it. This book uses it as an outside oracle. Clauses are the first form of the machine that someone else's program can read and answer. Its code is separate from the machine's, so when it agrees with the machine, two separate programs agree. This chapter says once what the book asks it, so that each later chapter needs only to name its question.
-
-### CNF, the solvers' format
-
-A *literal* is a variable or its complement: v3, or ¬v3. A *clause* is an OR of literals, and it holds when at least one of its literals is true. A formula in *conjunctive normal form*, CNF, is a list of clauses that must all hold: an AND of ORs. For example,
-
-```text
-(v1 ∨ ¬v2) ∧ (v2 ∨ v3) ∧ (¬v1 ∨ ¬v3)
-```
-
-holds at v1 = 1, v2 = 1, v3 = 0, among other settings. In DIMACS, the text format SAT tools read, it is three lines, each clause's literals as signed numbers ending in 0: `1 -2 0`, `2 3 0`, `-1 -3 0`.
-
-Solvers want CNF because its pieces can be reasoned about one at a time. A clause whose literals are all false but one forces that one to be true, and a contradiction a solver runs into can be kept as one more clause. Any formula can be written in CNF, but writing it out directly can multiply its size, the way writing out f's text did.
-
-### Two questions
-
-The book asks rocsat one of two questions.
-
-- **`rocsat check F A`: does the assignment A satisfy the formula F?** A gives every variable a value, and rocsat tests the clauses one by one. That is evaluation alone: rocsat is an outside calculator. It exits 0 and says `c model ok`, or exits 1 and names the first clause A breaks, counting from 0.
-- **`rocsat solve F`: does any assignment satisfy F?** This is the solver's full power, a search over every assignment. It exits 10 and says `s SATISFIABLE`, with an assignment it found, or exits 20 and says `s UNSATISFIABLE`: every assignment breaks some clause of F. Given a second path, it writes a DRAT proof of that answer, which this repository's own checker replays ({{chapter The solver's work, in full}}).
-
-UNSATISFIABLE is often the answer the book wants. To show that every program of five lines decides some problem other than {0, 2, 3}, say, the book writes a formula whose satisfying assignments would be five-line programs that decide it, and expects UNSATISFIABLE. Each chapter says which answer it expects.
-
-### The happy path
-
-`sat/intro.shale` writes the CNF above as `example.cnf`:
-
-```text
-p cnf 3 3
-1 -2 0
-2 3 0
--1 -3 0
-```
-
-Our claim is that v1 = 1, v2 = 1, v3 = 0 satisfies it, the assignment `v 1 2 -3 0` in `ours.v`. rocsat agrees:
-
-```text
-rocsat check example.cnf ours.v: exit 0, c model ok
-rocsat solve example.cnf: exit 10, s SATISFIABLE, v -1 -2 3 0
-rocsat check example.cnf found.v: exit 0, c model ok
-```
-
-`check` confirms our assignment. `solve` finds one of its own, v3 alone true: a solver promises some satisfying assignment, whichever it reaches first. The script writes it to `found.v`, and `check` confirms that one too.
-
-### The unhappy paths
-
-An oracle that said yes to everything would pass the happy path. So the script also hands rocsat two false claims. The assignment `v 1 2 3 0`, in `wrong.v`, breaks the third clause, ¬v1 ∨ ¬v3. And `forced.cnf` is `example.cnf` with two unit clauses added, `1 0` and `3 0`, asking for v1 and v3 both true, which the third clause forbids, so the answer expected is UNSATISFIABLE:
-
-```text
-rocsat check example.cnf wrong.v: exit 1, c model falsifies clause 2
-rocsat solve forced.cnf: exit 20, s UNSATISFIABLE
-```
-
-The script stops at the first answer other than the one it expects. Each script in this repository that runs rocsat holds it both ways: a claim that should hold must be confirmed, and a claim that should fail must be refused, at the clause or with the verdict the script names. The book's build holds each rocsat answer it shows to the file its script wrote, so the book builds from the committed files alone.
-
-### Where the book asks
-
-| chapter | the question | the expected refusal |
-|---|---|---|
-| {{chapter Checking a claim}} | `check`: does program 1689's run on input n satisfy f's CNF with f = 1? | input 1 breaks the clause f = 1 |
-| {{chapter From equations to CNF}} | `solve`, with every input fixed, so the search only evaluates the circuit | program 1689 deciding {0, 2}: UNSATISFIABLE |
-| {{chapter Cook-Levin as SAT}} | `solve`, with the program's bits free: find the programs | UNSATISFIABLE once every program is found, and one line below each shortest length |
-| {{chapter Solved by hand}}, {{chapter The solver's work, in full}} | `solve`, with a DRAT proof | the proofs behind those UNSATISFIABLE answers |
-
-Every claim the solver confirms here comes paired with its opposite, refused.
-
-## Checking a claim
-
-**SAT solving. The machine as clauses; it needs {{chapter One formula for the whole machine}} and {{chapter The SAT solver}}.** We turn a sentence like "program 1689 accepts input 2" into clauses, and a solver that knows only clauses confirms it or refutes it.
-
-What CNF adds to f's graph is a format any solver reads: a claim such as "program 1689 accepts input 2" becomes an assignment, and a tool that knows only clauses checks it. This chapter turns f's graph into CNF and asks `rocsat check` about the claim ({{chapter The SAT solver}}).
-
-### Naming each gate
-
-Expanding f into CNF would start from its half-million characters. Tseitin's encoding names instead: each AND and OR node gets a variable of its own, and three clauses say that variable equals its gate. A complement is a literal's minus sign.
-
-| gate | its three clauses | what they say |
-|---|---|---|
-| g = a AND b | (¬g ∨ a), (¬g ∨ b), (g ∨ ¬a ∨ ¬b) | g gives a, g gives b, a and b give g |
-| g = a OR b | (g ∨ ¬a), (g ∨ ¬b), (¬g ∨ a ∨ b) | a gives g, b gives g, g gives a or b |
-
-{{lines python/fourteen_cnf.py from "def clauses_of(out):" to "    return lit, gates, clauses"}}
-
-The gates are numbered from v15 up, inputs before the gates that use them. The last clause holds f's own literal alone: it states f = 1. Its head, in DIMACS, the format the tools read:
-
-```text
-c f : {0,1}^14 -> {0,1}, the Nibble machine as one function
-c v1 .. v12: the program's bits, line 1 first; v13 v14: the input's
-c v15 .. v160: AND and OR gates; the last clause: f = 1
-p cnf 160 439
--15 -1 0
--15 2 0
-15 1 -2 0
--16 -13 0
--16 -14 0
-16 13 14 0
--17 15 0
--17 16 0
-17 -15 -16 0
--18 1 0
--18 -2 0
-18 -1 2 0
--19 18 0
--19 16 0
-19 -18 -16 0
-```
-
-Each group of three is one gate: v15 is `NOT v1 AND v2`, line 1 is `zero`; v16 is `NOT v13 AND NOT v14`, `AX` starts at 0; v17 is v15 AND v16, line 1 accepts; v18 is `v1 AND NOT v2`, line 1 is `decr`; v19 is v18 AND v16, line 1 halts. The formula has 160 variables and 439 clauses, three for each of the 146 gates and one for f = 1. It ends:
-
-```text
-160 -130 0
-160 -159 0
--160 130 159 0
-160 0
-```
-
-v160 is f, the OR of v130, accepted by line 5, and v159, line 6 accepting.
-
-### A claim is an assignment
-
-A claim gives every variable a value. The 14 bits come from the claim; each gate's value comes from running the gates on them:
-
-{{lines python/fourteen_cnf.py from "def values_at(gates, n, program):" to "    return [env[i] for i in range(1, 15)] + [g.value(env, memo) for g in gates]"}}
-
-For input 2 (`10`) and program 1689 (`01 10 10 01 10 01`), the 160 values, in the solvers' `v` format, a minus sign for false:
-
-```text
-v -1 2 3 -4 5 -6 -7 8 9 -10 -11 12 13 -14 15 -16 -17 -18 -19 -20 -21 -22 23 24 -25 -26 27 -28 -29 -30 -31 -32 -33 34 -35 -36 -37 -38 -39 -40 41 -42 -43 -44 -45 -46 -47 -48 -49 -50 -51 -52 -53 -54 -55 -56 -57 -58 -59 -60 -61 62 63 64 65 66 -67 -68 -69 -70 71 -72 -73 74 -75 -76 -77 -78 -79 -80 -81 -82 -83 -84 -85 -86 -87 -88 -89 -90 -91 -92 -93 -94 -95 -96 97 98 99 100 -101 -102 -103 -104 -105 -106 -107 -108 -109 -110 -111 -112 -113 -114 -115 -116 -117 -118 -119 -120 -121 -122 -123 -124 -125 -126 127 -128 -129 130 131 132 133 134 -135 -136 -137 -138 -139 -140 -141 -142 -143 -144 -145 -146 -147 -148 -149 -150 -151 -152 -153 -154 -155 -156 157 158 -159 160 0
-```
-
-### rocsat checks it
-
-The question is `rocsat check`'s: does this assignment satisfy the CNF? `sat/fourteen.shale` asks it for each of the four inputs, with program 1689. For inputs 0, 2 and 3, which the program accepts, the answer expected is yes; for input 1, which it rejects, the expected answer is that the assignment breaks the last clause, f = 1, and the script fails on any other answer:
-
-```text 1689, here: rocsat checks the claim on each input
-input 0, program 1689: exit 0: c model ok
-input 2, program 1689: exit 0: c model ok
-input 3, program 1689: exit 0: c model ok
-input 1, program 1689: exit 1: c model falsifies clause 438
-```
-
-Clause 438, counted from 0, is the last of the 439, `160 0`: f = 1. So program 1689 accepts 0, 2 and 3 and rejects 1, the problem {0, 2, 3}, as Theorem 5 says.
-
-The one complaint is a proof. The first 438 clauses say only that each gate equals its gate's AND or OR, so once the 14 bits are fixed, exactly one assignment satisfies them, the one the gates compute. At input 1 that assignment has v160 false, so every assignment that keeps the gates' clauses breaks f = 1. `python/fourteen_cnf.py`, run by `build.shale`, checks the same at all 16,384 points: the computed assignment keeps every gate's clauses, and it keeps f = 1 exactly where the machine accepts. The book's build holds the blocks here to its output, and rocsat's lines to `sat/fourteen/verdicts.txt`, which `sat/fourteen.shale` writes.
-
-Every bit here was given, so the check only computes: a tool that knows clauses alone read the machine's verdict on all four inputs.
-
 ## Parts for a small computer
 
-**Circuit design. The machine as parts you could buy; it stands alone.** Here we help you visualize Steve's toy as an actual physical machine, built from gates you could buy, starting with each instruction drawn as a circuit.
+**Circuit design. The machine in a new form, as parts you could buy; it stands alone.** Here we help you visualize Steve's toy as an actual physical machine, built from gates you could buy, starting with each instruction drawn as a circuit.
 
 This chapter and the two after it build the machine as hardware, a plain digital circuit, from the bottom up. The Boolean view's gates were Python operators; here each one is a part you could buy and solder, so the machine becomes a thing of wires. Each part is drawn once with all its gates, and from then on it is a box with named wires in and out. {{chapter The machine as a circuit}} wires the boxes into a stepper, and {{chapter The circuit, in full}} chains the steppers into the whole machine.
 
@@ -1146,7 +933,7 @@ Those are all the parts. Next we wire them into one step of the machine.
 
 ## The machine as a circuit
 
-**Circuit design. The machine's step as a circuit; it needs {{chapter Parts for a small computer}}.** We wire the parts into one step of the machine, a 59-gate stepper you can trace with a finger, and print every one of its gates.
+**Circuit design. The machine in a new form, its step as a circuit; it needs {{chapter Parts for a small computer}}.** We wire the parts into one step of the machine, a 59-gate stepper you can trace with a finger, and print every one of its gates.
 
 {{chapter Parts for a small computer}} drew every part with its gates. From here on each part is a box, known by its name and its wires, and this chapter wires the boxes into a *stepper*: one step of the machine. Drawn apart, the parts showed what each instruction does; wired together, they show how a chip picks one instruction a step and keeps the others' outputs from counting. The circuit is combinational: the whole run is laid out in space, and every wire settles at once. {{chapter The Cook-Levin machine}} turns the same circuit around.
 
@@ -1322,7 +1109,7 @@ Fifty-nine gates make one step; six steps make the machine.
 
 ## The circuit, in full
 
-**Circuit design. The machine as one chip; it needs {{chapter The machine as a circuit}}.** We chain six steppers into the whole machine and set four machines side by side, so that one wire lights up exactly when a program solves a puzzle.
+**Circuit design. The machine in a new form, as one chip; it needs {{chapter The machine as a circuit}}.** We chain six steppers into the whole machine and set four machines side by side, so that one wire lights up exactly when a program solves a puzzle.
 
 {{chapter The machine as a circuit}} ends with a stepper as one box. This chapter chains six of them into the machine, then puts four machines side by side to decide a problem. A stepper answers for one step; the decider answers a puzzle's whole question on one wire, the kind of checker Cook and Levin start from. Every drawing is still generated from the netlist of `src/circuit.c`, which records how each box is wired.
 
@@ -1466,9 +1253,222 @@ circuit_main equations: every gate of the decider, in evaluation order
 
 That is every gate. From here on, only their count matters.
 
+## One formula for the whole machine
+
+**Mathematics. The machine in a new form, as one formula; it needs {{chapter The Boolean view}}.** We write the entire machine, every program on every input, as one formula of 14 bits: 174 gates as a graph, which written out as Boolean text would run past half a million characters, so we show its first two lines and count the rest.
+
+{{chapter The Boolean view}} ran the machine as gates on known bits. Its four step functions never ask what their bits are, so they can be handed something else: formulas. The machine is then one function of 14 bits, f, the input's two and the program's twelve, true where the program accepts the input, and running the step functions on formulas writes f down. What is new is that one object holds every run at once, all 4,096 programs on all four inputs, for a tool to ask about together. The Roc port states f directly, in `roc/Fourteen.roc`:
+
+{{function roc/Fourteen.roc f}}
+
+### Formulas as values
+
+`python/steps.py` keeps a formula as a graph of nodes, each a variable, a constant, or a complement, AND or OR of nodes before it. Its operators are the step functions' `~`, `&` and `|`. They fold the plain cases away (a constant, a doubled complement, x AND x, and x OR (¬x AND y), which is x OR y), and a node already built is reused, so equal parts of a formula are one node:
+
+{{lines python/steps.py from "class F:" to "            return self | other.args[1]"}}
+
+### Six steps, every bit unknown
+
+Name the 14 bits v1 to v14: v1 to v12 the program's, two a line, line 1 first, so that v1 to v12 read as the program's number. Start from the input's two unknowns with both flags 0, and run the six steps, each on its line's two unknowns (`python/fourteen_cnf.py`):
+
+{{lines python/fourteen_cnf.py from "def formula():" to "    return state[3]"}}
+
+What comes back is f. After line 1 the four state bits are short enough to read:
+
+```text
+hb'       = ((NOT v1 AND NOT v2 AND v13) OR (NOT v1 AND v2 AND v13) OR (v1 AND NOT v2 AND v13 AND v14))
+lb'       = ((NOT v1 AND NOT v2 AND v14) OR (NOT v1 AND v2 AND v14) OR (v1 AND v2 AND v14) OR (v1 AND NOT v2 AND v13 AND NOT v14))
+halted'   = (v1 AND NOT v2 AND NOT v13 AND NOT v14)
+accepted' = (NOT v1 AND v2 AND NOT v13 AND NOT v14)
+```
+
+`accepted'` is line 1 being `zero` (`NOT v1 AND v2`) on an `AX` of 0 (`NOT v13 AND NOT v14`). `hb'` is the high bit kept by `nada`, kept by `zero`, or kept by a `decr` from 3; `mod2` clears it. After line 2, `accepted` has the line-1 bits pasted in wherever it uses them:
+
+```text
+((NOT v1 AND v2 AND NOT v13 AND NOT v14) OR (NOT (v1 AND NOT v2 AND NOT v13 AND NOT v14) AND NOT v3 AND v4 AND NOT ((NOT v1 AND NOT v2 AND v13) OR (NOT v1 AND v2 AND v13) OR (v1 AND NOT v2 AND v13 AND v14)) AND NOT ((NOT v1 AND NOT v2 AND v14) OR (NOT v1 AND v2 AND v14) OR (v1 AND v2 AND v14) OR (v1 AND NOT v2 AND v13 AND NOT v14))))
+```
+
+It reads: line 1 accepted, or line 1 left the machine running, line 2 is `zero`, and `AX` after line 1 is 0.
+
+### Graph and tree
+
+Written out as text, each line's formula repeats the last line's state bits wherever it uses them, and the text grows about six-fold a line. Kept as a graph, the same formula grows by about 35 gates a line:
+
+| after line | gates in the graph | written out, characters |
+|---|---|---|
+| 1 | 6 | 39 |
+| 2 | 34 | 335 |
+| 3 | 69 | 2,213 |
+| 4 | 104 | 14,115 |
+| 5 | 139 | 89,478 |
+| 6 | 174 | 566,784 |
+
+The last row is f: 174 gates, or 566,784 characters written out, for a machine whose register holds 2 bits. The two excerpts above are all of the text this book prints; the count is the point. {{chapter Checking a claim}} works with the graph, and {{chapter Appendix: the step's encodings}} says why its CNF names 146 of the 174.
+
+```text 1689, here: f at its four points
+v1 .. v12          v13 v14  f
+01 10 10 01 10 01   0   0  1
+01 10 10 01 10 01   0   1  0
+01 10 10 01 10 01   1   0  1
+01 10 10 01 10 01   1   1  1
+```
+
+Half a million characters for a two-bit machine, as Boolean text. The polynomial `accepted` of {{chapter The delightful monstrosity}} also runs past half a million characters, 510,387, and it is a different object: a sum of 10,324 terms with integer coefficients, like terms already summed. Keep that number in mind when the formula goes to a solver.
+
+## The SAT solver
+
+**SAT solving. Tools and history; it stands alone.** We introduce rocsat, the outside oracle this book trusts least and checks most, and the only two questions we ever ask it.
+
+Several chapters from here on hand a formula to a SAT solver, [rocsat](https://github.com/mpizenberg/rocsat), written in Roc by Matthieu Pizenberg. It is his project, and its README is the place to read about it: a CDCL solver, the kind that learns a new clause from each contradiction it meets, with a model checker and DRAT proofs beside it. This book uses it as an outside oracle. Clauses are the first form of the machine that someone else's program can read and answer. Its code is separate from the machine's, so when it agrees with the machine, two separate programs agree. This chapter says once what the book asks it, so that each later chapter needs only to name its question.
+
+### CNF, the solvers' format
+
+A *literal* is a variable or its complement: v3, or ¬v3. A *clause* is an OR of literals, and it holds when at least one of its literals is true. A formula in *conjunctive normal form*, CNF, is a list of clauses that must all hold: an AND of ORs. For example,
+
+```text
+(v1 ∨ ¬v2) ∧ (v2 ∨ v3) ∧ (¬v1 ∨ ¬v3)
+```
+
+holds at v1 = 1, v2 = 1, v3 = 0, among other settings. In DIMACS, the text format SAT tools read, it is three lines, each clause's literals as signed numbers ending in 0: `1 -2 0`, `2 3 0`, `-1 -3 0`.
+
+Solvers want CNF because its pieces can be reasoned about one at a time. A clause whose literals are all false but one forces that one to be true, and a contradiction a solver runs into can be kept as one more clause. Any formula can be written in CNF, but writing it out directly can multiply its size, the way writing out f's text did.
+
+### Two questions
+
+The book asks rocsat one of two questions.
+
+- **`rocsat check F A`: does the assignment A satisfy the formula F?** A gives every variable a value, and rocsat tests the clauses one by one. That is evaluation alone: rocsat is an outside calculator. It exits 0 and says `c model ok`, or exits 1 and names the first clause A breaks, counting from 0.
+- **`rocsat solve F`: does any assignment satisfy F?** This is the solver's full power, a search over every assignment. It exits 10 and says `s SATISFIABLE`, with an assignment it found, or exits 20 and says `s UNSATISFIABLE`: every assignment breaks some clause of F. Given a second path, it writes a DRAT proof of that answer, which this repository's own checker replays ({{chapter The solver's work, in full}}).
+
+UNSATISFIABLE is often the answer the book wants. To show that every program of five lines decides some problem other than {0, 2, 3}, say, the book writes a formula whose satisfying assignments would be five-line programs that decide it, and expects UNSATISFIABLE. Each chapter says which answer it expects.
+
+### The happy path
+
+`sat/intro.shale` writes the CNF above as `example.cnf`:
+
+```text
+p cnf 3 3
+1 -2 0
+2 3 0
+-1 -3 0
+```
+
+Our claim is that v1 = 1, v2 = 1, v3 = 0 satisfies it, the assignment `v 1 2 -3 0` in `ours.v`. rocsat agrees:
+
+```text
+rocsat check example.cnf ours.v: exit 0, c model ok
+rocsat solve example.cnf: exit 10, s SATISFIABLE, v -1 -2 3 0
+rocsat check example.cnf found.v: exit 0, c model ok
+```
+
+`check` confirms our assignment. `solve` finds one of its own, v3 alone true: a solver promises some satisfying assignment, whichever it reaches first. The script writes it to `found.v`, and `check` confirms that one too.
+
+### The unhappy paths
+
+An oracle that said yes to everything would pass the happy path. So the script also hands rocsat two false claims. The assignment `v 1 2 3 0`, in `wrong.v`, breaks the third clause, ¬v1 ∨ ¬v3. And `forced.cnf` is `example.cnf` with two unit clauses added, `1 0` and `3 0`, asking for v1 and v3 both true, which the third clause forbids, so the answer expected is UNSATISFIABLE:
+
+```text
+rocsat check example.cnf wrong.v: exit 1, c model falsifies clause 2
+rocsat solve forced.cnf: exit 20, s UNSATISFIABLE
+```
+
+The script stops at the first answer other than the one it expects. Each script in this repository that runs rocsat holds it both ways: a claim that should hold must be confirmed, and a claim that should fail must be refused, at the clause or with the verdict the script names. The book's build holds each rocsat answer it shows to the file its script wrote, so the book builds from the committed files alone.
+
+### Where the book asks
+
+| chapter | the question | the expected refusal |
+|---|---|---|
+| {{chapter Checking a claim}} | `check`: does program 1689's run on input n satisfy f's CNF with f = 1? | input 1 breaks the clause f = 1 |
+| {{chapter From equations to CNF}} | `solve`, with every input fixed, so the search only evaluates the circuit | program 1689 deciding {0, 2}: UNSATISFIABLE |
+| {{chapter Cook-Levin as SAT}} | `solve`, with the program's bits free: find the programs | UNSATISFIABLE once every program is found, and one line below each shortest length |
+| {{chapter Solved by hand}}, {{chapter The solver's work, in full}} | `solve`, with a DRAT proof | the proofs behind those UNSATISFIABLE answers |
+
+Every claim the solver confirms here comes paired with its opposite, refused.
+
+## Checking a claim
+
+**SAT solving. The machine in a new form, as clauses; it needs {{chapter One formula for the whole machine}} and {{chapter The SAT solver}}.** We turn a sentence like "program 1689 accepts input 2" into clauses, and a solver that knows only clauses confirms it or refutes it.
+
+What CNF adds to f's graph is a format any solver reads: a claim such as "program 1689 accepts input 2" becomes an assignment, and a tool that knows only clauses checks it. This chapter turns f's graph into CNF and asks `rocsat check` about the claim ({{chapter The SAT solver}}).
+
+### Naming each gate
+
+Expanding f into CNF would start from its half-million characters. Tseitin's encoding names instead: each AND and OR node gets a variable of its own, and three clauses say that variable equals its gate. A complement is a literal's minus sign.
+
+| gate | its three clauses | what they say |
+|---|---|---|
+| g = a AND b | (¬g ∨ a), (¬g ∨ b), (g ∨ ¬a ∨ ¬b) | g gives a, g gives b, a and b give g |
+| g = a OR b | (g ∨ ¬a), (g ∨ ¬b), (¬g ∨ a ∨ b) | a gives g, b gives g, g gives a or b |
+
+{{lines python/fourteen_cnf.py from "def clauses_of(out):" to "    return lit, gates, clauses"}}
+
+The gates are numbered from v15 up, inputs before the gates that use them. The last clause holds f's own literal alone: it states f = 1. Its head, in DIMACS, the format the tools read:
+
+```text
+c f : {0,1}^14 -> {0,1}, the Nibble machine as one function
+c v1 .. v12: the program's bits, line 1 first; v13 v14: the input's
+c v15 .. v160: AND and OR gates; the last clause: f = 1
+p cnf 160 439
+-15 -1 0
+-15 2 0
+15 1 -2 0
+-16 -13 0
+-16 -14 0
+16 13 14 0
+-17 15 0
+-17 16 0
+17 -15 -16 0
+-18 1 0
+-18 -2 0
+18 -1 2 0
+-19 18 0
+-19 16 0
+19 -18 -16 0
+```
+
+Each group of three is one gate: v15 is `NOT v1 AND v2`, line 1 is `zero`; v16 is `NOT v13 AND NOT v14`, `AX` starts at 0; v17 is v15 AND v16, line 1 accepts; v18 is `v1 AND NOT v2`, line 1 is `decr`; v19 is v18 AND v16, line 1 halts. The formula has 160 variables and 439 clauses, three for each of the 146 gates and one for f = 1. It ends:
+
+```text
+160 -130 0
+160 -159 0
+-160 130 159 0
+160 0
+```
+
+v160 is f, the OR of v130, accepted by line 5, and v159, line 6 accepting.
+
+### A claim is an assignment
+
+A claim gives every variable a value. The 14 bits come from the claim; each gate's value comes from running the gates on them:
+
+{{lines python/fourteen_cnf.py from "def values_at(gates, n, program):" to "    return [env[i] for i in range(1, 15)] + [g.value(env, memo) for g in gates]"}}
+
+For input 2 (`10`) and program 1689 (`01 10 10 01 10 01`), the 160 values, in the solvers' `v` format, a minus sign for false:
+
+```text
+v -1 2 3 -4 5 -6 -7 8 9 -10 -11 12 13 -14 15 -16 -17 -18 -19 -20 -21 -22 23 24 -25 -26 27 -28 -29 -30 -31 -32 -33 34 -35 -36 -37 -38 -39 -40 41 -42 -43 -44 -45 -46 -47 -48 -49 -50 -51 -52 -53 -54 -55 -56 -57 -58 -59 -60 -61 62 63 64 65 66 -67 -68 -69 -70 71 -72 -73 74 -75 -76 -77 -78 -79 -80 -81 -82 -83 -84 -85 -86 -87 -88 -89 -90 -91 -92 -93 -94 -95 -96 97 98 99 100 -101 -102 -103 -104 -105 -106 -107 -108 -109 -110 -111 -112 -113 -114 -115 -116 -117 -118 -119 -120 -121 -122 -123 -124 -125 -126 127 -128 -129 130 131 132 133 134 -135 -136 -137 -138 -139 -140 -141 -142 -143 -144 -145 -146 -147 -148 -149 -150 -151 -152 -153 -154 -155 -156 157 158 -159 160 0
+```
+
+### rocsat checks it
+
+The question is `rocsat check`'s: does this assignment satisfy the CNF? `sat/fourteen.shale` asks it for each of the four inputs, with program 1689. For inputs 0, 2 and 3, which the program accepts, the answer expected is yes; for input 1, which it rejects, the expected answer is that the assignment breaks the last clause, f = 1, and the script fails on any other answer:
+
+```text 1689, here: rocsat checks the claim on each input
+input 0, program 1689: exit 0: c model ok
+input 2, program 1689: exit 0: c model ok
+input 3, program 1689: exit 0: c model ok
+input 1, program 1689: exit 1: c model falsifies clause 438
+```
+
+Clause 438, counted from 0, is the last of the 439, `160 0`: f = 1. So program 1689 accepts 0, 2 and 3 and rejects 1, the problem {0, 2, 3}, as Theorem 6 says.
+
+The one complaint is a proof. The first 438 clauses say only that each gate equals its gate's AND or OR, so once the 14 bits are fixed, exactly one assignment satisfies them, the one the gates compute. At input 1 that assignment has v160 false, so every assignment that keeps the gates' clauses breaks f = 1. `python/fourteen_cnf.py`, run by `build.shale`, checks the same at all 16,384 points: the computed assignment keeps every gate's clauses, and it keeps f = 1 exactly where the machine accepts. The book's build holds the blocks here to its output, and rocsat's lines to `sat/fourteen/verdicts.txt`, which `sat/fourteen.shale` writes.
+
+Every bit here was given, so the check only computes: a tool that knows clauses alone read the machine's verdict on all four inputs.
+
 ## From equations to CNF
 
-**Circuit design, then SAT solving. New results; it needs {{chapter Checking a claim}} and {{chapter The circuit as equations}}.** We show why naming gates beats multiplying them out: 1,400 clauses that grow in a straight line, against 3,869 whose growth is exponential.
+**Circuit design, then SAT solving. New results; it needs {{chapter Checking a claim}} and {{chapter The circuit as equations}}.** We show why naming gates beats multiplying them out: 1,400 clauses against 3,869, the first growing in a straight line with the steps and the second exponentially.
 
 {{chapter The circuit as equations}} writes the decider as 1,439 gates. This chapter turns those equations into CNF with a small Roc library, `roc/Cnf.roc`, and hands claims about the decider to rocsat, which evaluates them. What this adds is the decider in a solver's own language, and a first look at how big the two ways of writing it get. The encoding is the one {{chapter Checking a claim}} uses on the 14-bit machine, now applied to the whole decider.
 
@@ -1551,7 +1551,7 @@ Named, the decider is 1,400 clauses; multiplied out, it is 3,869, and the gap wi
 
 ## The Cook-Levin machine
 
-**Circuit design, then complexity theory. The machine run backwards; it needs {{chapter The circuit, in full}}.** We run the circuit backwards, the move at the heart of Cook-Levin: fix the answer, leave the program unknown, and ask which programs fit.
+**Circuit design, then complexity theory. The machine in a new form, run backwards; it needs {{chapter The circuit, in full}}.** We run the circuit backwards, the move at the heart of Cook-Levin: fix the answer, leave the program unknown, and ask which programs fit.
 
 The decider of {{chapter The circuit, in full}} is a checker: hand it a problem and a program, and it says true or false. Cook and Levin's idea is to run a checker backwards. Fix the problem, leave the program unknown, pin the output to true, and ask which programs fit. The circuit does the same work as before; only the question changes. Every form so far took a program and gave a verdict; this one takes the verdict and asks for the program, the direction a search for certificates needs.
 
@@ -1602,7 +1602,7 @@ The tableau is still empty here; filling it in, for one program and then for all
 
 ## The tableau, filled in
 
-**Complexity theory. The machine as a grid; it needs {{chapter The Cook-Levin machine}}.** We print Cook's grid twice, once for one program and once for every program at once, and you can watch a constant carry a fact down a column.
+**Complexity theory. The machine in a new form, as a grid; it needs {{chapter The Cook-Levin machine}}.** We print Cook's grid twice, once for one program and once for every program at once, and you can watch a constant carry a fact down a column.
 
 The circuit turned around is a list of gates; laid out as Cook's grid, the same run reads as rows and columns, and a fact can be followed down a core.
 
@@ -1724,7 +1724,7 @@ Each of the six lines, on each of the four cores, is such a stepper, wired to th
 
 ### The proof by propagation
 
-**Theorem 10.** For each of the 16 problems, the satisfying assignments of its formula, read as programs by their first 12 variables, are exactly the programs that decide it. With the lines past N forced to `nada`, the formula is satisfiable exactly when N is at least the problem's shortest length (Theorem 4).
+**Theorem 10.** For each of the 16 problems, the satisfying assignments of its formula, read as programs by their first 12 variables, are exactly the programs that decide it. With the lines past N forced to `nada`, the formula is satisfiable exactly when N is at least the problem's shortest length (Theorem 5).
 
 Unit propagation is the formula run as a program: once the 12 program bits are given, each gate's clauses compute its output, the way a spreadsheet recomputes its cells.
 
@@ -1739,7 +1739,7 @@ the test: a_length_bound_admits_the_solving_programs_that_short
 
 ### rocsat as an oracle
 
-`sat/oracle.shale` asks `rocsat solve` about each problem's formula with the program's bits free (`f977bcc`), so the solver searches ({{chapter The SAT solver}}). Each SATISFIABLE answer is a program, which the script runs on the machine and blocks with a clause before asking again; UNSATISFIABLE, expected once every program is found, ends the count. Each shortest length is then SATISFIABLE, and one line shorter UNSATISFIABLE, as expected, with a DRAT proof our checker replays. That is Theorem 4 again, by Theorem 10. Its last run, on 2026-11-25, verified 4,096 models and all 15 proofs. `tests/test_sat.c` gets the same counts by propagation; the loop shows the solver as an oracle, blind to the machine.
+`sat/oracle.shale` asks `rocsat solve` about each problem's formula with the program's bits free (`f977bcc`), so the solver searches ({{chapter The SAT solver}}). Each SATISFIABLE answer is a program, which the script runs on the machine and blocks with a clause before asking again; UNSATISFIABLE, expected once every program is found, ends the count. Each shortest length is then SATISFIABLE, and one line shorter UNSATISFIABLE, as expected, with a DRAT proof our checker replays. That is Theorem 5 again, by Theorem 10. Its last run, on 2026-11-25, verified 4,096 models and all 15 proofs. `tests/test_sat.c` gets the same counts by propagation; the loop shows the solver as an oracle, blind to the machine.
 
 ```text 1689, here: the CNF of {0, 2, 3}, and rocsat's answers
 sat 13: 416 variables, 1216 clauses
@@ -1752,13 +1752,13 @@ Next we solve the smallest of these formulas with a pencil.
 
 ## Solved by hand
 
-**SAT solving, on paper. The machine as clauses, worked on paper; it needs {{chapter Cook-Levin as SAT}}.** We solve the smallest puzzle's formula on paper and read the first lemmas of the hardest one's proof as plain statements about programs.
+**SAT solving, on paper. The machine in a new form, as clauses, worked on paper; it needs {{chapter Cook-Levin as SAT}}.** We solve the smallest puzzle's formula on paper and read the first lemmas of the hardest one's proof as plain statements about programs.
 
 The solver's answers so far came as verdicts; worked by hand, the same formula shows its reasons, each forced value and each lemma a sentence about programs.
 
 ### {0} in one line
 
-`is_tiny` accepts exactly {0} (code 1), and its shortest program has one line (Theorem 4). With lines 2 to 6 forced to `nada` (`sat 1 len=1`), the formula opens with ten unit clauses, `-3` to `-12`, and ends with four, one an input. Unit propagation repeats one rule: a clause whose literals are all false but one makes that one true. From the formula's own unit clauses, `src/sat_hand_main.c` finds that the rule decides every variable:
+`is_tiny` accepts exactly {0} (code 1), and its shortest program has one line (Theorem 5). With lines 2 to 6 forced to `nada` (`sat 1 len=1`), the formula opens with ten unit clauses, `-3` to `-12`, and ends with four, one an input. Unit propagation repeats one rule: a clause whose literals are all false but one makes that one true. From the formula's own unit clauses, `src/sat_hand_main.c` finds that the rule decides every variable:
 
 ```text
 {0} at length 1: 416 variables, 1226 clauses; unit propagation fixes 416 of the variables in 9 passes, with 0 conflicts
@@ -1790,7 +1790,7 @@ Run through the gates, each other op on line 1 leaves core 0's final `accepted` 
 
 ### Five lines for {0, 2, 3}
 
-`is_not_one` accepts {0, 2, 3} (code 13), and its one program uses all six lines (Theorem 5). For the programs of `nada`, `zero` and `decr`, counting lines settles it. Input 0 needs a `zero` before any `decr`, since `decr` at 0 halts. Input 2 reaches 0 after two `decr`s and input 3 after three, on different lines, and each then needs a `zero`. Input 1 reaches 0 after the first `decr`, so the second `decr` has to come before any later `zero`, and it halts input 1. That is three `zero`s and three `decr`s: six lines. Theorem 3's search, over all 4,096 programs, settles the ones with `mod2` too.
+`is_not_one` accepts {0, 2, 3} (code 13), and its one program uses all six lines (Theorem 6). For the programs of `nada`, `zero` and `decr`, counting lines settles it. Input 0 needs a `zero` before any `decr`, since `decr` at 0 halts. Input 2 reaches 0 after two `decr`s and input 3 after three, on different lines, and each then needs a `zero`. Input 1 reaches 0 after the first `decr`, so the second `decr` has to come before any later `zero`, and it halts input 1. That is three `zero`s and three `decr`s: six lines. Theorem 4's search, over all 4,096 programs, settles the ones with `mod2` too.
 
 The formula says the same. `sat 13 len=5` is the full formula plus the unit clauses `-11` and `-12`. Asked to solve it, rocsat answers UNSATISFIABLE, the answer expected, with a DRAT proof. Such a proof is a list of lemmas, each a clause that follows from the formula and the lemmas before it by unit propagation, with deletions mixed in, ending at the empty clause; a checker replays it, and once the empty clause follows, the formula is unsatisfiable. The first 12 distinct lemmas of this one, each literal named by `src/sat_hand_main.c` from the encoder's own record of its wires:
 
@@ -1892,7 +1892,7 @@ That is one puzzle, whole.
 
 ## The program left unknown
 
-**Circuit design, then mathematics. The machine as a formula of its program; it needs {{chapter The Boolean view}} and {{chapter Cook-Levin as SAT}}.** We make the move of {{chapter The Cook-Levin machine}} again, on the polynomial road: leave the program's bits unknown, and the machine becomes a formula whose true points are exactly the programs that solve a puzzle. Then we compare the two roads: naming, Part III's, and expanding, this part's.
+**Circuit design, then mathematics. The machine in a new form, as a formula of its program; it needs {{chapter The Boolean view}} and {{chapter Cook-Levin as SAT}}.** We make the move of {{chapter The Cook-Levin machine}} again, on the polynomial road: leave the program's bits unknown, and the machine becomes a formula whose true points are exactly the programs that solve a puzzle. Then we compare the two roads: naming, Part III's, and expanding, this part's.
 
 {{chapter The Boolean view}} ran the machine as four Boolean functions of six bits, composed over six steps, with the input and the program fixed. Cook and Levin's move is to stop fixing the program. Keep the same four functions and the same six steps, give the program's twelve bits names in place of values, v1 to v12, and what comes out of the sixth step is a formula where it was a bit. {{chapter The Cook-Levin machine}} made this move inside a circuit, for a solver; here the step functions take the unknowns themselves, which lets Part IV expand them into polynomials. This chapter does that and turns the formula into the question a puzzle asks.
 
@@ -2000,7 +2000,7 @@ Naming is why Cook-Levin's formula stays polynomial in size: each step adds the 
 
 ## Arithmetization
 
-**Mathematics. The machine as polynomials; it needs {{chapter The program left unknown}}.** We turn logic into arithmetic, NOT as 1 − x and AND as a product, and add one identity, x² = x, so that one step of the machine becomes four small polynomials of the proper kind, the kind that composes.
+**Mathematics. The machine in a new form, as polynomials; it needs {{chapter The program left unknown}}.** We turn logic into arithmetic, NOT as 1 − x and AND as a product, and add one identity, x² = x, so that one step of the machine becomes four small polynomials of the proper kind, the kind that composes.
 
 Logic says true or false; arithmetic can add, multiply and substitute, which is what composing six steps into one object needs. The stepper writes one step of the machine as polynomials, the first of the two ways to compose in {{chapter The program left unknown}}: expand. Each bit of the state is a variable that is only ever 0 or 1, and logic becomes arithmetic:
 
@@ -2724,7 +2724,7 @@ On Nibble++ the census settles every question fastest, and each of the others ad
 
 ## The oracles
 
-**Ordinary computation. Tools and history; it stands alone.** We show you five separate ways of computing the same answers, which is why you can believe the numbers in this book.
+**Ordinary computation. Tools and history; it stands alone.** We show you five programs that share only the machine's rule, so a bug would have to land the same way in all five to reach a number in this book.
 
 Every implementation in this repository computes the same answers in its own way, and each is held to the others.
 
