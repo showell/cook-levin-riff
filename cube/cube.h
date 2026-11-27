@@ -57,6 +57,20 @@ int cube_cell_after(int n, int cell, CubeRoll r);
 char cube_roll_letter(CubeRoll r);
 int cube_roll_of(char c);
 
+// The machine between rolls: the cube's cell and painted face, the lit
+// tiles, and whether a roll off the grid has halted it.
+typedef struct {
+    int cell;
+    CubeFace face;
+    uint32_t lit;
+    int halted;
+} CubeState;
+
+// One roll of the machine, in place: a halted machine stays as it is; a roll
+// off the grid halts it where it stands; any other roll moves the cube and
+// turns its face, and flips the tile it lands on when the face lands down.
+void cube_step(int n, CubeState *s, CubeRoll r);
+
 // Rolls `rolls` (as letters, `k` of them) from the start and gives the
 // pattern of lit tiles, or -1 for a letter that is not a roll. A roll off
 // the grid halts the run there. *end_cell and *end_face, when not NULL, get
