@@ -2086,7 +2086,7 @@ That is one puzzle, whole.
 
 **Circuit design, then mathematics. The machine in a new form, as a formula of its program; it needs {{chapter The Boolean view}} and {{chapter Cook-Levin as SAT}}.** We make the move of {{chapter The Cook-Levin machine}} again, on the polynomial road: leave the program's bits unknown, and the machine becomes a formula whose true points are exactly the programs that solve a puzzle. Then we compare the two roads: naming, Part III's, and expanding, this part's.
 
-{{chapter The Boolean view}} ran the machine as four Boolean functions of six bits, composed over six steps, with the input and the program fixed. Cook and Levin's move is to stop fixing the program. Keep the same four functions and the same six steps, give the program's twelve bits names in place of values, v1 to v12, and what comes out of the sixth step is a formula where it was a bit. {{chapter The Cook-Levin machine}} made this move inside a circuit, for a solver; here the step functions take the unknowns themselves, which lets Part IV expand them into polynomials. This chapter does that and turns the formula into the question a puzzle asks.
+{{chapter The Boolean view}} ran the machine as four Boolean functions of six bits, composed over six steps, with the input and the program fixed. Cook and Levin's move is to stop fixing the program. Keep the same four functions and the same six steps, give the program's twelve bits names in place of values, v1 to v12, and what comes out of the sixth step is a formula where it was a bit. {{chapter The Cook-Levin machine}} made this move inside a circuit, for a solver; here the step functions take the unknowns themselves, which lets Part IV expand them into polynomials. This chapter leaves the program unknown and turns the formula into the question a puzzle asks.
 
 ### Each input fixed
 
@@ -2192,7 +2192,7 @@ Naming is why Cook-Levin's formula stays polynomial in size: each step adds the 
 
 ## Arithmetization
 
-**Mathematics. The machine in a new form, as polynomials; it needs {{chapter The program left unknown}}.** We turn logic into arithmetic, NOT as 1 − x and AND as a product, and add one identity, x² = x, so that one step of the machine becomes four small polynomials of the proper kind, the kind that composes.
+**Mathematics. The machine in a new form, as polynomials; it needs {{chapter The program left unknown}}.** We turn logic into arithmetic, NOT as 1 − x and AND as a product, and add one identity, x² = x, so that one step of the machine becomes four small polynomials, each variable to the first power at most, the kind that composes.
 
 Logic says true or false; arithmetic can add, multiply and substitute, which is what composing six steps into one object needs. The stepper writes one step of the machine as polynomials, the first of the two ways to compose in {{chapter The program left unknown}}: expand. Each bit of the state is a variable that is only ever 0 or 1, and logic becomes arithmetic:
 
@@ -2367,7 +2367,7 @@ Each step's term counts, from `roc/golden/composition.txt` and `out/tcc/compose_
 
 The final `hb` has degree 9 and its largest coefficient is 6; `lb` has degree 14 and 21; `halted` 14 and 20; `accepted` 14 and 63. Sixty-three is the largest coefficient of the four final polynomials, so int64 holds each with room to spare. In the Boolean ring `compose_main` composed all six in 44 to 50 ms (`gcc -O2`, three runs on 2026-11-27).
 
-The proper polynomial is still a big one, and intrinsically so. `accepted` is 10,324 terms and, as the C prints it, 510,387 characters: all 4,096 programs run on all four inputs, written as one sum, each term a coefficient times a product of up to 14 of the bits. Every term is the machine's own, and x² = x has already taken out every power. {{chapter The delightful monstrosity}}, a short chapter, prints it in full and evaluates it by hand at program 1689.
+Even in the Boolean ring, the composed polynomial is big, and the size is the machine's own. `accepted` is 10,324 terms and, as the C prints it, 510,387 characters: all 4,096 programs run on all four inputs, written as one sum, each term a coefficient times a product of up to 14 of the bits. Every term is the machine's own, and x² = x has already taken out every power. {{chapter The delightful monstrosity}}, a short chapter, prints it in full and evaluates it by hand at program 1689.
 
 ### The proof
 
