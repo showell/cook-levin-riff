@@ -2784,7 +2784,7 @@ program decr,half,decr,half,decr,half,decr,zero (8 lines) accepts input 14: UNSA
 
 ### The search
 
-The search is the heart of the chapter. For a formal language W and a length k, `plus_sat search W k` writes one CNF. The 2k program bits are free, and 16 copies of the run share them, one per input, each with `AX` fixed to its input, so constant folding trims each copy. A unit clause holds each copy's output to W's want bit: accept for a member, reject for the rest.
+For a formal language W and a length k, `plus_sat search W k` writes one CNF. The 2k program bits are free, and 16 copies of the run share them, one per input, each with `AX` fixed to its input, so constant folding trims each copy. A unit clause holds each copy's output to W's want bit: accept for a member, reject for the rest.
 
 A model is then a k-line program that decides W, so SATISFIABLE hands back a program. `sat/plus_search.shale` checks each one with `rocsat check`, with `src/drat.c`'s model check and on the interpreter. One line below the census length L, UNSATISFIABLE says that every program of L − 1 lines decides some other formal language. Shorter programs are covered too: a `decr` added after a program's last line keeps its formal language ({{chapter Nibble++}}), so any shorter program for W pads to one of L − 1 lines. The DRAT proof of that answer, replayed by `src/drat.c`, proves L minimal on its own, apart from the census.
 
@@ -2838,7 +2838,7 @@ Steve asked the Roc Zulip, on 2026-11-26: "How do we prove that no 27-line Nibbl
 
 ### The claim
 
-is_not_14 is the formal language {0, ..., 13, 15}, every input but 14, one of the three in {{chapter Nibble++}}'s section "The hardest". A 28-line program decides it. The claim at 27 lines covers every program of that length, 4^27 = 2^54 of them, about 1.8 × 10^16, past running each one on 16 inputs. Two proofs settle it, in separate code.
+is_not_14 is the formal language {0, ..., 13, 15}, every input but 14, one of the three in {{chapter Nibble++}}'s section "The hardest". A 28-line program decides it. The claim at 27 lines covers every program of that length, 4^27 = 2^54 of them, about 1.8 × 10^16, far too many to run one by one on 16 inputs. Two proofs settle it, in separate code.
 
 ```text is_not_14, here: the 27-line question
 programs of 27 lines: 4^27 = 2^54
