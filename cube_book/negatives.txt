@@ -20,9 +20,7 @@
 # Each line below is `kind: the sentence`, the sentence exactly as the lint
 # prints it, and its kind is a `keep` kind.
 
-open: We won't settle that question; nobody has.
+open: P versus NP asks whether every problem in NP is in P, and nobody knows.
 theorem: ## A board where nothing ever happens
-theorem: We prove our first theorem: on a 2 × 2 board, no program ever lights a tile.
-theorem: The proof follows the paint around the cube and shows it can never reach the bottom.
-theorem: Proving that nothing shorter exists is a different skill, and this chapter teaches it.
-theorem: Each program has exactly 3m − 1 rolls, and Theorem 2 says no program for its pattern is shorter, so each is a par.
+theorem: On a 2 × 2 board no program ever lights a tile.
+theorem: Each program has exactly 3m − 1 rolls, and Theorem 2 says nothing shorter lights its set, so each is a par.

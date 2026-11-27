@@ -8,7 +8,7 @@ Each persona hunts for one family of problems and leaves the others to the rest.
 
 - **The book:** the rendered chapters at `~/build/roc-apps/next/cube-book/*.html`, read in the table of contents' order. Read the HTML, not `book.md`: the Markdown's `{{function ...}}` directives are empty there, and the code the reader sees is only in the HTML.
 - **The playground:** `web/cube_help.html`. It says what the playground can do. A reviewer can't click it, so it notes where the reader would have needed to.
-- **The house style:** `book/TONE.md`, for the Editor alone.
+- **The house style:** `cube_book/TONE.md`, for the Editor alone.
 
 ## The report
 
@@ -50,5 +50,5 @@ A reader who wants the book to be a pleasure to read cover to cover.
 - **Pacing:** sections that drag, and sections that belong in an appendix (how the book is built, for instance).
 - **Length:** chapters that are too long for what they carry.
 - **Order:** places where the book makes the reader wait for the interesting part.
-- **House style:** every breach of `book/TONE.md`, such as bold labels, sentence fragments, guideposts or a presumed reaction.
+- **House style:** every breach of `cube_book/TONE.md`, such as bold labels, sentence fragments, guideposts, a presumed reaction, a result shown before what it looks for, or a procedure called "search".
 - **Proposals:** a cut or a merge for each, named by the sentences to cut.

@@ -63,7 +63,7 @@ settings = {
 	colorer: colored_code,
 	include_languages: Includes.default_languages.append({ extension: "c", language: "c" }).append({ extension: "py", language: "python" }),
 	look: { ..default_look, dividers: parts },
-	word_limit: 1000,
+	word_limit: 500,
 }
 
 ## The book's parts, each named above its first chapter in the contents. A
@@ -72,6 +72,7 @@ settings = {
 parts : List(Pages.Divider)
 parts = [
 	{ before: "Easy to check, hard to find", level: Part, title: "Part I: the cube" },
+	{ before: "Appendix: how the book is built", level: Part, title: "Appendix" },
 ]
 
 default_look : Pages.Look
