@@ -18,9 +18,9 @@ This list is the whole book in one line a chapter, the kind in italics:
 **Part I, the toy:**
 
 - {{chapter The machine}}: Steve's whole machine in one page. *Start here.*
-- {{chapter Roc is our lingua franca}}: which language does which job, and why Roc does most of them. *Tools and history.*
-- {{chapter Formal languages and machines}}: formal languages and Turing's machine in six rules. *A review.*
 - {{chapter Deciding in plain Python}}: every answer as a one-line Python lookup. *Tools and history.*
+- {{chapter The languages in this book}}: the languages studied, from Nibble to polynomials, and the languages used, Roc above all. *Tools and history.*
+- {{chapter Formal languages and machines}}: formal languages and Turing's machine in six rules. *A review.*
 - {{chapter Programs as formal languages}}: all 4,096 programs run, and the problem with one answer. *New results.*
 - {{chapter Which instructions are needed}}: one instruction is dead weight. *New results.*
 - {{chapter Nibble, the puzzle page}}: sixteen puzzles to play in the browser. *The machine shown another way.*
@@ -98,7 +98,7 @@ This list is the whole book in one line a chapter, the kind in italics:
 
 **The monstrosities.** This machine fits on an index card: one two-bit register, four instructions, six lines. Yet it keeps producing monsters, and we have numbered them proudly, like theorems. The question "does this program accept this input?", composed through six steps, becomes one polynomial of 510,387 characters (Monstrosity 5). Wiring the same machine as gates takes 1,439 equations (Monstrosity 1). Ask whether the 4-bit Nibble++ can decide is_not_14 in 27 lines, and the answer, that every 27-line program fails, comes backed by a proof of 17,192,870 bytes that our own checker replays line by line (Monstrosity 6), while the answer at 28 lines is a program of 56 bits that you check by running it. That gap is NP's in miniature: a yes has a short certificate, and the best known evidence the other way can be enormous. Skim the monsters, marvel, and move on: each one is the hidden complexity in simple things, and the front page lists all six.
 
-Steve wrote the first version by hand in Python, in [virtual-machine](https://github.com/showell/virtual-machine): the machine (`virtual_machine.py`), a general polynomial library (`poly.py`) and a stepper that writes one step of the machine as polynomials (`stepper.py`). The machine is Steve's invention; the code in this repository, written by AI coding agents (Claude) with human supervision, departs from the 2023 Python wherever a cleaner choice turned up, and its choices are this book's own. Each language has one role, which {{chapter Roc is our lingua franca}} sets out.
+Steve wrote the first version by hand in Python, in [virtual-machine](https://github.com/showell/virtual-machine): the machine (`virtual_machine.py`), a general polynomial library (`poly.py`) and a stepper that writes one step of the machine as polynomials (`stepper.py`). The machine is Steve's invention; the code in this repository, written by AI coding agents (Claude) with human supervision, departs from the 2023 Python wherever a cleaner choice turned up, and its choices are this book's own. Each language has one role, which {{chapter The languages in this book}} sets out.
 
 ### Why the name fits
 
@@ -213,21 +213,64 @@ decides {0, 2, 3}
 
 That's the whole machine. Every chapter after this is the same six lines, seen from somewhere new.
 
-## Roc is our lingua franca
+## Deciding in plain Python
 
-**Ordinary computation. Tools and history; it needs {{chapter The machine}}.** Here is which programming language does which job in this book, and why Roc does most of them.
+**Ordinary computation. Tools and history; it stands alone.** You will see that every question the toy answers is a one-line lookup in Python, and that is exactly why the machine is worth taking apart.
 
-Roc is our lingua franca in this book. This is not a book about type systems, but Roc's clear type annotations help us express mathematical concepts. It's also simply a good working language. It has the horsepower for computation and versatility to live in the browser. The Roc port composes all six steps of the machine into four polynomials and checks them at every point ({{chapter The Roc port}}), and the app that builds this book is Roc as well.
+A problem is four answers, one per input, so deciding one takes a line of ordinary code. The code here is `python/decides.py`, which `build.shale` runs on every build: it holds its two versions to each other on all 16 problems and all four inputs, and each one-line test below to its problem.
 
-Nibble and Nibble++ are Steve's toy languages. They are specifically designed to be small in scope. Nibble fits in your hand. Nibble++ pushes just past brute force. Both come to life in playgrounds that accompany the book, and the machine you click there is the same Roc code this book quotes, compiled to run in your browser. The pinned Roc builds each page's machine as a small wasm module, linked with a C host of 107 lines, `web/platform/host.c`, which holds the allocator. Try [Nibble's puzzles](https://roc.lynrummy.com/nibble/) and the [Nibble++ playground](https://roc.lynrummy.com/nibble/plus.html).
+### Two versions of `decides`
 
-Python is the programming language that inspired the book. We use Python mostly as a historical relic, but it remains an oracle to Roc and occasionally shines as a mainstream programming language whose syntax most programmers understand. Steve's 2023 Python, `virtual_machine.py`, `poly.py` and `stepper.py`, is where the machine and its polynomials began, and its report is still the golden file that the C and the Roc print byte for byte.
+A problem's *want* code has bit n set when input n is in it, so {0, 2, 3} is 1 + 4 + 8 = 13; {{chapter Programs as formal languages}} tables all 16 codes. The plain version lists the members and looks n up among them:
 
-C is our utility infielder. We use it for its raw speed and easy linkability. And when rocsat says no program exists, it's a small C program that checks the proof, so the book never has to take Roc's word for Roc's answers. That program is `src/drat.c`, the book's own DRAT checker, which replays each of rocsat's proofs lemma by lemma ({{chapter The solver's work, in full}}).
+{{lines python/decides.py from "def decides(want, n):" to "    return n in members"}}
+
+The golfed version reads bit n of `want` directly:
+
+{{lines python/decides.py from "decides_golfed =" to "decides_golfed ="}}
+
+### Some problems as one test
+
+Many of the 16 problems have a natural test of n, or of its two bits, `hb` and `lb` (n is 2·`hb` + `lb`):
+
+{{lines python/decides.py from "ONE_LINERS = {" to "hb XOR lb"}}
+
+{{chapter The problems, seen from outside}} lists all 16 this way, as Boolean expressions of the two bits.
+
+### What the machine adds
+
+The want code already says everything about a problem. The Nibble machine takes up to six lines to say the same thing, and for {0, 2, 3} it takes all six, in its one program. The composed polynomial of {{chapter Six steps composed}}, which runs every program on every input at once, takes 10,324 terms. The machine is there to be the thing analysed, a small checker that Cook and Levin's construction can turn into a formula; the question it answers is a lookup.
+
+## The languages in this book
+
+**Ordinary computation. Tools and history; it needs {{chapter The machine}}.** Here are the languages this book studies and the languages it is written in, with the job each one does.
+
+In this book you will see code from languages like Roc, Python, C, and JS. But these are the tools, not the subject, of this book. The subject is a different set of languages: the toy's own, the formal languages its programs decide, and the notations the machine is rewritten into, from formulas to polynomials.
+
+### The languages studied
+
+Nibble and Nibble++ are Steve's toy languages. They are specifically designed to be small in scope. Nibble fits in your hand. Nibble++ pushes just past brute force. Both come to life in playgrounds that accompany the book, and the machine you click there is the same Roc code this book quotes, compiled to run in your browser. Try [Nibble's puzzles](https://roc.lynrummy.com/nibble/) and the [Nibble++ playground](https://roc.lynrummy.com/nibble/plus.html).
+
+Each program decides a *formal language*, the set of inputs it accepts, and that is the sense in which a program "is" a formal language ({{chapter Formal languages and machines}}). Nibble's programs decide the 16 subsets of {0, 1, 2, 3}; Nibble++'s decide the 65,536 subsets of 0 to 15.
+
+Chapter by chapter, the machine is rewritten into four more languages:
+
+| language | what it says about the machine | where |
+|---|---|---|
+| Boolean formulas | every run as AND, OR and NOT of the program's and the input's bits | {{chapter One formula for the whole machine}} |
+| CNF clauses, in the DIMACS files rocsat reads | a puzzle as clauses whose solutions are exactly its programs | {{chapter Cook-Levin as SAT}} |
+| DRAT proofs | that every program of a given length fails a puzzle, lemma by lemma | {{chapter The solver's work, in full}} |
+| polynomials | the whole machine as integer arithmetic, 10,324 terms for `accepted` | {{chapter Arithmetization}} |
+
+### The languages used
+
+Roc is our lingua franca in this book. This is not a book about type systems, but Roc's clear type annotations help us express mathematical concepts. It's also simply a good working language. It has the horsepower for computation and versatility to live in the browser.
+
+Python is the programming language that inspired the book. We use Python mostly as a historical relic, but it remains an oracle to Roc and occasionally shines as a mainstream programming language whose syntax most programmers understand.
+
+C is our utility infielder. We use it for its raw speed and easy linkability. And when rocsat says no program exists, it's a small C program that checks the proof, so the book never has to take Roc's word for Roc's answers.
 
 Finally, JS does what JS does best. JS runs the skin of our toys. It also serves as a final oracle: the same machine, written in plain JavaScript, gives the same answers in the book's last chapter, and runs there on a compiler we happen to have written ourselves (in Roc!).
-
-Roc carries most of the load, and each of the other languages has one job it does best.
 
 ## Formal languages and machines
 
@@ -278,35 +321,7 @@ This machine only reads and moves right, so it is also a finite automaton; Turin
 
 The machine here is Turing's idea at its smallest. Its tape is one 2-bit register, its inputs are the four strings 0, 1, 2 and 3, and every run halts within six steps, so every question about it is decidable by trying everything. Its formal languages are the 16 subsets of {0, 1, 2, 3}, the problems of {{chapter The machine}}, which a program, a circuit and a SAT formula each decide alike. A program decides exactly one of them, the set of inputs it accepts.
 
-Here, deciding a formal language is the easy part: in plain Python, it takes one line.
-
-## Deciding in plain Python
-
-**Ordinary computation. Tools and history; it stands alone.** You will see that every question the toy answers is a one-line lookup in Python, and that is exactly why the machine is worth taking apart.
-
-A problem is four answers, one per input, so deciding one takes a line of ordinary code. The code here is `python/decides.py`, which `build.shale` runs on every build: it holds its two versions to each other on all 16 problems and all four inputs, and each one-line test below to its problem.
-
-### Two versions of `decides`
-
-A problem's *want* code has bit n set when input n is in it, as in the table of {{chapter Programs as formal languages}}: {0, 2, 3} is 1 + 4 + 8 = 13. The plain version lists the members and looks n up among them:
-
-{{lines python/decides.py from "def decides(want, n):" to "    return n in members"}}
-
-The golfed version reads bit n of `want` directly:
-
-{{lines python/decides.py from "decides_golfed =" to "decides_golfed ="}}
-
-### Some problems as one test
-
-Many of the 16 problems have a natural test of n, or of its two bits, `hb` and `lb` (n is 2·`hb` + `lb`):
-
-{{lines python/decides.py from "ONE_LINERS = {" to "hb XOR lb"}}
-
-{{chapter The problems, seen from outside}} lists all 16 this way, as Boolean expressions of the two bits.
-
-### What the machine adds
-
-The want code already says everything about a problem. The Nibble machine takes up to six lines to say the same thing, and for {0, 2, 3} it takes all six, in its one program. The composed polynomial of {{chapter Six steps composed}}, which runs every program on every input at once, takes 10,324 terms. The machine is there to be the thing analysed, a small checker that Cook and Levin's construction can turn into a formula; the question it answers is a lookup.
+Which program decides which of them is the next question, and running all 4,096 programs settles it.
 
 ## Programs as formal languages
 

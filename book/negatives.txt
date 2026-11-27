@@ -18,7 +18,7 @@
 # keep caution: warns of a real trap: "Never run `zig build` in the checkout the hook runs."
 # keep logic: the logical operator NOT, named as the gate or the operation it is.
 # keep quote: a person's own words, quoted as said, and attributed.
-# keep scope: the sentences that say what the riff, or the book, leaves out; for the introduction, "Roc is our lingua franca" and "What comes next" alone.
+# keep scope: the sentences that say what the riff, or the book, leaves out; for the introduction, "The languages in this book" and "What comes next" alone.
 #
 # Each line below is `kind: the sentence`, the sentence exactly as the lint
 # prints it, and its kind is a `keep` kind.
@@ -26,6 +26,7 @@
 quote: Steve asked the Roc Zulip, on 2026-11-26: "How do we prove that no 27-line Nibble++ programs can recognize the language is_not_14?" This chapter answers that question in full.
 quote: Steve's own view of `nada` and of the design, in his words: "nada is kinda not a real instruction under my machine.
 scope: This book doesn't answer that question.
+scope: But these are the tools, not the subject, of this book.
 scope: This is not a book about type systems, but Roc's clear type annotations help us express mathematical concepts.
 guarantee: And when rocsat says no program exists, it's a small C program that checks the proof, so the book never has to take Roc's word for Roc's answers.
 scope: It makes no claim about NP, and it reduces one machine's questions, never an arbitrary verifier's.
@@ -42,6 +43,7 @@ logic: It is (`in 0` AND NOT `s`) OR (`in 1` AND `s`), four gates.
 logic: The hold ANDs each of the line's two bits with NOT `halted`, so a halted machine selects 00, `nada`: its bits pass and its flags are 0.
 logic: The machine shown another way; it needs {{chapter The machine}}.** We show you the toy the way a chip sees it: one fixed bank of AND, OR and NOT gates, ticking once a line, that sees only bits.
 logic: 35 gates: 21 AND, 9 OR, 5 NOT
+logic: every run as AND, OR and NOT of the program's and the input's bits
 logic: 59 gates: 27 AND, 16 OR, 16 NOT
 logic: The machine shown another way; it needs {{chapter The program left unknown}}.** We turn logic into arithmetic, NOT as 1 − x and AND as a product, and add one identity, x² = x, so that one step of the machine becomes four small polynomials of the proper kind, the kind that composes.
 logic: A comparator is five gates: (`accepted` AND `want`) OR (NOT `accepted` AND NOT `want`).
