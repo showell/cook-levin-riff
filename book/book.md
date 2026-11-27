@@ -108,6 +108,8 @@ The Cook-Levin theorem says that satisfiability of Boolean formulas is NP-comple
 
 Each number here comes from the repository, a commit, a golden file or a program run, named where it is used. Code is quoted as it stands when the book is built. Under each theorem a "Run it" box gives the command that checks it, from the repository's root once `shale build.shale` has built the tests, and the line it prints; the book's build holds each line to its test file.
 
+So every claim in this book comes with a run that checks it, on a machine small enough to hold in your head.
+
 ## The machine
 
 **Ordinary computation. Start here; it stands alone.** Here you get Steve's whole machine in one page: four instructions, a two-bit register and a spec of 26 lines. Every later chapter is this machine seen from another side.
@@ -223,7 +225,9 @@ Python is the programming language that inspired the book. We use Python mostly 
 
 C is our utility infielder. We use it for its raw speed and easy linkability. And when rocsat says no program exists, it's a small C program that checks the proof, so the book never has to take Roc's word for Roc's answers. That program is `src/drat.c`, the book's own DRAT checker, which replays each of rocsat's proofs lemma by lemma ({{chapter The solver's work, in full}}).
 
-Finally, JS does what JS does best. JS runs the skin of our toys. It also serves as a final oracle: the same machine, written in plain JavaScript, gives the same answers in the book's last chapter, and runs there on a compiler we happen to have written ourselves (in Roc!). That program, `js/cook_levin.js`, prints the same report and composition byte for byte under node and as an x86-64 program from js-x86 ({{chapter What comes next}}).
+Finally, JS does what JS does best. JS runs the skin of our toys. It also serves as a final oracle: the same machine, written in plain JavaScript, gives the same answers in the book's last chapter, and runs there on a compiler we happen to have written ourselves (in Roc!).
+
+Roc carries most of the load, and each of the other languages has one job it does best.
 
 ## Formal languages and machines
 
@@ -272,7 +276,9 @@ This machine only reads and moves right, so it is also a finite automaton; Turin
 
 ### This book's machine
 
-The machine here is Turing's idea at its smallest. Its tape is one 2-bit register, its inputs are the four strings 0, 1, 2 and 3, and every run halts within six steps, so every question about it is decidable by trying everything. Its formal languages are the 16 subsets of {0, 1, 2, 3}, the problems of {{chapter The machine}}, which a program, a circuit and a SAT formula each decide alike. A program decides exactly one of them, the set of inputs it accepts. {{chapter Programs as formal languages}} asks which programs decide which problems, by running all of them. {{chapter P and NP}} asks what deciding costs when trying everything is out of reach, and {{chapter P, NP and Cook-Levin}} gives Cook and Levin's answer.
+The machine here is Turing's idea at its smallest. Its tape is one 2-bit register, its inputs are the four strings 0, 1, 2 and 3, and every run halts within six steps, so every question about it is decidable by trying everything. Its formal languages are the 16 subsets of {0, 1, 2, 3}, the problems of {{chapter The machine}}, which a program, a circuit and a SAT formula each decide alike. A program decides exactly one of them, the set of inputs it accepts.
+
+Here, deciding a formal language is the easy part: in plain Python, it takes one line.
 
 ## Deciding in plain Python
 
@@ -427,6 +433,8 @@ Input 0 is accepted on line 1. Input 1 drops to 0 on line 2 and is rejected by t
 ### The common ones
 
 The empty problem, { }, has 844 programs, since any program that rejects every input will do, and {0, 2} has 883: `mod2` then `zero` is two lines, and many longer programs reach the same verdicts.
+
+A problem may have 883 programs or only one, and the lone one, program 1689, guides the rest of the book.
 
 ## Which instructions are needed
 
@@ -599,7 +607,9 @@ Every formal language in P is in NP: its verifier ignores the certificate and de
 
 The definition is lopsided. A certificate shows membership, and NP asks for evidence of membership alone. For an unsatisfiable formula, short evidence of its unsatisfiability is, as far as anyone knows, out of reach in general. The DRAT proofs of {{chapter The solver's work, in full}} are evidence of exactly that kind, and they are short here because the toy is small; for some formulas, every proof of the kind a solver like rocsat writes is exponentially long.
 
-The N stands for *nondeterministic*: NP was first defined by machines that guess, and {{chapter P, NP and Cook-Levin}} takes up that view, the guess being the certificate.
+The N stands for *nondeterministic*: NP was first defined by machines that guess, the guess being the certificate.
+
+NP, then, is a promise about checking; how hard finding is stays the open question.
 
 ## Nibble, sized
 
@@ -654,7 +664,9 @@ the verifier runs P on 0 to 3: it decides {0, 2, 3}, so (P, W) is in DECIDES: ye
 a false certificate, 10 10 10 01 00 00 (program 2704): it decides {3}, so the verifier refuses it
 ```
 
-Finding the program is the costly part. Trying every program tries 4^k of them, exponential in k. For a fixed n, though, SOLVABLE is in P, trivially: the machine has finitely many states, so one search of them, as {{chapter Nibble++}}'s census does, gives every W its shortest length, and a table answers each (W, k). The open question is about n growing: whether SOLVABLE over every n is in P is a question this book leaves open. {{chapter Cook-Levin as SAT}} answers SOLVABLE's questions for the toy, n = 2 and k = 6, by Cook and Levin's route: the verifier becomes a formula, and a SAT solver finds the certificate.
+Finding the program is the costly part. Trying every program tries 4^k of them, exponential in k. For a fixed n, though, SOLVABLE is in P, trivially: the machine has finitely many states, so one search of them, as {{chapter Nibble++}}'s census does, gives every W its shortest length, and a table answers each (W, k). The open question is about n growing: whether SOLVABLE over every n is in P is a question this book leaves open.
+
+Given two sizes that grow, the toy has a formal language in NP whose certificate is a program, and complexity theory has something to measure.
 
 ## P, NP and Cook-Levin
 
@@ -674,7 +686,9 @@ Sipser calls the record of one branch's run, every state from the start to the v
 
 ### The toy as a checker
 
-The toy is such a checker. Given a problem and a program, it runs the program on four inputs and says whether the program decides the problem; the program is the certificate. The rest of the book takes that checker apart two ways. {{chapter The Boolean view}} through {{chapter The solver's work, in full}} take Cook and Levin's route: the checker as gates and a circuit, the run as a tableau, the tableau as clauses, and a SAT solver to find the certificates. {{chapter The program left unknown}} through {{chapter The delightful monstrosity}} then write its step as polynomials and compose all six, the riff's own route.
+The toy is such a checker. Given a problem and a program, it runs the program on four inputs and says whether the program decides the problem; the program is the certificate. The rest of the book takes that checker apart two ways: Cook and Levin's route, from gates to a tableau to clauses for a SAT solver ({{chapter The Boolean view}} on), and the riff's own, its step as polynomials composed six times ({{chapter The program left unknown}} on).
+
+Either way, the checker is the whole of it: twelve bits of certificate, four inputs and one verdict.
 
 ## The Boolean view
 
@@ -791,7 +805,14 @@ Wherever a form numbers its variables, v1 to v12 are the program's bits, line k'
 
 ### Why 174 gates become 146
 
-The formula graph counts every node, and 28 of its 174 are complements. Tseitin's encoding gives a variable only to an AND or an OR and writes a complement as a literal's minus sign, so f's CNF has 146 gate variables, v15 to v160, three clauses each, and one clause more for f = 1: 439.
+The formula graph counts every node. Tseitin's encoding gives a variable only to an AND or an OR and writes a complement as a literal's minus sign:
+
+| f's formula graph, as CNF | count |
+|---|---:|
+| nodes in the graph | 174 |
+| complements, each a literal's minus sign | 28 |
+| AND and OR gates, each a variable, v15 to v160 | 146 |
+| clauses: three a gate, and one for f = 1 | 439 |
 
 ### Why the two steppers differ
 
@@ -799,7 +820,16 @@ The mux circuit is hardware: it keeps `AX` as two bits, chooses each output with
 
 ### Why the whole is smaller than its parts
 
-Twenty-four steppers of 34 gates would be 816. The top row's constants fold many away, since each core starts with `AX` known and both flags 0, and a gate built once from the same two inputs is reused across cores, so a puzzle's formula has 404. The decider's 1,439 gates shrink the same way under `roc/Cnf.roc`: 392 complements become signs, 8 copies become names, and 586 of the 1,047 AND and OR gates fold against a constant, leaving 461.
+Twenty-four steppers of 34 gates would be 816. The top row's constants fold many away, since each core starts with `AX` known and both flags 0, and a gate built once from the same two inputs is reused across cores, so a puzzle's formula has 404. The decider's 1,439 gates shrink the same way under `roc/Cnf.roc`:
+
+| the decider's parts | count | under `roc/Cnf.roc` |
+|---|---:|---|
+| complements | 392 | each becomes a sign |
+| copies | 8 | each becomes a name |
+| AND and OR gates | 1,047 | 586 fold against a constant |
+| AND and OR gates left | 461 | each becomes a variable |
+
+Signs, folded constants and shared gates account for every gate that disappears.
 
 ## One formula for the whole machine
 
@@ -1548,7 +1578,9 @@ decides: 3,869 clauses
 decides by distribution equals the circuit at all 65,536 points
 ```
 
-`decides` comes to 3,869 clauses over the 16 inputs alone. Core 3's `accepted` multiplies by 3.4 to 3.8 with each of the last three lines, so the expansion grows exponentially in the steps; it stays small here because the machine has six lines and 16 inputs. Tseitin's encoding grows linearly instead, one stepper's gates a step. {{chapter Cook-Levin as SAT}} takes the same encoding with the program's bits left free, where the solver has to search.
+`decides` comes to 3,869 clauses over the 16 inputs alone. Core 3's `accepted` multiplies by 3.4 to 3.8 with each of the last three lines, so the expansion grows exponentially in the steps; it stays small here because the machine has six lines and 16 inputs. Tseitin's encoding grows linearly instead, one stepper's gates a step, and {{chapter Cook-Levin as SAT}} keeps it when the program's bits are left free and the solver has to search.
+
+Named, the decider is 1,400 clauses; multiplied out, it is 3,869, and the gap widens with every step.
 
 ## The Cook-Levin machine
 
@@ -1651,7 +1683,17 @@ A 1 or 0 is a wire whose value is fixed whatever the program, and `vN` is the fo
 | 5 | v9 v10 | 0 0 · v56 v55 | 0 v114 · v112 v111 | v240 v241 · v233 v232 | v385 v386 · v378 v377 |
 | 6 | v11 v12 | 0 0 · v66 v65 | 0 v127 · v125 v124 | v270 v271 · v263 v262 | v415 v416 · v408 v407 |
 
-Each variable here is a gate's output, and its three clauses tie it to the cell above and to its row's two program bits. Some cells are constants the whole way down, and the constants carry facts. Core 0 starts at `AX` = 0, and every opcode keeps 0 at 0 or halts, so its `AX` bits are the constant 0 in every row, and the encoder folds them away. Core 1 starts at 1, and its `hb` stays 0 because `AX` can only fall. Some literals repeat across cores: `v15` is core 0's `halted` after line 1 and core 2's `lb`, since both are the same function of `v1` and `v2`: line 1 is `decr`. The encoder builds that gate once and reuses it. Setting `v1` to `v12` to the program above and propagating fills every cell with the first table's values; the last four clauses then require the bottom row's `accepted` literals, `v65`, `v124`, `v262` and `v407`, to be 0, 1, 1 and 1.
+Each variable here is a gate's output, and its three clauses tie it to the cell above and to its row's two program bits. Some cells are constants the whole way down, and the constants carry facts. Core 0 starts at `AX` = 0, and every opcode keeps 0 at 0 or halts, so its `AX` bits are the constant 0 in every row, and the encoder folds them away. Core 1 starts at 1, and its `hb` stays 0 because `AX` can only fall. Some literals repeat across cores, and the encoder builds each such gate once. Setting `v1` to `v12` to program 2916 and propagating fills every cell with the first table's values. The literals worth a look:
+
+| literal | what it is | what the formula asks of it |
+|---|---|---|
+| `v15` | core 0's `halted` after line 1, and core 2's `lb`: both are 1 exactly when line 1 is `decr` | whatever line 1's bits make it |
+| `v65` | core 0's `accepted` after line 6 | 0 |
+| `v124` | core 1's `accepted` after line 6 | 1 |
+| `v262` | core 2's `accepted` after line 6 | 1 |
+| `v407` | core 3's `accepted` after line 6 | 1 |
+
+Seven rows, four columns and 416 variables: that is Cook's tableau at the toy's size.
 
 ## Cook-Levin as SAT
 
@@ -1796,7 +1838,16 @@ The formula says the same. `sat 13 len=5` is the full formula plus the unit clau
 `56 -66 0`: v56 = 1 (core 0's halted after line 5), or v66 = 0 (core 0's halted after line 6)
 ```
 
-The first two restate the length bound, and the next four decode line 6 as `nada`. v61 to v64 say which op core 0 runs on line 6, v56 being its `halted` after line 5: it runs `nada`. The last two say that core 0's flags after line 6 are those after line 5. {{chapter The solver's work, in full}} prints the whole proof, 286 lemmas, and checks it.
+Read in groups, v56 being core 0's `halted` after line 5:
+
+| lemmas | what they say |
+|---|---|
+| the first two, v11 and v12 | the length bound, restated |
+| the next four, v57 to v60 | line 6 is `nada` |
+| v61 to v64 | core 0 runs `nada` on line 6 |
+| the last two | core 0's flags after line 6 are those after line 5 |
+
+Each lemma is a plain statement about programs, and 286 of them, printed whole in {{chapter The solver's work, in full}}, rule out every program of five lines.
 
 ## The solver's work, in full
 
@@ -2427,7 +2478,9 @@ The census agrees. The last column is {zero, decr, mod2}, for contrast:
 | 16 | 987 | 987 | 1595 |
 | 17 | 1596 | 1597 | 2556 |
 
-With `mod2` the counts follow the Fibonacci numbers one place on, F(L + 1), from length 1 to 15, apart from length 4, which has 6 where F(5) is 5. At 16 the count is 1,595, two below F(17). `mod2` breaks the lockstep that Theorem 13 rests on, since it merges inputs, and {{chapter Shortest programs with mod2 and half}} counts these lengths another way, in Theorem 18.
+With `mod2` the counts follow the Fibonacci numbers one place on, F(L + 1), from length 1 to 15, apart from length 4, which has 6 where F(5) is 5. At 16 the count is 1,595, two below F(17). `mod2` breaks the lockstep that Theorem 13 rests on, since it merges inputs.
+
+So `zero` and `decr` alone count out the Fibonacci numbers, off by one only where the inputs end, and `mod2` moves them one place on; Theorem 18, in {{chapter Shortest programs with mod2 and half}}, says why.
 
 ## Shortest programs with mod2 and half
 
@@ -2523,6 +2576,8 @@ Three guesses failed on the census:
 A closed form for {zero, decr, half} like Theorem 17 is open, and so is the reason four opcodes beat three.
 
 Beyond 16 inputs each theorem here is a conjecture. With an n-bit `AX`, `src/theory_plus.c`'s tables grow to 2^(2^(n−1)) entries, exponential in SOLVABLE's 2^n + k input bits. If Theorems 15 and 16 hold at every width, the recursion on one formal language makes 2^O(n²) calls, quasi-polynomial in that length. Theorem 17's shapes, if they hold at every width, would decide SOLVABLE over {zero, decr, mod2} in polynomial time as n grows, and P against NP would still stand open.
+
+What is proved holds on all 65,536 formal languages: one recursion gives every shortest length the census found, under each of the four opcode sets.
 
 ## Nibble++ meets rocsat
 
@@ -2634,6 +2689,10 @@ rocsat answered UNSATISFIABLE in 17.0 s, and its DRAT proof of 17,192,870 bytes 
 
 The proof is trusted through its checker. `src/drat.c` is the book's own C, apart from rocsat's Roc. It checks each lemma of the proof again and accepts the proof only when every step derives, through to the empty clause.
 
+### The proof itself
+
+**Monstrosity 6: a 17 MB proof that 27 lines are too few.** rocsat's DRAT proof for is_not_14 at 27 lines is 17,192,870 bytes on 145,384 lines, 64,533 lemmas and 80,851 deletions over 18,365 variables and 54,949 clauses, all to show that every 27-line program for a machine with a 4-bit register gets one of 16 inputs wrong. Rerun while this chapter was written, it came out the very size `sat/plus/search.txt` records, and `src/drat.c` said `verified: 64533 lemmas (0 by RAT), 80851 deletions, over 18365 variables and 54949 clauses; the empty clause at line 145384`. It is too big for any page, so it stays a file: `sat/plus_search.shale` writes it under `out/sat/plus/` in about 17 seconds.
+
 *The frame switches here from SAT solving to ordinary computation.*
 
 ### The census's proof
@@ -2644,9 +2703,7 @@ The proof is trusted through its checker. `src/drat.c` is the book's own C, apar
 
 Both proofs replace the programs with a finite model of the machine, the circuit for rocsat and the graph of states for the census, and ask the question of the model once. The census lists every reachable state, 374,003 here. rocsat needs only the circuit, which grows with the program's length and the machine's width, so its method carries over to machines with more states than a list can hold.
 
-### The proof itself
-
-**Monstrosity 6: a 17 MB proof that 27 lines are too few.** rocsat's DRAT proof for is_not_14 at 27 lines is 17,192,870 bytes on 145,384 lines, 64,533 lemmas and 80,851 deletions over 18,365 variables and 54,949 clauses, all to show that every 27-line program for a machine with a 4-bit register gets one of 16 inputs wrong. Rerun while this chapter was written, it came out the very size `sat/plus/search.txt` records, and `src/drat.c` said `verified: 64533 lemmas (0 by RAT), 80851 deletions, over 18365 variables and 54949 clauses; the empty clause at line 145384`. It is too big for any page, so it stays a file: `sat/plus_search.shale` writes it under `out/sat/plus/` in about 17 seconds.
+So is_not_14 needs 28 lines, proved two ways: by a 17 MB refutation our own checker replays, and by a census of 374,003 states.
 
 ## Guided search
 
@@ -2806,7 +2863,21 @@ The Go port lives in a repository of its own, outside this record. By Steve's ac
 
 ### The finish, 2026-11-25
 
-The cook-levin-riff log opens on 2026-11-25 with the C port of the machine and the search, stamped 15:32 (`8051ce2`), then the general polynomial (`ccde4f8`) and the stepper (`5b14d74`). The Boolean ring, where x² = x, came at 15:59 (`0c233e3`), reached for to make the calculation tractable, and all six steps composed, proved on all 2^14 points, at 16:23 (`1146d43`). The Nibble page (`b1fe11f`), the Roc port (`6206236`), the SAT encoding (`8de51b7`) and rocsat as an oracle (`f977bcc`) followed the same day.
+The cook-levin-riff log opens on 2026-11-25. The Boolean ring was reached for to make the calculation tractable:
+
+| 2026-11-25 | what landed | commit |
+|---|---|---|
+| 15:32 | the C port of the machine and the search | `8051ce2` |
+| then | the general polynomial | `ccde4f8` |
+| then | the stepper | `5b14d74` |
+| 15:59 | the Boolean ring, where x² = x | `0c233e3` |
+| 16:23 | all six steps composed, proved on all 2^14 points | `1146d43` |
+| later that day | the Nibble page | `b1fe11f` |
+| later that day | the Roc port | `6206236` |
+| later that day | the SAT encoding | `8de51b7` |
+| later that day | rocsat as an oracle | `f977bcc` |
+
+Fifty-one minutes after the C port's first commit, the composition Steve had stopped short of in 2023 was done.
 
 ## What the toy taught us
 
