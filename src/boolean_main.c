@@ -2,11 +2,11 @@
 //
 //   boolean_main
 //
-// Four blocks, each checked before it is printed: the 16 problems, each
+// Four blocks, each checked before it is printed: the 16 formal languages, each
 // with its Boolean expression of AX's two bits, hb and lb, held to a program
-// that decides it; for each problem, how many programs decide it and how
+// that decides it; for each formal language, how many programs decide it and how
 // many products its sum of products over v1 to v12 takes; and the sums of
-// products of the two problems in SHOWN, each held to the machine's
+// products of the two formal languages in SHOWN, each held to the machine's
 // programs exactly, {0, 2, 3}'s titled as a "1689, here" box, since its
 // one product is program 1689. Before them it holds src/decides.c's step expressions
 // to src/stepper.c's step on all 64 settings, since the sums of products
@@ -21,7 +21,7 @@
 #include "boolean.c"
 #include "decides.c"
 
-// The problems whose sums of products the book prints, by code.
+// The formal languages whose sums of products the book prints, by code.
 static const int SHOWN[] = {13, 9};
 
 static void print_language(int code) {
@@ -48,7 +48,7 @@ static Program a_program_deciding(int code) {
 }
 
 int main(void) {
-    printf("| code | problem | as hb and lb |\n");
+    printf("| code | formal language | as hb and lb |\n");
     printf("|---|---|---|\n");
     for (int code = 0; code < NUM_LANGUAGES; code++) {
         const char *text = LANGUAGE_EXPRESSIONS[code];
@@ -83,7 +83,7 @@ int main(void) {
     }
     static unsigned char is_true[NUM_LANGUAGES][POINTS];
     static Cover covers[NUM_LANGUAGES];
-    printf("\n| code | problem | programs | products |\n");
+    printf("\n| code | formal language | programs | products |\n");
     printf("|---|---|---|---|\n");
     int all = 0;
     for (int code = 0; code < NUM_LANGUAGES; code++) {

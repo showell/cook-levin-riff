@@ -1,4 +1,4 @@
-// sat.c: a problem as a SAT formula (sat.h).
+// sat.c: a formal language's decision problem as a SAT formula (sat.h).
 
 #include "sat.h"
 
@@ -292,7 +292,7 @@ static void write_lit(FILE *f, Lit x) {
 
 int sat_write_dimacs(FILE *f, const Cnf *c, const SatPuzzle *p) {
     Lang lang = language((uint32_t)p->lang);
-    fprintf(f, "c problem: accept exactly {");
+    fprintf(f, "c formal language: accept exactly {");
     for (size_t k = 0; k < lang.len; k++) fprintf(f, "%s%d", k ? ", " : "", lang.items[k]);
     fprintf(f, "} (code %d), lines past %d nada, fixed lines mask %d of program %u\n", p->lang, p->max_len,
             p->fixed, p->fixed_ops);

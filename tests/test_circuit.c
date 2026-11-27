@@ -215,7 +215,7 @@ TEST(a_core_is_the_machine_on_all_16384_runs_step_by_step) {
     }
 }
 
-TEST(the_decider_says_which_problem_each_program_decides) {
+TEST(the_decider_says_which_formal_language_each_program_decides) {
     circuit_decides(&NET);
     GateCount all = net_count(&NET, "");
     EXPECT_EQ(all.nots + all.ands + all.ors, 4 * 6 * 59 + 4 * 5 + 3);
@@ -239,4 +239,4 @@ TEST_MAIN(TEST_CASE(each_machine_is_its_opcode_on_every_value), TEST_CASE(a_mux2
           TEST_CASE(a_mux4_passes_the_input_its_selects_name), TEST_CASE(the_hold_makes_a_halted_machine_nada),
           TEST_CASE(a_latch_stays_on), TEST_CASE(the_stepper_is_sat_step_on_all_64_settings),
           TEST_CASE(the_stepper_has_59_gates), TEST_CASE(a_core_is_the_machine_on_all_16384_runs_step_by_step),
-          TEST_CASE(the_decider_says_which_problem_each_program_decides))
+          TEST_CASE(the_decider_says_which_formal_language_each_program_decides))

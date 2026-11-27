@@ -209,7 +209,7 @@ served from any folder.
 
 Beside the puzzles, `web/sandbox.html` is the same machine with no puzzle:
 six free lines, all `nada` to start, the trace, the op tips and the machine
-code, and in place of a verdict the problem the program decides, its
+code, and in place of a verdict the formal language the program decides, its
 accepted set and its name in the puzzle table (program #1689 decides
 `is_not_one`, {0, 2, 3}). A program number from 0 to 4095, typed in, loads
 that program. The two pages link to each other and share `web/machine.js`
@@ -419,7 +419,7 @@ that `roc/roc-version` pins (0.1.0_RC1, at `~/tools/roc-0.1.0_RC1/roc`).
 - `Cnf.roc` and the app `ClaimCnf.roc`: Boolean expressions, a parser for
   `circuit_main equations`, Tseitin's encoding (a fresh variable per AND and
   OR, three clauses each, constants folded) and a DIMACS writer; the app
-  writes "program P decides problem W" as a CNF for `sat/claims.shale`.
+  writes "program P decides the formal language W" as a CNF for `sat/claims.shale`.
   Its expects hold the whole decider's CNF at 477 variables and 1,400
   clauses, read from `roc/golden/equations.txt`, which `build.shale` holds to
   `circuit_main equations`. `python/distribute.py` expands the same

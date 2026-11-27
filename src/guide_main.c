@@ -99,7 +99,7 @@ static void run_box(void) {
 }
 
 // The sandbox's two lines for the program, as web/page_check.mjs reads them
-// off the page: the machine code, the number and the problem's name and set,
+// off the page: the machine code, the number and the formal language's name and set,
 // then each input's result.
 static void sandbox_box(void) {
     printf("```text 1689, here: the sandbox, with 1689 typed in\n");
@@ -418,7 +418,7 @@ static void sat_box(void) {
 
 int main(void) {
     if (book_number(GUIDE) != GUIDE_NUMBER) stop("the program is not program 1689");
-    if (encoded_language(get_language_that_program_accepts(guide())) != GUIDE_LANGUAGE) stop("program 1689 decides another problem");
+    if (encoded_language(get_language_that_program_accepts(guide())) != GUIDE_LANGUAGE) stop("program 1689 decides another formal language");
     run_box();
     sandbox_box();
     gates_box();

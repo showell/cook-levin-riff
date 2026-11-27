@@ -17,7 +17,7 @@
 --     each deletion applied, step by step.
 --   - Symmetry breaking on the toy: the clauses "a nada line is followed
 --     by nada", and a count over all 4,096 programs of those they keep and
---     of the problems those programs still decide.
+--     of the formal languages those programs still decide.
 --
 -- It writes the files above, then prints the blocks, a blank line between
 -- them. The book's build runs it and src/drat.c on its proofs. From the
@@ -298,7 +298,7 @@ function symmetry_block()
   end
   if join(for_13, ",") ~= "1689" then fail("walkthrough: {0, 2, 3} keeps " .. join(for_13, ",") .. ", where 1689 alone was expected") end
   push(said, "the 10 clauses for lines 1 to 6 keep " .. kept .. " of the 4096 programs")
-  push(said, "problems decided: " .. count(all_problems) .. " by all 4096, " .. count(kept_problems) .. " by the " .. kept .. " kept")
+  push(said, "formal languages decided: " .. count(all_problems) .. " by all 4096, " .. count(kept_problems) .. " by the " .. kept .. " kept")
   push(said, "{0, 2, 3} keeps its one program, 1689")
   return said
 end

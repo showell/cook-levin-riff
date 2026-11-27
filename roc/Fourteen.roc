@@ -34,7 +34,7 @@ Fourteen :: [].{
 		places.fold(Going(input), |run, place| Fourteen.step(run, (program // place) % 4)) == Accepted
 	}
 
-	## The problem a program decides: the inputs f accepts.
+	## The formal language a program decides: the inputs f accepts.
 	decided : U64 -> List(U64)
 	decided = |program| [0, 1, 2, 3].keep_if(|input| Fourteen.f(program * 4 + input))
 }

@@ -1,5 +1,5 @@
 -- sat/claims.shale: rocsat on claims about the whole decider. Each claim is
--- "program P decides problem W": the decider's equations, as circuit_main
+-- "program P decides the formal language W": the decider's equations, as circuit_main
 -- prints them, turned into CNF by the Roc app roc/ClaimCnf.roc (Tseitin's
 -- encoding, roc/Cnf.roc), with unit clauses fixing the 16 inputs and asking
 -- decides = 1. With every input fixed, unit propagation settles every gate,
@@ -31,7 +31,7 @@ const WANT_ROC = "claims: the Roc port's pinned compiler"
 const WANT_RAN = "claims: circuit_main and claim-cnf, just built by this script"
 const WANT_ROCSAT = "claims: rocsat, built in build:rocsat from its pinned nightly"
 
--- A problem's set of inputs, `{0, 2, 3}`, from its code.
+-- A formal language's set of inputs, `{0, 2, 3}`, from its code.
 function set_text(problem)
   local members = {}
   local places = {1, 2, 4, 8}
