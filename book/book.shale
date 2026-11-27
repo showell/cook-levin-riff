@@ -573,8 +573,12 @@ end
 -- quotes the checker's line for the small proof.
 function check_walkthrough()
   local r = must(run({"shale", "sat/walkthrough.shale"}, {timeout_ms = 60000, whole = 20000}))
+  local kept = {}
+  for l in lines(r.out) do
+    if not starts_with(l, "── ") then push(kept, l) end
+  end
   local blocks = {}
-  for b in split(trim(r.out), "\n\n") do
+  for b in split(trim(join(kept, "\n")), "\n\n") do
     if starts_with(b, "```") then push(blocks, b) end
   end
   if #blocks ~= WALKTHROUGH_BLOCKS then fail("book: sat/walkthrough.shale printed " .. #blocks .. " blocks, not " .. WALKTHROUGH_BLOCKS) end
