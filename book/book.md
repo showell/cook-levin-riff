@@ -2016,8 +2016,6 @@ Each lemma is a plain statement about programs, and 286 of them, printed whole i
 
 **SAT solving. Big output to skim; it needs {{chapter Cook-Levin as SAT}}.** Here is one puzzle as rocsat saw it, whole: the formula of {0, 2, 3} and rocsat's answer, with all 15 proofs of impossibility measured and checked at every build; the appendix prints two of those proofs line by line.
 
-Earlier chapters showed excerpts; this one shows one puzzle's whole formula and whole answer.
-
 ### Where the files come from
 
 The formulas come from the repository's C: `book/book.shale` builds `src/sat_main.c` at each build of the book and writes them to `book/build/sat/`. rocsat's answers and proofs are data files in `sat/proofs/`, which `sat/oracle.shale` writes on every run (`19bff9e`). Two runs of the oracle on 2026-11-25 wrote the same bytes, so rocsat's search is deterministic, and the book builds from the committed files alone. Before it shows them, the build checks each one again: every proof with the repository's DRAT checker, `src/drat.c`, against the formula it has just written, and every answer against its formula's clauses and, as a program, on the machine.
@@ -2064,7 +2062,7 @@ The second is rocsat's answer, its statistics line, its verdict and a value for 
 
 So the two boxes below and the two proofs in the appendix hold 1,216 clauses, 416 values and 776 lemmas to settle three facts that each fit in a sentence: program 1689 solves {0, 2, 3}, every program of five lines fails it, and every program of four lines fails {2, 3}.
 
-**Monstrosity 4: one puzzle as 1,216 clauses.** The CNF of {0, 2, 3}, 15,994 bytes on 1,243 lines, written by `src/sat_main.c` at the book's build: 416 variables, to ask which of 4,096 six-line programs solves one puzzle with four inputs. Skim it and rocsat's answer after it, glance at the first 12 values of the answer, and move on.
+**Monstrosity 4: one puzzle as 1,216 clauses.** The CNF of {0, 2, 3}, 15,994 bytes on 1,243 lines, written by `src/sat_main.c` at the book's build: 416 variables, to ask which of 4,096 six-line programs solves one puzzle with four inputs. Skim it and rocsat's answer after it, and move on.
 
 ### The formula of {0, 2, 3}
 
@@ -2950,13 +2948,13 @@ digraph {
 
 ### Why so many
 
-Each pair shares only the machine's rule. The interpreter branches on opcodes, the stepper evaluates polynomials, the composition substitutes them, the SAT encoding propagates clauses, and rocsat searches, so a bug would have to land the same way five times to pass.
+Each pair shares only the machine's rule. The interpreter branches on opcodes, the stepper evaluates polynomials, the composition substitutes them, the SAT encoding propagates clauses, and rocsat searches: five methods, one rule.
 
 ## The Roc port
 
 **Ordinary computation. Tools and history; it needs {{chapter Arithmetization}}.** We show the mathematics written so that it reads like mathematics, and how a race against it made the C four times faster.
 
-`roc/` is the same machine and the same mathematics in Roc, at the compiler that `roc/roc-version` pins (`6206236`). Its point is that the mathematics reads like mathematics.
+`roc/` is the same machine and the same mathematics in Roc, at the compiler that `roc/roc-version` pins (`6206236`).
 
 **1689, here**, as an expect of `roc/Fourteen.roc`, which `roc/check.shale` runs:
 
@@ -2978,7 +2976,7 @@ The proof wants each final polynomial's value at all 16,384 points. `values` get
 
 {{function roc/BoolPoly.roc values}}
 
-### The speed, honestly
+### The speed of the Roc and the C
 
 The Roc port's release build once composed all six steps and ran the proof in about 30 ms, where the C's `compose_main` at -O2, which only composes, took about 260 ms. The gap was in the C's data structures, and the programming language had little to do with it:
 
@@ -3072,7 +3070,7 @@ A few questions stand open:
 - **SOLVABLE as the machine grows.** For each fixed width it is in P; whether it stays in P as the width grows is open ({{chapter Nibble, sized}}).
 - **Nondeterminism.** The machine is deterministic. The SAT encoding already treats the program as the unknown, which is the theorem's "a certificate exists"; a machine with choice instructions would make the riff closer to the theorem.
 
-You can use any mainstream programming language to study the toy languages. `js/cook_levin.js` is the machine, the search and the six-step composition in plain JavaScript, and it prints the same report and composition byte for byte under node, and also as an x86-64 program compiled by js-x86, a compiler we wrote ourselves, in Roc, in [roc-js-interpreter](https://github.com/showell/roc-js-interpreter).
+You can use any mainstream programming language to study the toy programming languages. `js/cook_levin.js` is the machine, the search and the six-step composition in plain JavaScript, and it prints the same report and composition byte for byte under node, and also as an x86-64 program compiled by js-x86, a compiler we wrote ourselves, in Roc, in [roc-js-interpreter](https://github.com/showell/roc-js-interpreter).
 
 ### Ways we could make the solver's work lighter
 
