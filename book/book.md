@@ -164,7 +164,7 @@ Every behaviour of the machine is in those 26 lines. The rest of this part only 
 - **`decr`** takes 1 from `AX`, and rejects when `AX` is already 0.
 - **`mod2`** takes 2 from `AX` when it is 2 or 3, leaving its last bit.
 
-A run that reaches the end of its six instructions rejects. So a program accepts some of the four inputs and rejects the rest, and the set it accepts is the problem it decides. Complexity theory calls such a set a *formal language* or a *decision problem*; this book calls each of the 16 subsets of {0, 1, 2, 3} a *problem*.
+A run that reaches the end of its six instructions rejects. So a program accepts some of the four inputs and rejects the rest, and the set it accepts is the *formal language* it decides, one of the 16 subsets of {0, 1, 2, 3}. {{chapter Formal languages and machines}} defines the term.
 
 ### One program, input by input
 
@@ -326,7 +326,7 @@ In this book you will see code in programming languages like Roc, Python, C and 
 
 Nibble and Nibble++ are Steve's toy programming languages, designed to be small. Nibble fits in your hand, and Nibble++ reaches just past what brute force can list. Both come to life in playgrounds that accompany the book, and the machine you click there is the same Roc code this book quotes, compiled to run in your browser. Try [Nibble's puzzles](https://roc.lynrummy.com/nibble/) and the [Nibble++ playground](https://roc.lynrummy.com/nibble/plus.html).
 
-Each program decides a *formal language*, the set of inputs it accepts, and that is the sense in which a program "is" a formal language ({{chapter Formal languages and machines}}). Nibble's programs decide the 16 subsets of {0, 1, 2, 3}; Nibble++'s decide the 65,536 subsets of 0 to 15.
+Each program decides a *formal language*, the set of inputs it accepts, and that is the sense in which a program "is" a formal language ({{chapter Formal languages and machines}}). Nibble has 16 formal languages, the subsets of {0, 1, 2, 3}, and Nibble++ has 65,536, the subsets of 0 to 15.
 
 Chapter by chapter, the machine is rewritten into four notations:
 
@@ -355,11 +355,11 @@ In computer science a *formal language* is a set of strings. The book spends two
 
 ### Machines that decide
 
-A machine *decides* a formal language when, given any string, it halts, accepting the strings in the language and rejecting the rest. A program that decides the primes is a primality test; a compiler's parser decides the formal language of well-formed programs, and rejects the rest with an error.
+A machine *decides* a formal language when, given any string, it halts, accepting the strings in the formal language and rejecting the rest. A program that decides the primes is a primality test; a compiler's parser decides the formal language of well-formed programs, and rejects the rest with an error.
 
 ### Turing's machine
 
-In 1936 Alan Turing described a machine with a finite set of states and an unbounded tape, in "On Computable Numbers, with an Application to the Entscheidungsproblem" (*Proceedings of the London Mathematical Society*, series 2, volume 42; a [free scan](https://www.cs.virginia.edu/~robins/Turing_Paper_1936.pdf)). It reads and writes the tape one cell at a time, and every algorithm anyone has written since can be carried out by such a machine; that claim is the Church-Turing thesis. Turing also showed that some formal languages are undecidable: whatever machine one builds for them, some string defeats it. The best known is the halting problem, the formal language of programs that halt on their input. A machine can *recognize* it, accepting every member by running it, but for some strings outside the language it runs forever, still waiting to answer.
+In 1936 Alan Turing described a machine with a finite set of states and an unbounded tape, in "On Computable Numbers, with an Application to the Entscheidungsproblem" (*Proceedings of the London Mathematical Society*, series 2, volume 42; a [free scan](https://www.cs.virginia.edu/~robins/Turing_Paper_1936.pdf)). It reads and writes the tape one cell at a time, and every algorithm anyone has written since can be carried out by such a machine; that claim is the Church-Turing thesis. Turing also showed that some formal languages are undecidable: whatever machine one builds for them, some string defeats it. The best known is the halting problem, the formal language of programs that halt on their input. A machine can *recognize* it, accepting every member by running it, but for some strings outside the formal language it runs forever, still waiting to answer.
 
 ### A simple example
 
@@ -394,9 +394,24 @@ This machine only reads and moves right, so it is also a finite automaton; Turin
 
 ### This book's machine
 
-The machine here is Turing's idea at its smallest. Its tape is one 2-bit register, its inputs are the four strings 0, 1, 2 and 3, and every run halts within six steps, so every question about it is decidable by trying everything. Its formal languages are the 16 subsets of {0, 1, 2, 3}, the problems of {{chapter The machine}}, which a program, a circuit and a SAT formula each decide alike. A program decides exactly one of them, the set of inputs it accepts.
+The machine here is Turing's idea at its smallest. Its tape is one 2-bit register, its inputs are the four values 0, 1, 2 and 3, and every run halts within six steps, so every question about it is decidable by trying everything.
 
-Which program decides which of them is the next question, and running all 4,096 programs settles it.
+### Formal languages, in this book
+
+A formal language is one set of inputs: {0, 2, 3} is a formal language. The collection of all 16 subsets of {0, 1, 2, 3} is a different thing, the family of every formal language Nibble could decide. Each formal language L gives exactly one decision problem, "given an input x, is x in L?", and when this book speaks of the problem a formal language poses, it means that decision problem.
+
+| Term | In Nibble | In Nibble++ |
+|---|---|---|
+| input | one of 0, 1, 2, 3 (one 2-bit value; strictly, a one-symbol string) | 0 to 15 |
+| formal language | a set of inputs, e.g. {0, 2, 3} | a subset of 0 to 15 |
+| how many | 2^4 = 16 | 2^16 = 65,536 |
+| the decision problem of L | "given x, is x in L?" | the same |
+| a program decides L | it accepts every input in L and rejects every other | the same |
+| example | program 1689 decides {0, 2, 3} | the 28-line program decides is_not_14, every input but 14 |
+
+The textbook's formal language, from the top of this chapter, is a set of strings over an alphabet, of any length; ours are the special case of one-symbol strings, and {{chapter Nibble, sized}} grows the inputs.
+
+A program decides exactly one formal language, the set of inputs it accepts, and a circuit and a SAT formula decide it alike. Which program decides which is the next question, and running all 4,096 programs settles it.
 
 ## Programs as formal languages
 
