@@ -18,7 +18,10 @@
 //   sets). At 1366 x 650 it sees three panes side by side and nothing
 //   scroll, and the canvas draw the cube with its painted face up; plays
 //   the "b2 alone" sample to its end and reads par 8, yours 8 and b2 lit,
-//   with lit tiles on the canvas; steps forward and back and resets; types
+//   the lit set 32 in decimal and binary, with lit tiles on the canvas;
+//   holds the page's ten questions, and the help's table of them, to
+//   QUESTIONS below, their pars to the table, and chooses is_mult_of_5 and
+//   answers it with the diagonal sample; steps forward and back and resets; types
 //   programs (one with a letter that is not a roll, one that halts, one
 //   longer than L, refused); rolls by the arrow keys, the button lighting,
 //   north from a1 halting the machine; rolls by clicking the tiles next to
@@ -26,7 +29,7 @@
 //   nothing; plays the halt sample to its halt; refuses a roll past L; sees
 //   three panes and no scroll at 1920 x 700 too; at a phone's width one
 //   column, nothing sideways and nothing stored; and the help page, its L
-//   the census's. It saves screenshots to <screenshot.png> (1366 x 650),
+//   the census's, its tile numbering and its questions. It saves screenshots to <screenshot.png> (1366 x 650),
 //   and beside it `-rolling` (mid-roll), `-halt`, `-wide` (1920 x 700) and
 //   `-phone`.
 //
@@ -113,6 +116,26 @@ const decided = census.match(/decided within L: (\d+) of 65536/);
 const L = lLine ? Number(lLine[1]) : NaN;
 expect(lLine && instance.exports.max_length(0) === L, `the wasm's max_length() is ${instance.exports.max_length(0)}, the census's L ${lLine?.[1]}`);
 expect(decided && Number(decided[1]) === table.filter((b) => b <= L).length, `the census decides ${decided?.[1]} sets within L, the table ${table.filter((b) => b <= L).length}`);
+
+// The page's questions: each name, the tiles it wants, its number and its
+// par, held here so that a change to a rule or to the census shows.
+const QUESTIONS = [
+  ["is_even", [0, 2, 4, 6, 8, 10, 12, 14], 21845, 24],
+  ["is_odd", [1, 3, 5, 7, 9, 11, 13, 15], 43690, 26],
+  ["is_small", [0, 1, 2, 3, 4, 5, 6, 7], 255, 23],
+  ["is_small_even", [0, 2, 4, 6], 85, 12],
+  ["is_mult_of_4", [0, 4, 8, 12], 4369, 12],
+  ["is_mult_of_5", [0, 5, 10, 15], 33825, 18],
+  ["is_square", [0, 1, 4, 9], 531, 13],
+  ["is_prime", [2, 3, 5, 7, 11, 13], 10412, 20],
+  ["is_fib", [1, 2, 3, 5, 8, 13], 8494, 20],
+  ["is_not_14", [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15], 49151, 44],
+];
+for (const [name, tiles, number, par] of QUESTIONS) {
+  expect(tiles.reduce((s, n) => s + 2 ** n, 0) === number, `${name}'s tiles ${tiles} make ${tiles.reduce((s, n) => s + 2 ** n, 0)}, not ${number}`);
+  expect(table[number] === par, `${name}, ${number}, has par ${table[number]} in the census, not ${par}`);
+}
+const questionRows = QUESTIONS.map(([name, , number, par]) => `${name} ${number} ${par}`).join("; ");
 
 // ── the page in Chromium ──────────────────────────────────────────────
 const TYPES = { ".html": "text/html", ".css": "text/css", ".js": "text/javascript", ".wasm": "application/wasm", ".json": "application/json" };
@@ -234,7 +257,8 @@ const pixels = () => evaluate(`(() => {
   }
   return { ivory, paint, amber };
 })()`);
-const litCells = () => evaluate(`Array.from(document.querySelectorAll("#lit-map div")).map((d, i) => d.classList.contains("lit") ? d.title : null).filter(Boolean).join(",")`);
+const litCells = () => evaluate(`Array.from(document.querySelectorAll("#lit-map div")).map((d, i) => d.classList.contains("lit") ? d.dataset.name : null).filter(Boolean).join(",")`);
+const number = async () => `${await text("decimal")} ${await text("binary")}`;
 async function screenshot(file) {
   await evaluate("window.scrollTo(0, 0)");
   const { data } = await page("Page.captureScreenshot", { format: "png", captureBeyondViewport: true });
@@ -281,20 +305,38 @@ try {
   const start = await pixels();
   expect(start.ivory > 500 && start.paint > 300 && start.amber === 0, `the start's canvas: ${JSON.stringify(start)} (the cube's ivory sides, its paint up, nothing lit)`);
   expect((await text("par")) === "par 0; yours is 0" && (await text("length")) === `0 of ${L} rolls`, `the start's readout: ${await text("par")} / ${await text("length")}`);
+  expect((await number()) === "0 0000 0000 0000 0000", `the start's number: ${await number()}`);
+  expect((await evaluate("document.querySelector('label[for=program]').textContent")).includes("RollScript"), "the program's label does not name RollScript");
+  expect((await evaluate("Array.from(document.querySelectorAll('#lit-map div')).map((d) => d.textContent + d.dataset.name).join(' ')")) ===
+    Array.from({ length: 16 }, (_, n) => `${n}${"abcd"[n % 4]}${Math.floor(n / 4) + 1}`).join(" "), "the lit map's tiles are not numbered 0 to 15 row by row, a1 first");
+  const shownQuestions = await evaluate("Array.from(document.querySelectorAll('#questions button')).map((b) => `${b.dataset.question} ${b.dataset.target} ${b.dataset.par}`).join('; ')");
+  expect(shownQuestions === questionRows, `the page's questions are ${shownQuestions}, not ${questionRows}`);
 
   await click('#samples button[data-program="ESENSNWS"]');
   expect(await settled(8), "the b2 sample did not play to its 8th frame");
   expect((await text("par")) === "par 8; yours is 8", `b2 alone's readout: ${await text("par")}`);
   expect((await litCells()) === "b2", `b2 alone lights ${await litCells()}`);
   expect((await text("length")) === `8 of ${L} rolls`, `b2 alone's length: ${await text("length")}`);
-  // b2's tile is under the cube, which ends on it; the diagonal's three
-  // other lit tiles show.
+  expect((await number()) === "32 0000 0000 0010 0000", `b2 alone's number: ${await number()}`);
+  expect((await text("answers")) === "" && (await text("question")) === "", `b2 alone answers ${await text("answers")} / ${await text("question")}`);
+  // A question chosen: its four tiles ringed on the map, then answered by
+  // the diagonal. b2's tile is under the cube, which ends on it; the
+  // diagonal's three other lit tiles show.
+  await click('#questions button[data-question="is_mult_of_5"]');
+  expect((await text("question")).startsWith("The question is_mult_of_5: light n % 5 == 0, the set 33825, in par 18") &&
+    (await evaluate("document.querySelectorAll('#lit-map div.want').length")) === 4, `is_mult_of_5 chosen: ${await text("question")}`);
   await click('#samples button[data-program="ESSENNWWESESESNNWW"]');
   expect(await settled(18), "the diagonal sample did not play to its end");
   expect((await text("par")) === "par 18; yours is 18" && (await litCells()) === "a1,b2,c3,d4", `the diagonal: ${await text("par")}, lit ${await litCells()}`);
+  expect((await number()) === "33825 1000 0100 0010 0001", `the diagonal's number: ${await number()}`);
+  expect((await text("answers")) === "It answers is_mult_of_5: n % 5 == 0." && (await text("question")) === "Answered is_mult_of_5 in 18 rolls; its par is 18." &&
+    (await evaluate("document.querySelector('#questions button[data-question=is_mult_of_5]').classList.contains('answered')")),
+    `the diagonal: ${await text("answers")} / ${await text("question")}`);
   const diagonal = await pixels();
   expect(diagonal.amber > 600, `after the diagonal the canvas shows ${diagonal.amber} lit pixels`);
   await screenshot(shotFile);
+  await click('#questions button[data-question="is_mult_of_5"]');
+  expect((await text("question")) === "" && (await evaluate("document.querySelectorAll('#lit-map div.want').length")) === 0, `is_mult_of_5 let go: ${await text("question")}`);
   await click('#samples button[data-program="ESENSNWS"]');
   expect(await settled(8), "the b2 sample did not play to its 8th frame again");
 
@@ -409,6 +451,11 @@ try {
   expect((await evaluate("document.title")) === "Rolling cube help", `the help page's title is ${await evaluate("document.title")}`);
   expect((await text("max-length")) === String(L), `the help page says L is ${await text("max-length")}, the census ${L}`);
   expect((await evaluate("document.getElementById('back-to-cube').getAttribute('href')")) === "cube.html", "the help page's link back is not cube.html");
+  expect((await evaluate("document.body.textContent")).includes("RollScript"), "the help page does not name RollScript");
+  const numbering = await evaluate("Array.from(document.querySelectorAll('#numbering td')).map((d) => d.textContent).join(' ')");
+  expect(numbering === Array.from({ length: 16 }, (_, n) => `${n} ${"abcd"[n % 4]}${Math.floor(n / 4) + 1}`).join(" "), `the help's numbering: ${numbering}`);
+  const helpQuestions = await evaluate("Array.from(document.querySelectorAll('#question-table tr')).slice(1).map((r) => { const c = r.querySelectorAll('td'); return `${c[0].textContent} ${c[2].textContent} ${c[3].textContent}`; }).join('; ')");
+  expect(helpQuestions === questionRows, `the help's questions are ${helpQuestions}, not ${questionRows}`);
   const help = await evaluate("(() => { const s = document.scrollingElement; return { page: s.scrollWidth, box: s.clientWidth }; })()");
   expect(help.page <= help.box, `at 390px the help page scrolls sideways: ${JSON.stringify(help)}`);
   expect(thrown.length === 0, `the page threw: ${thrown.join("; ")}`);
@@ -422,4 +469,4 @@ try {
 }
 
 if (failures > 0) { console.error(`cube_check: ${failures} of ${checks} checks failed`); process.exit(1); }
-console.log(`ok   cube_check: the wasm matches cube.c on ${runLines.length} programs (${frames} frames, ${offs} halted) and rolls all ${solutions} census solutions to their patterns; the table's 65,536 pars and L = ${L} are the census's; in Chromium the page fit with no scroll (${measured.join("; ")}), played the samples, stepped, took typed programs, the arrow keys and clicks and a drag on the tiles, halted off the board (typed, by key, the halt sample), refused a non-roll and programs past L, and its help page says L (${checks} checks)`);
+console.log(`ok   cube_check: the wasm matches cube.c on ${runLines.length} programs (${frames} frames, ${offs} halted) and rolls all ${solutions} census solutions to their patterns; the table's 65,536 pars and L = ${L} are the census's; in Chromium the page fit with no scroll (${measured.join("; ")}), played the samples, stepped, took typed programs, the arrow keys and clicks and a drag on the tiles, halted off the board (typed, by key, the halt sample), refused a non-roll and programs past L, numbered its tiles, showed the lit set as a number, chose and answered a question, and its help page says L, the numbering and the ${QUESTIONS.length} questions with their pars (${checks} checks)`);

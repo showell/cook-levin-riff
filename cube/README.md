@@ -101,14 +101,44 @@ perspective projection of its own (tiles drawn far to near, the cube last
 with its back faces culled), and animates each roll as a quarter turn about
 the cube's bottom edge. The camera is fixed.
 
-**The layout:** one title line with a Help link (`cube_help.html`: the
-rules, par, the halt, L and the samples), then three panes side by side:
+**The language is RollScript**, and **the tiles are numbered 0 to 15**,
+row by row from a1 (a1 to d1 are 0 to 3, d4 is 15), as `Cube.roc`'s bits
+are: tile n lit is bit n, so a program's lit set, its result, is a 16-bit
+number. The canvas shows each tile's number on it and the chess names
+along the edges.
+
+**The layout:** three panes side by side, the canvas as tall as the
+window. The first is the title and a Help link (`cube_help.html`: the
+rules, the numbering, the questions, par, the halt, L and the samples),
 the program (the text box, the roll buttons laid out as arrow keys, Play,
-Back, Forward, Reset and Clear, and five samples), the canvas, as tall as
-the window, and the readout (the length, "8 of 45 rolls", the lit set as a
-map, the census's par, "par 8; yours is 8", where the cube is, and the
-program with the shown roll marked). At a phone's width the panes stack,
+Back, Forward, Reset and Clear), ten questions and five samples. The last
+is the readout: the length, "8 of 45 rolls", the lit set as a numbered map
+and as a number in decimal and binary, the census's par, "par 8; yours is
+8", the question it answers and the one chosen, where the cube is, and the
+program with the shown roll marked. At a phone's width the panes stack,
 the canvas first.
+
+**The questions** bring back Nibble++'s spirit: a lit set is a set of
+numbers, so a program answers a question about 0 to 15 by lighting the
+tiles whose answer is yes, as a Nibble++ program decides a language. The
+names are Nibble++'s (`docs/NIBBLE_PLUS_NAMES.md`); a question chosen rings
+its tiles on the board and the map, and says when the lit set answers it.
+
+| question | yes for | the number | par |
+|---|---|---|---|
+| `is_even` | n % 2 == 0 (columns a and c) | 21845 | 24 |
+| `is_odd` | n % 2 == 1 (columns b and d) | 43690 | 26 |
+| `is_small` | n < 8 (rows 1 and 2) | 255 | 23 |
+| `is_small_even` | n < 8 and even | 85 | 12 |
+| `is_mult_of_4` | n % 4 == 0 (column a) | 4369 | 12 |
+| `is_mult_of_5` | n % 5 == 0 (the diagonal) | 33825 | 18 |
+| `is_square` | 0, 1, 4, 9 | 531 | 13 |
+| `is_prime` | 2, 3, 5, 7, 11, 13 | 10412 | 20 |
+| `is_fib` | 1, 2, 3, 5, 8, 13 | 8494 | 20 |
+| `is_not_14` | every n but 14 | 49151 | 44 |
+
+The pars are the census's (`cube_pars.bin`); `cube_check.mjs` holds each
+question's set and par, on the page, in the help and in the table.
 
 **Rolls** come from the arrow buttons (each lights when its arrow key is
 pressed), the arrow keys, the text box, or a click on a tile next to the
@@ -130,12 +160,14 @@ same C host as Nibble's pages), and the pars are the census's,
 by frame (80 of them halt), rolls all 65,536 census solutions through it,
 holds the table and L to the census, and plays the page in headless
 Chromium: the samples, stepping, typed programs, the keys, clicks and a drag
-on the tiles, the halt three ways, L refused, and the fit with no scroll:
+on the tiles, the halt three ways, L refused, the numbered tiles, the lit
+set as a number, a question chosen and answered, and the fit with no
+scroll:
 
 | window | panes | canvas |
 |---|---|---|
-| 1366 × 650 | three side by side, nothing scrolls | 746 × 596 |
-| 1920 × 700 | three side by side, nothing scrolls | 1240 × 646 |
+| 1366 × 650 | three side by side, nothing scrolls | 746 × 634 |
+| 1920 × 700 | three side by side, nothing scrolls | 1240 × 684 |
 | 390 × 844 (a phone) | one column, nothing scrolls sideways | 358 × 281 |
 
 ## The census
