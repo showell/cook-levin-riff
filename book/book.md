@@ -47,6 +47,7 @@ This list is the whole book in one line a chapter, the kind in italics:
 - {{chapter The tableau, filled in}}: Cook's grid, printed twice. *The machine as a grid.*
 - {{chapter Naming the gates}}: three gates become nine clauses, and propagation runs them. *A review.*
 - {{chapter Cook-Levin as SAT}}: every puzzle as one formula. *New results.*
+- {{chapter Proofs of unsatisfiability}}: a DRAT proof checked with a pencil, lemma by lemma. *A review.*
 - {{chapter Solved by hand}}: a formula solved on paper. *The machine as clauses, worked on paper.*
 - {{chapter The solver's work, in full}}: one puzzle's whole formula and answer, and all 15 proofs checked. *Big output to skim.*
 
@@ -1878,7 +1879,70 @@ read two bits a line:     01 10 10 01 10 01, program 1689
 sat 13 len=5: UNSATISFIABLE, its DRAT proof 286 lemmas
 ```
 
-Next we solve the smallest of these formulas with a pencil.
+Each of those UNSATISFIABLE answers rests on a DRAT proof, and the next chapter shows what one is.
+
+## Proofs of unsatisfiability
+
+**SAT solving. A review; it needs {{chapter Cook-Levin as SAT}}.** We show what a DRAT proof is on a formula of four clauses you can check with a pencil, and why a no needs a proof when a yes needs only an answer.
+
+### A yes is checked, a no is proved
+
+A SATISFIABLE answer carries its own evidence, the assignment, and `rocsat check` tests it clause by clause, in time that grows in step with the formula's length. That is NP's verifier ({{chapter P and NP}}), and it runs in polynomial time. Finding the assignment is the hard part. The plain way tries all 2^n assignments of n variables: 4,096 for a puzzle's 12 program bits, since propagation settles its other 404 variables, and 2^56 for the 56 program bits of is_not_14 at 28 lines. rocsat prunes most of each search away, yet every method known takes exponential time on some formulas; whether some method could always take polynomial time is the P versus NP question. An UNSATISFIABLE answer needs evidence of another kind, a proof that every assignment breaks a clause, and DRAT is the format rocsat writes it in.
+
+### Lemmas, by RUP
+
+A DRAT proof is a list of clauses, its *lemmas*, each a consequence of the formula and the lemmas before it, ending at the empty clause `()`, which is false under every assignment. A checker tests each lemma by *reverse unit propagation*, RUP: suppose every literal of the lemma false, propagate, and look for a conflict. A conflict shows that the lemma holds wherever the formula and the lemmas before it hold.
+
+Here is a formula small enough to check by hand, `sat/walkthrough/no_opcode.cnf`: line 1's two bits, with each of the four opcodes ruled out by one clause.
+
+| clause | rules out | its bits |
+|---|---|---|
+| `(hb OR lb)` | `nada` | 00 |
+| `(hb OR NOT lb)` | `zero` | 01 |
+| `(NOT hb OR lb)` | `decr` | 10 |
+| `(NOT hb OR NOT lb)` | `mod2` | 11 |
+
+```text
+-- line 1 of a program, with each of its four opcodes ruled out
+hb = x1
+lb = x2
+2 variables, 4 clauses
+(hb OR lb)
+(hb OR NOT lb)
+(NOT hb OR lb)
+(NOT hb OR NOT lb)
+```
+
+Line 1 has to be some opcode, so the formula is unsatisfiable. Its proof, `no_opcode.drat`, is four lines, and `sat/walkthrough.shale` replays each by propagation of its own:
+
+```text
+line 1, `1 0`: the lemma (hb)
+  suppose hb = false
+  lb = true, from (hb OR lb)
+  conflict: every literal of (hb OR NOT lb) is false
+  so (hb) follows by RUP
+line 2, `d 1 2 0`: delete (hb OR lb)
+line 3, `d 1 -2 0`: delete (hb OR NOT lb)
+line 4, `0`: the lemma ()
+  hb = true, from (hb)
+  lb = true, from (NOT hb OR lb)
+  conflict: every literal of (NOT hb OR NOT lb) is false
+  so () follows by RUP
+```
+
+The lemma `(hb)` says line 1 is `decr` or `mod2`, since the first two clauses ruled out `nada` and `zero`. With hb known, the last two clauses clash, and the empty clause follows. The repository's checker, `src/drat.c`, agrees: `verified: 2 lemmas (0 by RAT), 2 deletions, over 2 variables and 4 clauses; the empty clause at line 4`.
+
+The shortest proof is the empty clause alone, a file of one line, `0`. It suffices when propagation from the formula's own clauses reaches a conflict, as in the false case of {{chapter Naming the gates}}: `sat/walkthrough/circuit_false.drat` is that line, beside the circuit's CNF with its three inputs fixed, and the checker accepts it.
+
+### Deletions
+
+A line that starts with `d` deletes a clause from the checker's database. Above, once `(hb)` is known, it satisfies `(hb OR lb)` and `(hb OR NOT lb)` for good, and deleting them saves propagation the work of visiting them. Deleting only weakens the database, so each later lemma still follows from the formula. Deletions are a solver's housekeeping, and they keep a long proof fast to check: the proof that five lines are too few for {0, 2, 3} has 286 lemmas and 387 deletions ({{chapter The solver's work, in full}}).
+
+### RAT, briefly
+
+RAT stands for *resolution asymmetric tautology*. An *asymmetric tautology* is a clause RUP accepts. *Resolution* joins two clauses that clash on one variable, `(l OR A)` and `(NOT l OR B)`, into `(A OR B)`. A lemma is RAT on its first literal l when every clause holding the complement of l, resolved with the lemma, gives a clause RUP accepts. That lets a proof name a fresh variable m: `(m OR NOT hb OR NOT lb)` is RAT on m, since the database holds `NOT m` in zero clauses, and `(NOT m OR hb)` and `(NOT m OR lb)` follow, Tseitin's three clauses for m = hb AND lb, made inside a proof. `src/drat.c` tries RAT on a lemma's first literal when RUP fails. All 15 of rocsat's puzzle proofs pass by RUP alone, so RAT appears in this book in this paragraph.
+
+A yes is an answer you check, and a no is a proof you replay; here both fit on a page.
 
 ## Solved by hand
 
@@ -1922,7 +1986,7 @@ Run through the gates, each other op on line 1 leaves core 0's final `accepted` 
 
 `is_not_one` accepts {0, 2, 3} (code 13), and its one program uses all six lines (Theorem 6). For the programs of `nada`, `zero` and `decr`, counting lines settles it. Input 0 needs a `zero` before any `decr`, since `decr` at 0 halts. Input 2 reaches 0 after two `decr`s and input 3 after three, on different lines, and each then needs a `zero`. Input 1 reaches 0 after the first `decr`, so the second `decr` has to come before any later `zero`, and it halts input 1. That is three `zero`s and three `decr`s: six lines. Theorem 4's search, over all 4,096 programs, settles the ones with `mod2` too.
 
-The formula says the same. `sat 13 len=5` is the full formula plus the unit clauses `-11` and `-12`. Asked to solve it, rocsat answers UNSATISFIABLE, the answer expected, with a DRAT proof. Such a proof is a list of lemmas, each a clause that follows from the formula and the lemmas before it by unit propagation, with deletions mixed in, ending at the empty clause; a checker replays it, and once the empty clause follows, the formula is unsatisfiable. The first 12 distinct lemmas of this one, each literal named by `src/sat_hand_main.c` from the encoder's own record of its wires:
+The formula says the same. `sat 13 len=5` is the full formula plus the unit clauses `-11` and `-12`. Asked to solve it, rocsat answers UNSATISFIABLE, the answer expected, with a DRAT proof. Such a proof is a list of lemmas, each following by RUP, with deletions mixed in, ending at the empty clause ({{chapter Proofs of unsatisfiability}}). The first 12 distinct lemmas of this one, each literal named by `src/sat_hand_main.c` from the encoder's own record of its wires:
 
 ```text
 `-11 0`: v11 = 0 (line 6's hb)
