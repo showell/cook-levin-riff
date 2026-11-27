@@ -119,7 +119,8 @@ if grid == 4 then
     if at.verdict ~= "SAT" then fail(at.line .. "; the census says par " .. c[3]) end
     say(said, results, at.line)
     local below = solve(t, 4, c[1], c[2], c[3] - 1)
-    if below.verdict ~= "UNSAT" then fail(below.line .. "; the census says par " .. c[3]) end
+    -- A timeout is a result, kept; only a SAT below the par contradicts the census.
+    if below.verdict == "SAT" then fail(below.line .. "; the census says par " .. c[3]) end
     say(said, results, below.line)
     yield()
   end

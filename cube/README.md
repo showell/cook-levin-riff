@@ -317,4 +317,38 @@ proof with `src/drat.c`. The build doesn't run it.
 
 The results are in `sat/grid4.txt` and `sat/grid5.txt`, one line a case;
 the tables below are their times on this box (2 cores, 2026-11-27, niced,
-beside other work).
+beside other work). Every SAT model's rolls solved its level, and every
+DRAT proof checked, all by RUP alone.
+
+### 4 × 4, against the census
+
+| level | par | SAT at par | UNSAT at par − 1 | proof | DRAT check |
+|---|---|---|---|---|---|
+| d4 alone | 8 | 22 ms | 24 ms | 42 KB | 10 ms |
+| the diagonal | 18 | 0.19 s | 0.50 s | 0.97 MB | 0.42 s |
+| the checkerboard | 32 | 10.2 s | 15.2 s | 17.7 MB | 15.9 s |
+| the border | 35 | 46.9 s | 53.7 s | 45.3 MB | 52.4 s |
+| every tile | 47 | 372 s | no answer in 900 s | | |
+
+Each SAT at the par and each UNSAT one roll short agrees with the census.
+The one miss is telling: every tile at 46 rolls is UNSAT by the floor's
+three-line argument (16 tiles need 3 × 16 − 1 = 47), but rocsat, which
+only sees clauses, didn't prove it in 15 minutes.
+
+### 5 × 5, past the census
+
+For each level, k runs from the floor 3 × lit − 1 upward; every k below the
+floor is ruled out by the floor's argument, every k from the floor to the
+par − 1 is UNSAT with a checked proof, and the par is SAT. So these are
+5 × 5 pars, which the census can't reach (5 billion states).
+
+| level | lit | floor | par | over | UNSAT cases | the slowest UNSAT | SAT at par | a shortest solution |
+|---|---|---|---|---|---|---|---|---|
+| e5 alone (the far corner) | 1 | 2 | 10 | 8 | 8 | 77 ms | 20 ms | EEEWSSSEES |
+| the four corners | 4 | 11 | 18 | 7 | 7 | 0.43 s | 0.16 s | SEENEESSSSWWWWNNNN |
+| the diagonal | 5 | 14 | 24 | 10 | 10 | 1.96 s | 1.07 s | SEENWWSSEESSEEWNWNWNEESS |
+| a plus (row 3 and column c) | 9 | 26 | 28 | 2 | 2 | 48.9 s | 9.97 s | SSSENNEESNESNNWWESWWSEESWESW |
+
+The 5 × 5 diagonal is 10 rolls over its floor, against 7 on 4 × 4 and
+2 on 3 × 3. The far corner alone is 8 over: on 4 × 4 it is 6 over, on
+3 × 3 2 over.
