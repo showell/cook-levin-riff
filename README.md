@@ -197,11 +197,19 @@ that program. The two pages link to each other and share `web/machine.js`
 (the wasm, the table and the parts both draw) and `web/nibble.css`.
 
 `web/plus.html` is the same sandbox for Nibble++: `AX` holds 0 to 15, the
-ops are `half`, `zero`, `decr` and `mod2`, and a program is 1 to 30 lines
-(`+ line` and `− line`), opening as thirty `decr`s. Its trace is a row an
+ops are `zero`, `decr`, `mod2` and `half`, shown in that order (the
+workhorses first; the codes stay half 0, zero 1, decr 2, mod2 3), and a
+program is 1 to 30 lines (`+ line` and `− line`), opening as `zero`,
+`decr`, `zero`, `decr`, `zero` and 25 `decr`s, which decide {0, 1, 2}. Its trace is a row an
 input, 16 of them, showing `AX` after the line the step buttons (Start,
 Back, Step, End) are on, then how each run ends; the box above the program
-is the language it decides, its accepted set and its code of the 65,536.
+is the language it decides: its name, its accepted set (runs written as
+ranges, {0–13, 15}) and its code of the 65,536. The names are predicates,
+`is_small_fib` or `is_prime_or_mult_of_4`, each the cheapest that denotes
+its set exactly; `web/plus_names.c` names all 65,536 ahead of time, the
+page's table `plus_names.bin` keeps the 54,461 of cost 4 or less, and
+`web/plus_names_check.c` parses every name back to its set
+(`docs/NIBBLE_PLUS_NAMES.md`).
 Its number is two bits a line, line 1 first, up to 60 bits, so the page
 keeps it as a BigInt; a number typed in loads into the lines there are.
 Its machine is `roc/PlusWasm.roc`, `roc/Plus.roc` behind `status(n, code,
