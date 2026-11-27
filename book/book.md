@@ -2906,7 +2906,7 @@ On Nibble++ the census settles every question fastest, and each of the others ad
 
 ## The oracles
 
-Every number in this book comes from five programs that share only the machine's rule, so a bug would have to land the same way in all five to reach a number here. This chapter shows you all five.
+This book checks its answers with five programs that share only the machine's rule, so a bug would have to land the same way in all five to reach a number here. This chapter shows you all five.
 
 Every implementation in this repository computes the same answers in its own way, and each is held to the others.
 
@@ -2944,7 +2944,7 @@ Each pair shares only the machine's rule. The interpreter branches on opcodes, t
 
 ## The Roc port
 
-Roc lets the mathematics read like mathematics, and this chapter shows it written that way. It also tells how a race against the Roc made the C four times faster.
+Roc lets the mathematics read like mathematics, and this chapter shows it written that way. It also tells how racing the Roc taught the C a trick that made it four times faster.
 
 `roc/` is the same machine and the same mathematics in Roc, at the compiler that `roc/roc-version` pins, Roc 0.1.0_RC1. The port landed in `6206236`.
 
