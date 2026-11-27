@@ -11,7 +11,9 @@
 // `code` and the cost the parse counts must be `cost`. The codes rise, so
 // no language is named twice. Then plus_names.bin is decoded as plus.js
 // decodes it: each language's name must be the tsv's when its cost is at
-// most <page cost>, and absent otherwise. It prints the coverage, a line a
+// most <page cost>, and absent otherwise, and its tokens but `and`, `or`
+// and `except` must count to its cost, which is how the page's elegance
+// rating reads the cost. It prints the coverage, a line a
 // cost, and exits 0 only when every check passes.
 
 #include <stdint.h>
@@ -316,13 +318,16 @@ int main(int argc, char **argv) {
     int page_named = 0;
     for (int code = 0; code < 65536; code++) {
         char name[256] = "";
-        int first = 1;
+        int first = 1, token_cost = 0;
         for (; at < size && bin[at] != 0; at++) {
             int t = (unsigned char)bin[at];
             if (t > num_tokens || strlen(name) + strlen(vocab[t]) + 5 >= sizeof name) {
                 fprintf(stderr, "plus_names_check: plus_names.bin's language %d is malformed\n", code);
                 return 1;
             }
+            // The page reads a name's cost from its tokens: every one but
+            // `and`, `or` and `except` (whose number counts instead).
+            token_cost += strcmp(vocab[t], "and") != 0 && strcmp(vocab[t], "or") != 0 && strcmp(vocab[t], "except") != 0;
             if (first) {
                 const char *v = vocab[t];
                 int bare = strncmp(v, "has_", 4) == 0 || strncmp(v, "lacks_", 6) == 0 || strcmp(v, "grumpy") == 0 ||
@@ -342,6 +347,8 @@ int main(int argc, char **argv) {
         int want = names[code] != NULL && costs[code] <= page_cost;
         if (want != !first || (want && strcmp(name, names[code]) != 0)) {
             fail_name(first ? "(none)" : name, "plus_names.bin's name isn't the tsv's");
+        } else if (want && token_cost != costs[code]) {
+            fail_name(name, "its tokens don't count to its cost, as the page reads it");
         }
         page_named += !first;
     }
