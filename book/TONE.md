@@ -1,10 +1,22 @@
 # The Cook-Levin book's tone
 
-The book reads as an impersonal, careful technical record. A writer adding
-to `book.md` keeps to these:
+The book is a careful technical record that is meant to be enjoyed. A writer
+adding to `book.md` keeps to these:
 
-- **Impersonal.** No "I", "we" or "you" in the prose. A playful heading
-  ("The rare one") may break the rule; the text under it doesn't.
+- **Talk to the reader.** The prose may say "we" and "you", show wonder,
+  and say why a step matters. A machine with a two-bit register whose
+  composed polynomial runs to 510,387 characters is worth a sentence of
+  amazement, stated with its number.
+- **Every chapter opens with a lead**: one to three sentences that make a
+  bold claim about what the chapter gives the reader, after a guidepost in
+  bold naming its kind (start here, a review of a well-known idea, cool
+  math, new theorems, diagrams, big output to skim, history, the tools) and
+  the earlier chapter it needs, or that it stands alone. A lead may promise
+  more than its chapter delivers yet, but never a claim the chapter
+  contradicts. The front page lists every chapter with a one-line version
+  of its lead, so the book can be skimmed from there.
+- **Big output goes at the end of its chapter**, framed by its scale and
+  with a word that skimming it is the point; prose never sits below it.
 - **Every number is cited**: a commit's short hash, `README.md`, a golden
   file, or a program run while the book was written, named where the
   number is used. A number nobody re-ran is labelled as the record's.
@@ -16,9 +28,14 @@ to `book.md` keeps to these:
   that it was reverted, with no apology.
 - **Hedges are precise.** Say exactly what the record shows and what it
   leaves unstated, in plain words, once.
-- **No hype.** No superlatives and no selling. A little warmth is kept
-  where it is already earned: "the spine of the project".
+- **Vivid and warm, never hype.** No selling and no superlative the facts
+  don't carry. Wonder comes from the facts and their scale.
 - **One metaphor per idea**, used once.
+
+The first draft was written impersonally, with no "I", "we" or "you". That
+rule was scaffolding: it let the skeleton be built before the tone had to
+be right. With the skeleton in place it is retired, and the chapters'
+bodies are brought to life as they are touched.
 
 The negatives lint (`negatives.txt`) holds the prose to saying what happens;
 a negative stays only under a `keep` kind there.
