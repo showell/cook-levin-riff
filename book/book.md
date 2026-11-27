@@ -1,6 +1,6 @@
 # A riff on Cook-Levin
 
-A small book about [cook-levin-riff](https://github.com/showell/cook-levin-riff): a toy machine whose every program is a polynomial and a Boolean formula, the six-step composition that took three years to arrive, and seven independent ways of computing the same answers that all agree.
+A small book about [cook-levin-riff](https://github.com/showell/cook-levin-riff): a toy machine whose every program is a polynomial and a Boolean formula, the six-step composition that took three years to arrive, and five independent ways of computing the same answers that all agree.
 
 Some problems are easy to check and hard to solve: an answer can be confirmed in moments, but finding one can mean a search that doubles with every step. That gap is what makes computation feel intractable, and it is the question at the heart of P versus NP. This book doesn't answer that question. It makes the gap visible on a machine small enough to hold in your head, and along the way it tries a few ways around it, which sometimes help and sometimes only show how wide the gap is.
 
@@ -52,7 +52,7 @@ The book is meant to be skimmed. Each chapter opens with a guidepost, in bold, s
 
 **Part III, the cross-checks:**
 
-- {{chapter The oracles}}: seven ways to the same answers. *The cross-checks.*
+- {{chapter The oracles}}: five ways to the same answers. *The cross-checks.*
 - {{chapter The Roc port}}: the mathematics as Roc writes it. *The tools.*
 - {{chapter What comes next}}: the steps still open. *Open steps.*
 - {{chapter Appendix: two DRAT proofs}}: two proofs of impossibility, whole. *Big output to skim.*
@@ -126,9 +126,9 @@ Third, the assertions, in `find_solutions` ([virtual_machine.py, lines 159 to 16
             assert accepted == (i in lang)
 ```
 
-**That agreement is the thesis of this book: the machine and its Cook-Levin translation answer every question the same way.** Everything after it widens the check. The C runs both on all 4,096 programs and all four inputs; the six steps are chained into four polynomials that agree with the machine on all 2^14 points; a SAT solver, given the same machine as a formula, finds exactly the machine's programs; and seven implementations in five programming languages compute the same answers. His Python stopped short of chaining all six steps, and this repository finishes the chain ({{chapter How it got here}}).
+**That agreement is the thesis of this book: the machine and its Cook-Levin translation answer every question the same way.** Everything after it widens the check. The C runs both on all 4,096 programs and all four inputs; the six steps are chained into four polynomials that agree with the machine on all 2^14 points; a SAT solver, given the same machine as a formula, finds exactly the machine's programs; and the Python, the C and the Roc compute the same answers. His Python evaluated the step polynomials one step at a time and stopped short of composing all six into one polynomial; this repository finishes the composition ({{chapter Six steps composed}}).
 
-Steve wrote the first version by hand in Python, in [virtual-machine](https://github.com/showell/virtual-machine): the machine (`virtual_machine.py`), a general polynomial library (`poly.py`) and a stepper that writes one step of the machine as polynomials (`stepper.py`). The machine is Steve's invention; the code in this repository, written by AI coding agents (Claude) with human supervision, departs from the 2023 Python wherever a cleaner choice turned up, and its choices are this book's own.
+Steve wrote the first version by hand in Python, in [virtual-machine](https://github.com/showell/virtual-machine): the machine (`virtual_machine.py`), a general polynomial library (`poly.py`) and a stepper that writes one step of the machine as polynomials (`stepper.py`). The machine is Steve's invention; the code in this repository, written by AI coding agents (Claude) with human supervision, departs from the 2023 Python wherever a cleaner choice turned up, and its choices are this book's own. Each language has one role: Python was the inspiration; Roc is our lingua franca, for the mathematics, the Nibble page's machine, the SAT solver and the app that builds this book; C is our oracle and speed demon, the port every claim is tested in.
 
 The theorems are numbered through the book, each checked by a run that its proof names.
 
@@ -2098,7 +2098,7 @@ The step polynomials of {{chapter Arithmetization}} come first, as Steve's `step
 
 `accepted'` is already multilinear in the general ring, so the identity keeps its 33 terms; the two printers order them differently. The Boolean ring's four are the C's `bp_str`, as `roc/golden/step_polynomials.txt` holds them, and the Roc port's gate, `roc/check.shale`, prints the same file.
 
-The four final polynomials come from `src/compose_main.c` (`1146d43`). `book/book.shale` builds it with `gcc -O2` and runs it each time the book is built, and holds what it prints, each step's term counts and each final polynomial's terms, degree and largest coefficient, to `roc/golden/composition.txt`, which the Roc and JavaScript ports print too. Then the app reads the four files it writes.
+The four final polynomials come from `src/compose_main.c` (`1146d43`). `book/book.shale` builds it with `gcc -O2` and runs it each time the book is built, and holds what it prints, each step's term counts and each final polynomial's terms, degree and largest coefficient, to `roc/golden/composition.txt`, which the Roc port prints too. Then the app reads the four files it writes.
 
 ### One step, in the Boolean ring
 
@@ -2457,11 +2457,11 @@ rocsat's answer to that CNF, as sat/oracle.shale kept it
 
 ## The oracles
 
-**The cross-checks; it stands alone.** We show you seven separate ways of computing the same answers, which is why you can believe the numbers in this book.
+**The cross-checks; it stands alone.** We show you five separate ways of computing the same answers, which is why you can believe the numbers in this book.
 
-Every implementation in this repository computes the same answers in its own way, and each is held to the others. The spine of the project is that they all agree.
+Every implementation in this repository computes the same answers in its own way, and each is held to the others.
 
-Seven ways to the same answers
+Five ways to the same answers
 ```dot
 digraph {
   node [shape=box, style=rounded];
@@ -2470,31 +2470,22 @@ digraph {
   c [label="C"];
   roc [label="Roc"];
   sat [label="SAT, rocsat"];
-  js [label="JavaScript x3"];
   nibble [label="Nibble's wasm"];
   python -> answers;
   c -> answers;
   roc -> answers;
   sat -> answers;
-  js -> answers;
   nibble -> answers;
 }
 ```
 
 ### What each one checks
 
-- **Python**, the original, is the source of `tests/golden/find_solutions.txt` and of the step polynomials' strings, `tests/golden/step_*.txt`.
-- **C** prints that report byte for byte (`tests/test_golden.c`), checks the stepper against the interpreter on all 4,096 × 4 runs, and proves the composition at all 2^14 points (`tests/test_compose.c`). `shale build.shale` ran its fast tier for this book: eleven test files and the golden check, all passing.
-- **Roc** prints the same report, the four step polynomials as the C's `bp_str` prints them (`roc/golden/step_polynomials.txt`) and the composition's counts and proof (`roc/golden/composition.txt`). `roc/check.shale` is its gate.
+- **Python**, the inspiration, is the source of `tests/golden/find_solutions.txt` and of the step polynomials' strings, `tests/golden/step_*.txt`.
+- **C**, our oracle and speed demon, prints that report byte for byte (`tests/test_golden.c`), checks the stepper against the interpreter on all 4,096 × 4 runs, and proves the composition at all 2^14 points (`tests/test_compose.c`). Its fast tier, run for this book, passed all seventeen test files and the golden check.
+- **Roc**, our lingua franca, prints the same report, the four step polynomials as the C's `bp_str` prints them (`roc/golden/step_polynomials.txt`) and the composition's counts and proof (`roc/golden/composition.txt`). `roc/check.shale` is its gate.
 - **SAT** reaches the 16 counts through `tests/test_sat.c`'s propagation and again through rocsat's blocked models, and each shortest length through an UNSAT, with a DRAT proof that `src/drat.c` verifies, and a SAT.
-- **JavaScript**, `js/cook_levin.js`, prints the report and then the composition, byte for byte the two goldens, under three runners.
-- **Nibble's wasm** is `src/vm.c` itself, and `web/page_check.mjs` holds it to the C on all 4,096 × 4 runs and to the 16-puzzle table.
-
-### One program, three runners
-
-`js/oracle.shale` runs the JavaScript port three ways (`c251895`), each held to the goldens. The runners are node, and two of [roc-js-interpreter](https://github.com/showell/roc-js-interpreter)'s, both written in Roc: its bytecode VM and its compiler to x86-64. The port is written in the subset of JavaScript that roc-js-interpreter runs, which leaves out the bitwise operators, so the OR and AND of two masks come from tables of their 7-bit halves.
-
-By `README.md`'s timings on this box, 2026-11-25: node takes about 0.3 s, the VM about 80 s, in about 15 million of its steps, and the compiled executable, 111,698 bytes, 0.6 to 1.0 s, at a peak of 33 MB. The compiled program is slower than node here, and that is unprofiled. These runs were left unrepeated for this book.
+- **Nibble's wasm** is the Roc port's machine, compiled for the browser, and `web/page_check.mjs` holds it to the C on all 4,096 × 4 runs and to the 16-puzzle table.
 
 ### Why so many
 
@@ -2528,13 +2519,15 @@ On this box, the release build of `composition 6` composes all six steps and run
 
 ## What comes next
 
-**Open steps; it stands alone.** We list the steps still open, each of them small.
+**Open steps; it stands alone.** We list the questions still open, and say how to start on your own.
 
-A few steps stand open, each small:
+A few questions stand open:
 
-- **The C's dense table.** The C composition could sum like terms in the Roc port's dense table, and its time would then measure the programming language.
-- **The compiled JavaScript.** Its slowness is unprofiled. `README.md` guesses that an array's items are values of unknown kind to the compiler, so each read and write passes the runtime's tag checks.
+- **A conjecture about `half`.** Over {zero, decr, mod2} and over {zero, decr}, `half` seems to help the same 38,911 formal languages; the census checks it and nothing proves it ({{chapter Shortest programs with mod2 and half}}).
+- **SOLVABLE as the machine grows.** For each fixed width it is in P; whether it stays in P as the width grows is open ({{chapter Nibble, sized}}).
 - **Nondeterminism.** The machine is deterministic. The SAT encoding already treats the program as the unknown, which is the theorem's "a certificate exists"; a machine with choice instructions would make the riff closer to the theorem.
+
+The toy languages need no special tools: you can use any mainstream programming language to study them. `js/cook_levin.js` is the machine, the search and the six-step composition in plain JavaScript, and it prints the same report and composition byte for byte under node, and also as an x86-64 program compiled by Steve's own compiler, js-x86, from [roc-js-interpreter](https://github.com/showell/roc-js-interpreter).
 
 ## Appendix: two DRAT proofs
 
