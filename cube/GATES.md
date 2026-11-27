@@ -143,4 +143,32 @@ directly: an XOR in 4 clauses with no helper variable, where the gates take
 AND and an OR; and the one-hot rules as pairwise at-most-one clauses, which
 the circuit gets for free.
 
-SAT_RESULTS
+## On rocsat, against cube_sat.c
+
+`gates_sat.shale` ran both encodings on rocsat at each level's par and at
+par − 1, with 5 minutes a case. Every SAT model's rolls solved its level
+(`cube_sat check`) and its `v` lines passed `drat model`. Every UNSAT
+proof passed `src/drat.c`, by RUP alone. The lines are in `sat/gates.txt`;
+these are rocsat's CPU times on this box (2 cores, 2026-11-27, niced,
+beside other work).
+
+| level | par | SAT at par, hand | gates | UNSAT at par − 1, hand | gates |
+|---|---|---|---|---|---|
+| 3 × 3 c3 alone | 4 | 3 ms | 5 ms | 2 ms | 2 ms |
+| 3 × 3 b2 alone | 8 | 9 ms | 24 ms | 14 ms | 30 ms |
+| 3 × 3 a1 and b2 | 14 | 97 ms | 1.26 s | 100 ms | 0.59 s |
+| 3 × 3 the diagonal | 16 | 0.21 s | 1.94 s | 0.19 s | 1.27 s |
+| 3 × 3 the checkerboard | 22 | 0.12 s | 43.9 s | 0.65 s | 93.9 s (178 MB proof) |
+| 3 × 3 every tile | 26 | 2.0 s | no answer in 300 s | 3.7 s | no answer in 300 s |
+| 4 × 4 c2 alone | 3 | 4 ms | 8 ms | 3 ms | 3 ms |
+| 4 × 4 d4 alone | 8 | 14 ms | 19 ms | 15 ms | 16 ms |
+| 4 × 4 the diagonal | 18 | 0.38 s | 5.2 s | 0.69 s | 3.2 s |
+| 4 × 4 the checkerboard | 32 | 7.9 s | no answer in 300 s | 67.8 s | no answer in 300 s |
+
+The two encodings never disagree. Of the 20 cases, 16 got an answer from
+both, each the census's; the other 4 are the gates' timeouts. The gates'
+CNF is the same question, but rocsat finds it much harder: up to 360 times
+slower on the 3 × 3 checkerboard's SAT, with proofs up to 120 times
+bigger. The hand encoding states the one-hot facts and each XOR as clauses
+directly. The circuit reaches them only through helper gates, which the
+solver must learn its way through.
