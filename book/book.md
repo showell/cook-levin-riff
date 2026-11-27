@@ -25,11 +25,9 @@ The book is meant to be skimmed. Each chapter opens with a guidepost, in bold, s
 - {{chapter The circuit as equations}}: all 1,439 gates, to skim. *Big output to skim.*
 - {{chapter From equations to CNF}}: why naming gates beats multiplying them out. *Cool math, Cook-Levin in small.*
 - {{chapter The step's encodings}}: every version of the step, side by side. *A reference table.*
-- {{chapter Some history of the approach}}: four days of March 2023. *History.*
 
 **Part II, Cook-Levin:**
 
-- {{chapter How it got here}}: a computation that stalled for three years. *History.*
 - {{chapter P and NP}}: the two classes, defined. *A review of well-known ideas.*
 - {{chapter Nibble, sized}}: the toy grown until P and NP apply. *New definitions.*
 - {{chapter Nibble++}}: a bigger machine, and why we built it. *Why we invented a bigger machine.*
@@ -50,10 +48,11 @@ The book is meant to be skimmed. Each chapter opens with a guidepost, in bold, s
 - {{chapter Solved by hand}}: a formula solved on paper. *Worked examples.*
 - {{chapter The solver's work, in full}}: a whole formula, answer and proof, to skim. *Big output to skim.*
 
-**Part III, the cross-checks:**
+**Part III, the cross-checks, and the history:**
 
 - {{chapter The oracles}}: five ways to the same answers. *The cross-checks.*
 - {{chapter The Roc port}}: the mathematics as Roc writes it. *The tools.*
+- {{chapter How it got here}}: the toy in four days of 2023, and its polynomials composed in 2026. *History, safe to skip.*
 - {{chapter What comes next}}: the steps still open. *Open steps.*
 - {{chapter Appendix: two DRAT proofs}}: two proofs of impossibility, whole. *Big output to skim.*
 
@@ -1303,46 +1302,6 @@ The mux circuit is hardware: it keeps `AX` as two bits, chooses each output with
 
 Twenty-four steppers of 34 gates would be 816. The top row's constants fold many away, since each core starts with `AX` known and both flags 0, and a gate built once from the same two inputs is reused across cores, so a puzzle's formula has 404. The decider's 1,439 gates shrink the same way under `roc/Cnf.roc`: 392 complements become signs, 8 copies become names, and 586 of the 1,047 AND and OR gates fold against a constant, leaving 461.
 
-## Some history of the approach
-
-**History; it stands alone.** We tell you in what order Steve built the toy, in four days of March 2023, and which view he passed over on the way.
-
-This chapter is mostly story, and a reader in a hurry may skip it: the rest of the book reads the same. It says in what order Steve built the Python, and which view of the toy the order passed over.
-
-### The order of the work
-
-The virtual-machine log records the order. All of it came in four days of March 2023:
-
-1. **2023-03-11, 01:49:** the machine, `run_progam`, and the search `find_solutions`, in the first commit ([f01c1c3](https://github.com/showell/virtual-machine/commit/f01c1c3)).
-2. **13:02 the same day:** the analytical solution ([d6bb78f](https://github.com/showell/virtual-machine/commit/d6bb78f)), as {{chapter Programs as formal languages}} tells.
-3. **15:47 the same day:** the stepper ([ba9388a](https://github.com/showell/virtual-machine/commit/ba9388a)), with its `NOT`, `AND` and `OR` already arithmetic on integers (`NOT x` was (x − 1)·(x − 1) then), and the assertion that the stepper accepts exactly the problem's inputs.
-4. **2023-03-12:** `mod2` and `pass`, today's `nada` ([cad8e18](https://github.com/showell/virtual-machine/commit/cad8e18)), then the polynomial library from 14:35 ([6bb7429](https://github.com/showell/virtual-machine/commit/6bb7429)).
-5. **2023-03-14:** the step polynomials at 12:22 ([a4e4765](https://github.com/showell/virtual-machine/commit/a4e4765)), and at 12:32 programs of six lines, with the assertion that every problem has a program ([8646cbe](https://github.com/showell/virtual-machine/commit/8646cbe)).
-
-### The view the order passed over
-
-From the machine Steve went straight to polynomials: he wrote the machine's logic as arithmetic on integers, so that the machine's whole run could become one big polynomial. The plain Boolean view of the toy, its problems and its step written with ordinary logic gates, sits between the two, and the order passed over it. {{chapter The Boolean view}} sets it out.
-
-## How it got here
-
-**History; it stands alone.** We tell the three-year story of one stalled computation, six steps chained into polynomials, and the afternoon it finally ran.
-
-The first part ran the toy. This part translates it the way Cook and Levin translated a checking machine, and checks that the translation answers as the toy does. This chapter is the short history of that translation, as two git logs record it.
-
-### The Python, 2023
-
-The virtual-machine log opens on 2023-03-11 with [f01c1c3](https://github.com/showell/virtual-machine/commit/f01c1c3) and runs through 158 commits to 2023-04-08, all under Steve's address; {{chapter Some history of the approach}} gives the order of its first four days. The last 2023 commits, on 2023-04-08, begin with "Eliminate most poly-related stuff" ([72bf4c4](https://github.com/showell/virtual-machine/commit/72bf4c4)).
-
-### The composition that stalled, 2026
-
-Five commits marked "wip" followed on 2026-01-28. On 2026-04-16 a measuring harness, `compose.py`, was added with Claude as co-author ([1a5f6fa](https://github.com/showell/virtual-machine/commit/1a5f6fa)). Its message says that step 1 composed in about 0.9 s and that step 2 ran past 30 s in Python, and that those numbers motivated a port to Go. The same afternoon `compose.py` was removed, "porting six-step composition to Go instead" ([a2406b5](https://github.com/showell/virtual-machine/commit/a2406b5)). The next day an essay Claude had written about the project was parked as `DEEP_READ.md` ([94c3d31](https://github.com/showell/virtual-machine/commit/94c3d31)); it lists the six-step composition as the step the project stops before.
-
-The Go port lives in a repository of its own, outside this record. By Steve's account it drowned in big integers; that account is unchecked here.
-
-### The finish, 2026-11-25
-
-The cook-levin-riff log covers one day. The C port of the machine and the search came first (`8051ce2`), then the general polynomial (`ccde4f8`) and the stepper (`5b14d74`). The Boolean ring came at 15:59 (`0c233e3`), and all six steps composed, proved on all 2^14 points, at 16:23 (`1146d43`). The Nibble page (`b1fe11f`), the Roc port (`6206236`), the SAT encoding (`8de51b7`), rocsat as an oracle (`f977bcc`) and the JavaScript port (`e996749`, `c251895`) followed. The first commit is stamped 15:32 and the last 19:21.
-
 ## P and NP
 
 **A review of well-known ideas; skip it if you know P and NP.** We give you the two classes the rest of the book leans on, at the level of their definitions, with the toy close at hand.
@@ -2516,6 +2475,38 @@ The proof wants each final polynomial's value at all 16,384 points. `values` get
 ### The speed, honestly
 
 On this box, the release build of `composition 6` composes all six steps and runs the proof in about 30 ms, and the C's `compose_main` at -O2, which only composes, took about 260 ms (`README.md`, "The Roc port"). The gap was in the C, and the programming language had little to do with it. The C summed like terms in a hash table it grew and then sorted, while the Roc sums them in a dense table indexed by mask, a straight array write that reads back already in order. Its checked multiply also tested for overflow with two divisions, where Roc's checks the processor's overflow flag. With the same dense table in `src/boolring.c` and GCC's overflow builtin in `src/ring_int.c`, the best of five runs on 2026-11-27 went from 214 ms of CPU to 52 ms, the polynomials byte for byte the same: 161 ms with the table alone, 99 ms with the builtin alone (`README.md`, "The Roc port").
+
+## How it got here
+
+**History; safe to skip, since nothing else in the book depends on it.** We tell how Steve built the toy in four days of March 2023, how far his polynomials got, and the afternoon in 2026 when all six steps finally composed.
+
+This book takes its ideas in the order that explains them best, which is seldom the order they came in. This chapter gives the order they came in, as two git logs record it.
+
+### Four days in March 2023
+
+The virtual-machine log records the first four days:
+
+1. **2023-03-11, 01:49:** the machine, `run_progam`, and the search `find_solutions`, in the first commit ([f01c1c3](https://github.com/showell/virtual-machine/commit/f01c1c3)).
+2. **13:02 the same day:** the analytical solution ([d6bb78f](https://github.com/showell/virtual-machine/commit/d6bb78f)), as {{chapter Programs as formal languages}} tells.
+3. **15:47 the same day:** the stepper ([ba9388a](https://github.com/showell/virtual-machine/commit/ba9388a)), with its `NOT`, `AND` and `OR` already arithmetic on integers (`NOT x` was (x − 1)·(x − 1) then), and the assertion that the stepper accepts exactly the problem's inputs.
+4. **2023-03-12:** `mod2` and `pass`, today's `nada` ([cad8e18](https://github.com/showell/virtual-machine/commit/cad8e18)), then the polynomial library from 14:35 ([6bb7429](https://github.com/showell/virtual-machine/commit/6bb7429)).
+5. **2023-03-14:** the step polynomials at 12:22 ([a4e4765](https://github.com/showell/virtual-machine/commit/a4e4765)), and at 12:32 programs of six lines, with the assertion that every problem has a program ([8646cbe](https://github.com/showell/virtual-machine/commit/8646cbe)).
+
+From the machine Steve went straight to polynomials, writing its logic as arithmetic on integers so that a whole run could become polynomials. The plain Boolean view of the toy, its problems and its step written with ordinary logic gates, sits between the two, and the order passed over it; {{chapter The Boolean view}} sets it out.
+
+### A successful monstrosity, 2023
+
+The log runs through 158 commits to 2023-04-08, all under Steve's address. The polynomial stunt got far. Steve's Python built one step of the machine as four polynomials in the general ring, where x·x is x², and ran programs through them: `test_with_stepper` evaluates them once a line, six times a run, and the search checks each problem's example program that way. The polynomials worked, at 786 terms for `hb'` and 2,979 for `lb'`. What the Python couldn't do was compose them, substituting each step into the next so that the whole program is one polynomial. The last 2023 commits begin with "Eliminate most poly-related stuff" ([72bf4c4](https://github.com/showell/virtual-machine/commit/72bf4c4)).
+
+### The composition that stalled, 2026
+
+Five commits marked "wip" followed on 2026-01-28. On 2026-04-16 a measuring harness, `compose.py`, was added with Claude as co-author ([1a5f6fa](https://github.com/showell/virtual-machine/commit/1a5f6fa)). Its message says that step 1 composed in about 0.9 s and that step 2 ran past 30 s in Python, and that those numbers motivated a port to Go. The same afternoon `compose.py` was removed, "porting six-step composition to Go instead" ([a2406b5](https://github.com/showell/virtual-machine/commit/a2406b5)). The next day an essay Claude had written about the project was parked as `DEEP_READ.md` ([94c3d31](https://github.com/showell/virtual-machine/commit/94c3d31)); it lists the six-step composition as the step the project stops before.
+
+The Go port lives in a repository of its own, outside this record. By Steve's account it drowned in big integers; that account is unchecked here.
+
+### The finish, 2026-11-25
+
+The cook-levin-riff log opens on 2026-11-25 with the C port of the machine and the search, stamped 15:32 (`8051ce2`), then the general polynomial (`ccde4f8`) and the stepper (`5b14d74`). The Boolean ring, where x² = x, came at 15:59 (`0c233e3`), reached for to make the calculation tractable, and all six steps composed, proved on all 2^14 points, at 16:23 (`1146d43`). The Nibble page (`b1fe11f`), the Roc port (`6206236`), the SAT encoding (`8de51b7`) and rocsat as an oracle (`f977bcc`) followed the same day.
 
 ## What comes next
 

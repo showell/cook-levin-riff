@@ -104,14 +104,13 @@ parts = [
 	{ before: "The machine", level: Category, title: "The machine and its problems" },
 	{ before: "The Boolean view", level: Category, title: "The machine as logic" },
 	{ before: "Parts for a small computer", level: Category, title: "The machine as hardware" },
-	{ before: "Some history of the approach", level: Category, title: "History" },
-	{ before: "How it got here", level: Part, title: "Part II: Cook-Levin" },
-	{ before: "How it got here", level: Category, title: "History and the classes" },
+	{ before: "P and NP", level: Part, title: "Part II: Cook-Levin" },
+	{ before: "P and NP", level: Category, title: "The classes" },
 	{ before: "Nibble++", level: Category, title: "Nibble++, a bigger machine" },
 	{ before: "P, NP and Cook-Levin", level: Category, title: "The theorem" },
 	{ before: "Arithmetization", level: Category, title: "Expanding: the polynomials" },
 	{ before: "The Cook-Levin machine", level: Category, title: "Naming: the tableau and SAT" },
-	{ before: "The oracles", level: Part, title: "Part III: the cross-checks" },
+	{ before: "The oracles", level: Part, title: "Part III: the cross-checks, and the history" },
 ]
 
 default_look : Pages.Look
