@@ -13,6 +13,11 @@ check; 5 × 5 is where SAT takes over from brute force.
 lit sets are reachable (none unreachable), with pars from 0 to 47 (the
 table below, "The census").
 
+**A roll off the board halts the machine,** and **the language is finite:**
+a program is at most L = 45 rolls, as a Nibble program is six lines. Halting
+changes no par, and 45 rolls decide every lit set but one, every tile lit
+(par 47).
+
 ## The rules
 
 | | |
@@ -21,11 +26,12 @@ table below, "The census").
 | cells | columns a, b, c, … west to east; rows 1, 2, 3, … north to south; a1 is the north-west corner |
 | the cube | one die-sized cube with one face painted |
 | a roll | the cube tips over one bottom edge into the next cell: N, E, S or W |
-| off the grid | a roll off the grid is refused, and the checker rejects that program |
+| off the grid | a roll off the grid halts the machine: the cube stays where it was, the tiles lit so far are the program's set, and the rolls after it do nothing |
 | a landing | each time the cube lands with the painted face down, the tile under it flips (dark to lit, lit to dark) |
 | the start | a1, painted face up; the start itself flips nothing |
 | a level | n, the start, and the target: the set of tiles lit at the end, every other tile dark |
 | the end | the cube may end anywhere |
+| the language | on 4 × 4, a program is at most L = 45 rolls (`CUBE_L` in `cube.h`, `max_length` in `Cube.roc`) |
 | the question | can this level be solved in k rolls? |
 | the certificate | the roll sequence; the checker rolls it and compares |
 
@@ -59,8 +65,8 @@ the search with that pattern at any cell and face.
 | `oracle.py` | the Python oracle, sharing no code with the C |
 | `cube_sat.c` | the CNF of "solved in exactly k rolls?" and a checker command line |
 | `sat.shale` | rocsat on the CNF, each answer checked; writes `sat/grid4.txt`, `sat/grid5.txt` |
-| `../roc/Cube.roc`, `../roc/CubeWasm.roc` | the rules in Roc (`Cube.play`: a program's run frame by frame, or the roll that left the board), and the playground's wasm |
-| `../web/cube.html`, `cube.js`, `cube_data.c`, `cube_check.mjs` | the playground (below) |
+| `../roc/Cube.roc`, `../roc/CubeWasm.roc` | the rules in Roc (`Cube.play`: a program's run frame by frame and how it ended, `Ran` or `HaltedAt(k)`; a program past L is `TooLong`), and the playground's wasm |
+| `../web/cube.html`, `cube_help.html`, `cube.js`, `cube_data.c`, `cube_check.mjs` | the playground (below) |
 
 ```sh
 out/tcc/census 4                  # the 4x4 report
@@ -79,11 +85,12 @@ under tcc). Each run also writes every pattern's par and solution, and
 | check | 3 × 3 | 4 × 4 |
 |---|---|---|
 | every solution rolled by a plain simulator: on the grid, exactly its pattern, the par's length | 512 | 65,536 |
-| every par against a search on sets of patterns (one big integer a place, a flip a block swap) | 512 | 65,536 |
-| every par against a plain search over tuples in a dict | 512 | too big for a dict |
+| every par against a search on sets of patterns (one big integer a place, a flip a block swap), with halted programs counted and without | 512 | 65,536 |
+| every par against a plain search over tuples in a dict, with halting and without | 512 | too big for a dict |
+| a solution ending on the edge, rolled on off the edge and then ESSWNN: the halt keeps its set and place | 437 | 60,760 |
 
 So the oracle agrees with the census on every pattern of both grids, not
-just a sample (about 0.1 s and 1.1 s). A par one less than the census's,
+just a sample (about 0.2 s and 1.4 s). A par one less than the census's,
 planted in the file, is refused. The census itself checks every solution it
 prints with `cube_check`, and checks each pattern against the floor below.
 
@@ -92,18 +99,44 @@ prints with `cube_check`, and checks each pattern against the floor below.
 `web/cube.html` shows the board and the cube in 3D, on a canvas with a
 perspective projection of its own (tiles drawn far to near, the cube last
 with its back faces culled), and animates each roll as a quarter turn about
-the cube's bottom edge. Rolls come from the N, E, S, W buttons, the arrow
-keys or a typed program; Play, Back, Forward and Reset move through the
-run. It shows the program's length, its lit set as a small map and the
-census's par for that set ("par 8; yours is 8"), with four samples: ESWN,
-b2 alone, the diagonal and every tile. Drag the board to turn it.
+the cube's bottom edge. The camera is fixed.
+
+**The layout:** one title line with a Help link (`cube_help.html`: the
+rules, par, the halt, L and the samples), then three panes side by side:
+the program (the text box, the roll buttons laid out as arrow keys, Play,
+Back, Forward, Reset and Clear, and five samples), the canvas, as tall as
+the window, and the readout (the length, "8 of 45 rolls", the lit set as a
+map, the census's par, "par 8; yours is 8", where the cube is, and the
+program with the shown roll marked). At a phone's width the panes stack,
+the canvas first.
+
+**Rolls** come from the arrow buttons (each lights when its arrow key is
+pressed), the arrow keys, the text box, or a click on a tile next to the
+cube (outlined, brighter under the pointer); a drag from the cube that lets
+go over one rolls there too. A roll off the board joins the program like
+any other: the cube tips toward the edge and settles back, a red bar marks
+the edge, the canvas says "halted at roll k", and the rolls after it are
+struck through. Only the buttons, the keys and the text can make that roll,
+since there is no tile to click. A program past L rolls is refused, typed
+or rolled. The samples are the ESWN loop, b2 alone, the diagonal, a halt
+(ESENNSSS, which halts at roll 5 with c2 lit) and the longest program,
+every tile but d4 in 45.
 
 The rules are `roc/Cube.roc` built to wasm on `web/platform/cube.roc` (the
 same C host as Nibble's pages), and the pars are the census's,
-`cube_pars.bin`, a byte a lit set. `shale web/build.shale` builds it and
-runs `web/cube_check.mjs`, which holds the wasm to `cube.c` on 400 programs
-frame by frame, rolls all 65,536 census solutions through it, holds the
-table to the census and plays the page in headless Chromium.
+`cube_pars.bin`, a byte a lit set; the page takes L from the wasm's
+`max_length()`. `shale web/build.shale` builds it and runs
+`web/cube_check.mjs`, which holds the wasm to `cube.c` on 400 programs frame
+by frame (80 of them halt), rolls all 65,536 census solutions through it,
+holds the table and L to the census, and plays the page in headless
+Chromium: the samples, stepping, typed programs, the keys, clicks and a drag
+on the tiles, the halt three ways, L refused, and the fit with no scroll:
+
+| window | panes | canvas |
+|---|---|---|
+| 1366 × 650 | three side by side, nothing scrolls | 746 × 596 |
+| 1920 × 700 | three side by side, nothing scrolls | 1240 × 646 |
+| 390 × 844 (a phone) | one column, nothing scrolls sideways | 358 × 281 |
 
 ## The census
 
@@ -117,6 +150,41 @@ there are no unreachable sets on either grid.
 | levels of the search | 32 | 51 |
 | unreachable patterns | 0 | 0 |
 | largest par | 26 (every tile lit) | 47 (every tile lit) |
+
+### Halting changes no par
+
+A halted program's set is the set of its rolls before the halt, a shorter
+program that stays on the board, so halting can only end a program early.
+The census and the oracle each confirm it: the census keeps, for each
+pattern, the first level at which a halted program has it, and the oracle
+runs each of its searches with halted programs counted and without. Every
+pattern's par is the same either way, 65,536 of 65,536 on 4 × 4 and 512 of
+512 on 3 × 3, and every pattern is some halted program's set too.
+
+### The language's length, L
+
+The language is finite, so the machine is "just big enough" for all but a
+few sets. The sets with a par past each length:
+
+| L | sets past it | which |
+|---|---|---|
+| 42 | 45 | the 17 below, and the 28 sets at par 43 (all 14 lit) |
+| 43 | 17 | every tile, and all sixteen with one tile dark |
+| 44 | 9 | every tile, and the eight with one dark tile on a1's colour: a1, c1, b2, d2, a3, c3, b4 or d4 (par 45) |
+| **45** | **1** | **every tile (par 47)** |
+| 46 | 1 | every tile |
+
+No L leaves out exactly two or three sets: the counts jump from 9 to 1.
+**L = 45** is the least that leaves out a single set, so every set but every
+tile lit is some program's meaning. A set with one dark tile costs 44 when
+that tile is on the other colour from a1 (b1, d1, a2, c2, b3, d3, a4, c4)
+and 45 on a1's. The census's report ends:
+
+```
+the language: programs of at most L = 45 rolls (cube.h's CUBE_L)
+decided within L: 65535 of 65536, the rest: 65535, every tile (par 47)
+sets with a par past each length: 42: 45, 43: 17, 44: 9, 45: 1, 46: 1
+```
 
 ### The par distribution
 
@@ -321,15 +389,21 @@ Nibble++:
 | R[t][r] | roll t is r, tied to its two bits (3 clauses each) |
 | P[t][c], F[t][f] | the cube's cell and painted face at time t, one-hot (at most one, pairwise) |
 | L[t][c] | tile c lit at time t; time 0 all dark |
-| D[t][c] | a landing face down on c: P[t][c] AND F[t][down], Tseitin |
+| H[t] | the machine halted by time t; H[0] false |
+| D[t][c] | a landing face down on c: P[t][c] AND F[t][down] AND NOT H[t], Tseitin |
 
-A step is P[t−1][c] ∧ R[t][r] → P[t][c′] (refused together for a roll off
-the grid), F[t−1][f] ∧ R[t][r] → F[t][f′], and L[t][c] = L[t−1][c] XOR
-D[t][c] (4 clauses). The end is a unit clause a tile. A 4 × 4 CNF at
-k = 47 is 2,858 variables and 16,363 clauses.
+While the machine runs (¬H[t−1]), a step is P[t−1][c] ∧ R[t][r] → P[t][c′]
+and ¬H[t], or → H[t] for a roll off the grid. H[t−1] → H[t], and a halted
+machine stands still: H[t] ∧ P[t−1][c] → P[t][c], H[t] ∧ F[t−1][f] →
+F[t][f]; otherwise F[t−1][f] ∧ R[t][r] → F[t][f′]. L[t][c] = L[t−1][c] XOR
+D[t][c] (4 clauses), and D is never true once halted, so nothing flips. The
+end is a unit clause a tile. A 4 × 4 CNF at k = 47 is 2,906 variables and
+20,453 clauses (2,858 and 16,363 before the halt was encoded).
 
-"Exactly k" is the question the CNF asks; the par is the least k that is
-SAT, so the census predicts SAT at the par and UNSAT at every k below it.
+"Exactly k" is the question the CNF asks, a halted program included; the
+par is the least k that is SAT, so the census predicts SAT at the par and
+UNSAT at every k below it. Halting moves neither: a halted k-roll solution
+has a shorter one on the board.
 
 `sat.shale` checks each SAT model's rolls with `cube_sat check` (the
 rules' checker) and its `v` lines with `drat model`, and each UNSAT's DRAT
