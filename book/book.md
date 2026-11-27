@@ -1528,6 +1528,8 @@ Three guesses failed on the census:
 
 A closed form for {zero, decr, half} like Theorem 14 is open, and so is the reason four opcodes beat three.
 
+Beyond 16 inputs each theorem here is a conjecture. With an n-bit `AX`, `src/theory_plus.c`'s tables grow to 2^(2^(n−1)) entries, exponential in SOLVABLE's 2^n + k input bits. If Theorems 12 and 13 hold at every width, the recursion on one formal language makes 2^O(n²) calls, quasi-polynomial in that length. Theorem 14's shapes, if general, would decide the toy's SOLVABLE in polynomial time, leaving P against NP open.
+
 ## Nibble++ meets rocsat
 
 {{chapter Nibble++}} settles every formal language's shortest program by searching the machine's states. This chapter puts the same questions to rocsat, as {{chapter The SAT solver}} frames them, in a CNF that `src/plus_sat.c` builds on the toy's gates.
@@ -2145,7 +2147,7 @@ Each of the six lines, on each of the four cores, is such a stepper, wired to th
 
 ### rocsat as an oracle
 
-`sat/oracle.shale` asks `rocsat solve` about each problem's formula with the program's bits free (`f977bcc`), so the solver searches ({{chapter The SAT solver}}). Each SATISFIABLE answer is a program, which the script runs on the machine and blocks with a clause before asking again; UNSATISFIABLE, expected once every program is found, ends the count. Each shortest length is then SATISFIABLE, and one line shorter UNSATISFIABLE, as expected, with a DRAT proof our checker replays. That is Theorem 4 again, by Theorem 17. It starts rocsat 4,143 times, so it runs as its own script; its last run, on 2026-11-25, spent 62.6 s in its programs and ended "rocsat agrees with the machine on all 16 puzzles", with 4,096 models and all 15 proofs verified. The counts themselves need no solver, since `tests/test_sat.c` gets them in the fast tier by propagating each of the 4,096 programs; the blocking loop asks rocsat anyway, to use the solver as an oracle that knows nothing of the machine, so every count comes once from propagation over all programs and once from a search that finds the programs one by one.
+`sat/oracle.shale` asks `rocsat solve` about each problem's formula with the program's bits free (`f977bcc`), so the solver searches ({{chapter The SAT solver}}). Each SATISFIABLE answer is a program, which the script runs on the machine and blocks with a clause before asking again; UNSATISFIABLE, expected once every program is found, ends the count. Each shortest length is then SATISFIABLE, and one line shorter UNSATISFIABLE, as expected, with a DRAT proof our checker replays. That is Theorem 4 again, by Theorem 17. Its last run, on 2026-11-25, started rocsat 4,143 times in 62.6 s and verified 4,096 models and all 15 proofs. `tests/test_sat.c` gets the same counts by propagation; the loop shows the solver as an oracle, blind to the machine.
 
 ## Solved by hand
 
@@ -2282,9 +2284,7 @@ Each problem whose shortest program has a line or more has one proof; `grumpy`, 
 | 2 | `is_one` | {1} | 2 | 8,731 | 566 | yes |
 | 4 | `is_two` | {2} | 3 | 7,440 | 477 | yes |
 
-The proofs run from 7,440 to 14,698 bytes and from 286 to 821 lemmas. The largest by bytes has fewer lemmas than five others, since its lemmas are longer.
-
-The proof for {0} at length 0, the most trivial claim, has the most lemmas because it needs none. With every line forced to `nada`, unit propagation alone fixes all 416 variables and refutes the formula, with no decision and no conflict, and rocsat writes each variable it fixes at the root as a unit lemma, 404 of them twice around a deletion: 820 units and the empty clause, by a count of `sat/proofs/1-len0.drat` on 2026-11-27. `src/drat.c` accepts the one-line proof `0` against the same formula. The proofs at the next shortest bounds, 744 lemmas at length 1 for {0, 2} and 691 and 693 at length 2, also fix all or nearly all 416 variables at the root, and their unit lemmas are most of their lemmas.
+The proofs run from 7,440 to 14,698 bytes and from 286 to 821 lemmas. The {0} proof has the most lemmas: propagation alone refutes its formula, and rocsat logs all 416 variables it fixes, `src/drat.c` accepting `0` alone.
 
 ## The oracles
 
