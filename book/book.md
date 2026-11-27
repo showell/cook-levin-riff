@@ -2284,6 +2284,8 @@ Each problem whose shortest program has a line or more has one proof; `grumpy`, 
 
 The proofs run from 7,440 to 14,698 bytes and from 286 to 821 lemmas. The largest by bytes has fewer lemmas than five others, since its lemmas are longer.
 
+The proof for {0} at length 0, the most trivial claim, has the most lemmas because it needs none. With every line forced to `nada`, unit propagation alone fixes all 416 variables and refutes the formula, with no decision and no conflict, and rocsat writes each variable it fixes at the root as a unit lemma, 404 of them twice around a deletion: 820 units and the empty clause, by a count of `sat/proofs/1-len0.drat` on 2026-11-27. `src/drat.c` accepts the one-line proof `0` against the same formula. The proofs at the next shortest bounds, 744 lemmas at length 1 for {0, 2} and 691 and 693 at length 2, also fix all or nearly all 416 variables at the root, and their unit lemmas are most of their lemmas.
+
 ## The oracles
 
 Every implementation in this repository computes the same answers in its own way, and each is held to the others. The spine of the project is that they all agree.
