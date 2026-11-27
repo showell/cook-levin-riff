@@ -41,28 +41,32 @@ int cube_roll_of(char c) {
     }
 }
 
+void cube_step(int n, CubeState *s, CubeRoll r) {
+    if (s->halted) return;
+    int to = cube_cell_after(n, s->cell, r);
+    if (to < 0) {
+        s->halted = 1;
+        return;
+    }
+    s->cell = to;
+    s->face = cube_face_after(s->face, r);
+    if (s->face == FACE_DOWN) s->lit ^= 1u << to;
+}
+
 int64_t cube_play(int n, int start_cell, CubeFace start_face, const char *rolls, int k, int *end_cell, CubeFace *end_face, int *halt_at) {
-    int cell = start_cell;
-    CubeFace face = start_face;
-    uint32_t lit = 0;
+    CubeState s = {start_cell, start_face, 0, 0};
     int halted = -1;
     for (int i = 0; i < k; i++) {
         int r = cube_roll_of(rolls[i]);
         if (r < 0) return -1;
-        if (halted >= 0) continue;
-        int to = cube_cell_after(n, cell, (CubeRoll)r);
-        if (to < 0) {
-            halted = i;
-            continue;
-        }
-        cell = to;
-        face = cube_face_after(face, (CubeRoll)r);
-        if (face == FACE_DOWN) lit ^= 1u << cell;
+        int was = s.halted;
+        cube_step(n, &s, (CubeRoll)r);
+        if (!was && s.halted) halted = i;
     }
-    if (end_cell != NULL) *end_cell = cell;
-    if (end_face != NULL) *end_face = face;
+    if (end_cell != NULL) *end_cell = s.cell;
+    if (end_face != NULL) *end_face = s.face;
     if (halt_at != NULL) *halt_at = halted;
-    return lit;
+    return s.lit;
 }
 
 int cube_check(int n, int start_cell, CubeFace start_face, uint32_t target, const char *rolls, int k) {
