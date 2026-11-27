@@ -60,7 +60,10 @@
 //   programs of zeros and decrs for known languages and sees each one's
 //   name (held to <plus_names.tsv> too) and its set's ranges, the longest
 //   name wrapping with nothing scrolled sideways, and a language the table
-//   doesn't name shown by its set alone; opens and closes the "?"; resets
+//   doesn't name shown by its set alone; sees the elegance rating under the
+//   language, its stars from the name's cost (one for no name) and its line,
+//   following the program (an edit, a special like grumpy or is_even, a
+//   cost-3 and a cost-4 name, an unnamed set); opens and closes the "?"; resets
 //   to its start; sees nothing scroll sideways and
 //   nothing stored; and follows its links back to the sandbox and the
 //   puzzles.
@@ -228,7 +231,20 @@ const KNOWN_NAMES = [
   { set: [2, 6, 10, 14], name: "is_even_and_has_bit_1", range: "{2, 6, 10, 14}" },
   { set: [1, 2, 5, 6, 9, 10, 13], name: "is_from_1_to_2_or_from_5_to_6_or_from_9_to_10_or_13", range: "{1, 2, 5, 6, 9, 10, 13}" },
 ];
-const plusWasmFile = files.find((f) => /^plus\.[0-9a-f]{16}\.wasm$/.test(f));
+// The elegance rating: the stars are 6 less the name's cost (held to
+// plus_names.tsv's), one for a language the page doesn't name; a line a
+// language, a special's own or one of its stars' lines by the language's
+// number. grumpy, is_even and a single number are specials; then a cost-3
+// name, a cost-4 one, and a set past the table (KNOWN_NAMES' unnamed one).
+const ELEGANCE = [
+  { set: [], stars: 5, line: "Accepts nothing. Commitment issues? No: standards." },
+  { set: [0, 2, 4, 6, 8, 10, 12, 14], stars: 5, line: "Every other number, starting at zero. Textbook." },
+  { set: [9], stars: 5, line: "Only 9 will do. Picky, and proud of it." },
+  { set: [1, 2, 3, 5, 15], stars: 3, line: "It works, and it knows it." },
+  { set: [1, 2, 5, 6, 9, 10, 13], stars: 2, line: "Has strong opinions about some numbers." },
+  { set: [0, 2, 4, 5, 7, 8, 11], stars: 1, line: "There's no short way to say this." },
+];
+const plusWasmFile =files.find((f) => /^plus\.[0-9a-f]{16}\.wasm$/.test(f));
 if (!plusWasmFile) { console.error(`page_check: no hashed plus wasm in ${site}`); process.exit(1); }
 const pm = (await WebAssembly.instantiate(readFileSync(join(site, plusWasmFile)))).instance.exports;
 const plusSample = readFileSync(plusRunsFile, "utf8").trim().split("\n").map((l) => {
@@ -663,6 +679,13 @@ try {
   expect((await plusShows()) === plusWant(opening) && (await text("decided-set")) === "{0, 1, 2}", `the fresh Nibble++ sandbox shows \`${await plusShows()}\`, not \`${plusWant(opening)}\``);
   expect((await text("machine-code")).endsWith(`(#${openingNumber})`), `the opening program's number reads \`${await text("machine-code")}\`, not #${openingNumber}`);
   expect((await text("decided")) === "This program decides is_below_3, {0–2}, #7 of 65,536: it accepts {0, 1, 2} and rejects the rest.", `the fresh Nibble++ language reads \`${await text("decided")}\``);
+  // The elegance rating, right under the language: its stars (data-stars,
+  // then as drawn) and its line. is_below_3 costs 1, five stars, and #7 takes
+  // the second of five stars' lines.
+  const rated = async () => `${await evaluate("document.getElementById('elegance').dataset.stars")} ${await text("elegance-stars")} ${await text("elegance-line")}`;
+  const stars = (n) => `${n} ${"★".repeat(n)}${"☆".repeat(5 - n)}`;
+  expect((await evaluate("document.getElementById('decided').nextElementSibling?.id")) === "elegance", "the elegance rating isn't right under the language");
+  expect((await rated()) === `${stars(5)} Says it in one word.`, `the opening program's elegance reads \`${await rated()}\``);
   // The ops are shown workhorses first: zero, decr, mod2, then half.
   const shownOrder = "zero decr mod2 half";
   const buttonOrders = await evaluate("[...new Set([...document.querySelectorAll('.slot')].map((r) => [...r.querySelectorAll('button')].map((b) => b.dataset.op).join(' ')))].join(' / ')");
@@ -696,6 +719,8 @@ try {
   await click('[data-slot="4"][data-op="decr"]');
   const edited = [1, 2, 1, ...Array(PLUS_LINES - 3).fill(2)];
   expect((await plusShows()) === plusWant(edited) && (await text("decided-set")) === "{0, 1}", `decr on line 5 shows \`${await plusShows()}\``);
+  // The rating follows the edit: is_below_2, #3, the first of five stars' lines.
+  expect((await rated()) === `${stars(5)} Dijkstra would nod.`, `after decr on line 5 the elegance reads \`${await rated()}\``);
   expect((await column("now")) === third && (await text("step-label")) === "after line 3 of 30", `after decr on line 5, step 3 shows \`${await column("now")}\``);
   await screenshot(shotFile.replace(/\.png$/, "-plus.png"));
   await click("#step-end");
@@ -775,6 +800,13 @@ try {
   await plusType(String(deciding(unnamed).reduce((s, op) => s * 4n + BigInt(op), 0n)));
   expect((await text("decided-name")) === null && (await text("decided")) === "This program decides the language {0, 2, 4, 5, 7, 8, 11}, #2485 of 65,536: it accepts {0, 2, 4, 5, 7, 8, 11} and rejects the rest.",
     `a program deciding {0, 2, 4, 5, 7, 8, 11} shows \`${await text("decided")}\``);
+  for (const e of ELEGANCE) {
+    const code = codeOfSet(e.set);
+    const cost = plusNames.get(code)?.cost ?? 99;
+    expect(e.stars === (cost <= 4 ? 6 - cost : 1), `${plusSet(code)} costs ${cost}, not ${6 - e.stars} stars' worth`);
+    await plusType(String((e.set.length ? deciding(e.set) : Array(PLUS_LINES).fill(2)).reduce((s, op) => s * 4n + BigInt(op), 0n)));
+    expect((await text("decided-set")) === plusSet(code) && (await rated()) === `${stars(e.stars)} ${e.line}`, `a program deciding ${plusSet(code)} rates \`${await rated()}\``);
+  }
   // The machine code's "?" opens its line and closes it.
   await click("#code-help");
   expect(!(await evaluate("document.getElementById('code-explain').hidden")) && (await text("code-explain")).startsWith("The machine code:"), "the Nibble++ ? doesn't open its explanation");
@@ -803,4 +835,4 @@ try {
 if (failures > 0) { console.error(`page_check: ${failures} of ${checks} checks failed`); process.exit(1); }
 const hardest = puzzles[puzzles.length - 1];
 const fixedCount = puzzles.filter((p, i) => i >= LESSONS.length && p.fixed).length;
-console.log(`ok   page_check: the wasm matches the C on all ${PROGRAMS * 4} runs and its ${puzzles.length}-puzzle table (${first.name} ${first.count} programs, shortest ${first.shortest}; ... ${hardest.name} ${hardest.count}, shortest ${hardest.shortest}); in Chromium at ${WIDTH}px with no sideways scroll the first puzzle was solved by clicks, a reload started fresh with nothing stored, is_one and is_even were solved by line 2's zero and grumpy by one click, and puzzles 5 to 16 opened with their locks and were solved by clicks, ${fixedCount} of them with a fixed zero; the sandbox opened free as #0 deciding grumpy, showed #1689 deciding is_not_one {0, 2, 3} by clicks and by its typed number, and loaded typed numbers as the wasm runs them; the Nibble++ wasm matches src/plus.c on ${plusSample.length} programs (${plusRuns} runs, ${plusSteps} steps), and the Nibble++ sandbox opened as zero, decr, zero, decr, zero and 25 decrs deciding is_below_3 {0, 1, 2}, its ops in the order zero, decr, mod2, half, stepped, edited, shrank to half, zero deciding {0, 1}, grew back, loaded typed 60-bit numbers as the wasm runs them, and showed ${KNOWN_NAMES.length} languages' names and the set alone for one past the table (${checks} checks)`);
+console.log(`ok   page_check: the wasm matches the C on all ${PROGRAMS * 4} runs and its ${puzzles.length}-puzzle table (${first.name} ${first.count} programs, shortest ${first.shortest}; ... ${hardest.name} ${hardest.count}, shortest ${hardest.shortest}); in Chromium at ${WIDTH}px with no sideways scroll the first puzzle was solved by clicks, a reload started fresh with nothing stored, is_one and is_even were solved by line 2's zero and grumpy by one click, and puzzles 5 to 16 opened with their locks and were solved by clicks, ${fixedCount} of them with a fixed zero; the sandbox opened free as #0 deciding grumpy, showed #1689 deciding is_not_one {0, 2, 3} by clicks and by its typed number, and loaded typed numbers as the wasm runs them; the Nibble++ wasm matches src/plus.c on ${plusSample.length} programs (${plusRuns} runs, ${plusSteps} steps), and the Nibble++ sandbox opened as zero, decr, zero, decr, zero and 25 decrs deciding is_below_3 {0, 1, 2}, its ops in the order zero, decr, mod2, half, stepped, edited, shrank to half, zero deciding {0, 1}, grew back, loaded typed 60-bit numbers as the wasm runs them, and showed ${KNOWN_NAMES.length} languages' names and the set alone for one past the table, and ${ELEGANCE.length + 2} elegance ratings (${checks} checks)`);
