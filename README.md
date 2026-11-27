@@ -103,11 +103,18 @@ checked by `src/drat.c`) and the cheap search cases, and writes
 cases, SAT at the census length and UNSAT one line shorter with a checked
 DRAT proof, and writes their times to `sat/plus/search.txt`; the build
 doesn't run it. `sat/plus_guided.shale` runs the same cases as a guided
-search (`plus_sat search-on`): rocsat is asked with the runs of a few
-inputs, from 0 and 15, and an input the found program gets wrong joins them
-each round, until the program decides W (SAT) or no program gets even
-those inputs right (UNSAT, its proof over the smaller formula checked). It
-writes `sat/plus/guided.txt` beside the full search's numbers; the build
+search, on one rocsat kept across the rounds: `plus_sat search-guarded`
+writes all 16 runs, each run's output held by a selector variable, and
+`sat/rocsat_guided.roc`, a small driver on rocsat's incremental API, solves
+under the selectors of a few inputs as assumptions, from 0 and 15, adding
+the lowest input the found program gets wrong each round, until the
+program decides W (SAT) or no program gets even those inputs right (UNSAT:
+its proof, rocsat's lemmas from every round and the failed assumptions'
+clause, checked against the CNF with those selectors as unit clauses). The
+script holds every round to the interpreter. The driver is built beside a
+copy of rocsat's modules by rocsat's pinned nightly (about 20 s, skipped
+when `out/rocsat_guided` already holds it, built from the same sources).
+It writes `sat/plus/guided.txt` beside the full search's numbers; the build
 runs one of its cases, {15}, in `sat/plus.shale`. The three share
 `sat/plus_rocsat.shale`.
 
@@ -349,7 +356,11 @@ shale sat/to_dimacs.shale file=sat/readable/circuit.txt
 
 rocsat builds with its pinned Roc nightly (`roc-version`,
 `nightly-2026-08-18-e9be50a`), via `make build`. Its `scripts/install-roc`
-installs that nightly under `~/.roc`, or under `ROC_INSTALL_DIR`.
+installs that nightly under `~/.roc`, or under `ROC_INSTALL_DIR`. The
+guided search's driver, `sat/rocsat_guided.roc`, is built by the same
+nightly, which `sat/plus_rocsat.shale` finds at
+`build:roc-pin-dl/roc_nightly-linux_x86_64-2026-08-18-e9be50a/roc` (or
+`roc=PATH`, a Shale path, to `sat/plus.shale` and `sat/plus_guided.shale`).
 
 ## Status
 

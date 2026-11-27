@@ -10,7 +10,7 @@
 // to 28 lines, for a sample of the languages. The search CNF is held the
 // same way: a witness's bits propagate to a model of its language's search
 // at its census length, and are refuted by every language one input away;
-// the guided search's CNF on a subset of the inputs keeps only those runs.
+// the guarded search's CNF holds a run's output only under its selector.
 
 #include "test.h"
 
@@ -229,34 +229,34 @@ static void search_holds_witness(uint32_t y) {
     sat_free(&c);
 }
 
-// The guided search's CNF on a subset of the inputs: on all 16 it is the
-// full search, clause for clause; a witness of y satisfies the search for
-// a language one input away when that input is left out, and is refuted
-// when it is kept.
-static void search_on_holds_witness(uint32_t y) {
+// The guarded search's CNF (incremental solving under assumptions): a
+// witness of y, with no selector set, propagates to a model in which every
+// goal literal of y's search holds, since the witness decides y; for the
+// language one input away, it propagates to a model with that input's
+// selector false and the rest true, and to a conflict with all 16 true.
+static void search_guarded_holds_witness(uint32_t y) {
     PlusOp ops[LONGEST];
     int len = census_witness(&census, y, ops);
     if (len == 0) return;
-    Cnf all = plus_sat_search(y, len);
-    Cnf on = plus_sat_search_on(y, len, PLUS_LANGUAGES - 1);
-    EXPECT_EQ(on.num_vars, all.num_vars);
-    EXPECT_EQ(on.len, all.len);
-    EXPECT(on.len == all.len && memcmp(on.lits, all.lits, all.len * sizeof all.lits[0]) == 0);
-    sat_free(&all);
-    sat_free(&on);
-    signed char given[2 * LONGEST + 1] = {0};
+    signed char given[2 * LONGEST + PLUS_INPUTS + 1] = {0};
     set_program(given, ops, len);
-    int gap = (int)(y % PLUS_INPUTS);
-    uint32_t other = y ^ (1u << gap);
-    uint32_t without = (PLUS_LANGUAGES - 1) & ~(1u << gap);
-    Cnf c = plus_sat_search_on(other, len, without);
+    Lit goals[PLUS_INPUTS];
+    Cnf c = plus_sat_search_guarded(y, len, goals);
+    EXPECT_EQ(plus_sat_selector(len, 0), 2 * len + 1);
     signed char *val = malloc((size_t)c.num_vars + 1);
-    EXPECT_EQ(propagate(&c, 2 * len, given, val), 1);
+    EXPECT_EQ(propagate(&c, 2 * len + PLUS_INPUTS, given, val), 1);
+    for (int n = 0; n < PLUS_INPUTS; n++) EXPECT_EQ(lit_value(goals[n], val), 1);
     free(val);
     sat_free(&c);
-    c = plus_sat_search_on(other, len, without | 1u << gap);
+    int gap = (int)(y % PLUS_INPUTS);
+    uint32_t other = y ^ (1u << gap);
+    c = plus_sat_search_guarded(other, len, goals);
     val = malloc((size_t)c.num_vars + 1);
-    EXPECT_EQ(propagate(&c, 2 * len, given, val), 0);
+    for (int n = 0; n < PLUS_INPUTS; n++) given[plus_sat_selector(len, n)] = n != gap;
+    EXPECT_EQ(propagate(&c, 2 * len + PLUS_INPUTS, given, val), 1);
+    EXPECT_EQ(lit_value(goals[gap], val), 0);
+    given[plus_sat_selector(len, gap)] = 1;
+    EXPECT_EQ(propagate(&c, 2 * len + PLUS_INPUTS, given, val), 0);
     free(val);
     sat_free(&c);
 }
@@ -267,11 +267,11 @@ TEST(the_search_admits_each_sampled_witness_and_refutes_it_one_input_away) {
     static const uint32_t STRUCTURED[] = {1u << 15, 0xff00, 0xcccc, 0xffff, 1};
     for (size_t i = 0; i < sizeof STRUCTURED / sizeof STRUCTURED[0]; i++) {
         search_holds_witness(STRUCTURED[i]);
-        search_on_holds_witness(STRUCTURED[i]);
+        search_guarded_holds_witness(STRUCTURED[i]);
     }
     for (uint32_t y = 7; y < PLUS_LANGUAGES; y += 4099) {
         search_holds_witness(y);
-        search_on_holds_witness(y);
+        search_guarded_holds_witness(y);
     }
     census_free(&census);
 }

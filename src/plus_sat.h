@@ -65,12 +65,21 @@ Lit plus_sat_circuit(Cnf *c, int k);
 // unit clause. Satisfiable exactly when some k-line program decides it.
 Cnf plus_sat_search(uint32_t lang, int k);
 
-// The same search with copies for only the inputs in `inputs` (bit n for
-// input n), for the guided search (sat/plus_guided.shale): satisfiable
-// exactly when some k-line program agrees with `lang` on those inputs, so
-// an UNSAT here already says no k-line program decides `lang`.
-// plus_sat_search is this with all 16.
-Cnf plus_sat_search_on(uint32_t lang, int k, uint32_t inputs);
+// Input n's (0..15) selector in the guarded search: variable 2k + 1 + n,
+// right after the program bits.
+int plus_sat_selector(int k, int n);
+
+// The search for incremental solving under assumptions
+// (sat/plus_guided.shale): all 16 copies of the run, as plus_sat_search
+// has them, but each copy's output held to its bit of `lang` only when
+// its selector is true, by the clause (NOT s_n OR goal_n). `goals[n]` is
+// set to goal_n, a literal or a constant (a TRUE goal's clause is dropped;
+// a FALSE one leaves the unit NOT s_n). Solved under the assumptions s_n
+// for n in a set, it is satisfiable exactly when some k-line program
+// agrees with `lang` on that set, so an UNSAT under a few assumptions
+// already says no k-line program decides `lang`. With no assumptions every
+// program satisfies it, since the copies' gates are Tseitin definitions.
+Cnf plus_sat_search_guarded(uint32_t lang, int k, Lit goals[PLUS_INPUTS]);
 
 // A model's program: line i's op from variables 2i - 1 and 2i, `bits[v]`
 // being variable v's value (index 0 unused).

@@ -13,9 +13,12 @@
 //   plus_sat search W K               the search for a K-line program that
 //                                     decides W (a language's code, 0 to
 //                                     65535, bit n for input n), DIMACS
-//   plus_sat search-on W K INPUTS     the same search with copies for only
-//                                     INPUTS (numbers 0 to 15 joined by
-//                                     commas), for sat/plus_guided.shale
+//   plus_sat search-guarded W K       the search with all 16 copies, each
+//                                     copy's output held only when its
+//                                     selector is true, and `c guard N S G`
+//                                     lines naming them, for
+//                                     sat/plus_guided.shale's incremental
+//                                     solving under assumptions
 //   plus_sat language OPS             the code of the language OPS decides
 //                                     on the plain interpreter (plus.c)
 //   plus_sat decides W OPS            whether OPS decides W on the plain
@@ -36,7 +39,7 @@
 #include <string.h>
 
 static int usage(void) {
-    fprintf(stderr, "usage: plus_sat size K | claim OPS N [accept] | search W K | search-on W K INPUTS | language OPS | decides W OPS | census W... | census-at L\n");
+    fprintf(stderr, "usage: plus_sat size K | claim OPS N [accept] | search W K | search-guarded W K | language OPS | decides W OPS | census W... | census-at L\n");
     return 2;
 }
 
@@ -133,36 +136,25 @@ static int search(uint32_t lang, int k) {
     return 0;
 }
 
-// INPUTS as numbers 0 to 15 joined by commas, as a set's bits; -1 for a
-// list that is empty or names something else.
-static long parse_inputs(const char *s) {
-    long set = 0;
-    const char *at = s;
-    while (1) {
-        const char *end = strchr(at, ',');
-        size_t len = end ? (size_t)(end - at) : strlen(at);
-        char one[4];
-        if (len == 0 || len >= sizeof one) return -1;
-        memcpy(one, at, len);
-        one[len] = 0;
-        long n = number(one, 0, PLUS_INPUTS - 1);
-        if (n < 0) return -1;
-        set |= 1L << n;
-        if (!end) return set;
-        at = end + 1;
-    }
-}
-
-static int search_on(uint32_t lang, int k, uint32_t inputs) {
-    Cnf c = plus_sat_search_on(lang, k, inputs);
-    int runs = 0;
-    for (int n = 0; n < PLUS_INPUTS; n++) runs += inputs >> n & 1;
-    printf("c the guided search: a %d-line Nibble++ program that agrees with language %u on inputs", k, lang);
-    for (int n = 0; n < PLUS_INPUTS; n++) {
-        if (inputs >> n & 1) printf(" %d", n);
-    }
-    printf("; %d runs, %zu gates\n", runs, c.num_gates);
+static int search_guarded(uint32_t lang, int k) {
+    Lit goals[PLUS_INPUTS];
+    Cnf c = plus_sat_search_guarded(lang, k, goals);
+    printf("c the guarded search: a %d-line Nibble++ program that decides language %u; 16 runs, %zu gates, each run's "
+           "output held by its selector\n",
+           k, lang, c.num_gates);
     write_lines_comment(stdout, k);
+    printf("c each `c guard N S G` line: input N's selector is variable S and its goal literal G (true or false for "
+           "a constant)\n");
+    for (int n = 0; n < PLUS_INPUTS; n++) {
+        printf("c guard %d %d ", n, plus_sat_selector(k, n));
+        if (goals[n] == SAT_TRUE) {
+            printf("true\n");
+        } else if (goals[n] == SAT_FALSE) {
+            printf("false\n");
+        } else {
+            printf("%d\n", goals[n]);
+        }
+    }
     write_clauses(stdout, &c);
     sat_free(&c);
     return 0;
@@ -200,12 +192,11 @@ int main(int argc, char **argv) {
         long k = number(argv[3], 0, CENSUS_MAX_LENGTH);
         if (w < 0 || k < 0) return usage();
         ok = search((uint32_t)w, (int)k) == 0;
-    } else if (strcmp(cmd, "search-on") == 0 && argc == 5) {
+    } else if (strcmp(cmd, "search-guarded") == 0 && argc == 4) {
         long w = number(argv[2], 0, PLUS_LANGUAGES - 1);
         long k = number(argv[3], 0, CENSUS_MAX_LENGTH);
-        long inputs = parse_inputs(argv[4]);
-        if (w < 0 || k < 0 || inputs < 0) return usage();
-        ok = search_on((uint32_t)w, (int)k, (uint32_t)inputs) == 0;
+        if (w < 0 || k < 0) return usage();
+        ok = search_guarded((uint32_t)w, (int)k) == 0;
     } else if (strcmp(cmd, "language") == 0 && argc == 3) {
         PlusOp ops[CENSUS_MAX_LENGTH];
         int k = parse_ops(argv[2], ops);

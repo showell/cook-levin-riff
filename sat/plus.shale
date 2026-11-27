@@ -37,7 +37,7 @@ const CHEAP = {{1, 1}, {3, 2}, {52428, 4}, {65280, 5}, {32768, 8}}
 -- The guided search case, {15} at its census length.
 const GUIDED = {32768, 8}
 
-local t = plus_tools(arg("rocsat", "build:rocsat/src/rocsat"), "out/sat/plus")
+local t = plus_guided_build(plus_tools(arg("rocsat", "build:rocsat/src/rocsat"), "out/sat/plus"), arg("roc", PLUS_ROC))
 mkdir("sat/plus")
 local said = {}
 

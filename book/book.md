@@ -1625,32 +1625,32 @@ Both proofs replace the programs with a finite model of the machine, the circuit
 
 ## Guided search
 
-The search of {{chapter Nibble++ meets rocsat}} hands rocsat all 16 runs at once. A guided search, counterexample by counterexample, starts with a few runs and adds the others as they are needed. `plus_sat search-on` writes the search CNF with copies for the named inputs alone, and `sat/plus_guided.shale` runs the loop on the same 11 cases. For a formal language W and a length k:
+The search of {{chapter Nibble++ meets rocsat}} hands rocsat all 16 runs at once. A guided search, counterexample by counterexample, starts with a few runs and adds the others as they are needed. `plus_sat search-guarded` writes the full search's 16 runs with each run's output held by a selector variable, and `sat/plus_guided.shale` runs the loop on the same 11 cases with one rocsat kept across the rounds: `sat/rocsat_guided.roc`, on rocsat's incremental API, solves under the selectors of the set as assumptions, so the clauses rocsat learns in one round carry to the next. For a formal language W and a length k:
 
 1. Start with inputs 0 and 15.
 2. Ask rocsat for a k-line program that gets W right on those inputs.
 3. On SATISFIABLE, run the program on all 16 inputs with `src/plus.c`'s interpreter. If it decides W, the search ends. Otherwise the lowest input it gets wrong joins the set, and the loop goes back to step 2.
 4. On UNSATISFIABLE, every k-line program gets some input of the set wrong, so every one fails on W too, and the search ends.
 
-Step 4 proves minimality from part of the machine. Its DRAT proof covers a formula with fewer copies, and `src/drat.c` checks it as before. The last SATISFIABLE answer gets the full search's three checks: `rocsat check`, `src/drat.c`'s model check and the interpreter.
+Step 4 proves minimality from part of the machine. Its DRAT proof holds rocsat's lemmas from every round, then the clause of the failed assumptions and the empty clause, and `src/drat.c` checks it against the CNF with the set's selectors as unit clauses. The script holds every round's program to the interpreter, and each input added to the lowest one that program gets wrong. The last SATISFIABLE answer gets the full search's three checks: `rocsat check`, `src/drat.c`'s model check and the interpreter.
 
 The inputs each answer asked about, and the proofs at L − 1 beside the full search's, from `sat/plus/guided.txt`:
 
 | Formal language | L | Inputs asked at L | Inputs asked at L − 1 | Its proof | The full proof | Checked |
 |---|---:|---:|---:|---:|---:|---|
-| {0} | 1 | 2 | 2 | 6 bytes | 6 bytes | yes |
-| {0, 1} | 2 | 2 | 3 | 41 bytes | 53 bytes | yes |
-| {2, 3, 6, 7, 10, 11, 14, 15} | 4 | 2 | 3 | 2,476 bytes | 13,638 bytes | yes |
-| {8, ..., 15} | 5 | 2 | 4 | 16,910 bytes | 34,723 bytes | yes |
-| {15} | 8 | 9 | 11 | 138,847 bytes | 117,323 bytes | yes |
-| {0, ..., 4, 6} | 12 | 9 | 9 | 381,506 bytes | 490,951 bytes | yes |
-| {0, ..., 6, 8} | 16 | 12 | 11 | 2,100,056 bytes | 1,640,192 bytes | yes |
-| {0, ..., 8, 10} | 20 | 13 | 13 | 3,028,426 bytes | 2,691,961 bytes | yes |
-| {0, ..., 10, 12} | 24 | 15 | 15 | 9,784,203 bytes | 6,145,378 bytes | yes |
-| {1, ..., 10, 12, 15} | 27 | 16 | 16 | 11,954,817 bytes | 11,954,817 bytes | yes |
-| {0, ..., 13, 15} | 28 | 16 | 16 | 17,192,870 bytes | 17,192,870 bytes | yes |
+| {0} | 1 | 2 | 2 | 12 bytes | 6 bytes | yes |
+| {0, 1} | 2 | 2 | 3 | 12 bytes | 53 bytes | yes |
+| {2, 3, 6, 7, 10, 11, 14, 15} | 4 | 2 | 3 | 132 bytes | 13,638 bytes | yes |
+| {8, ..., 15} | 5 | 2 | 4 | 682 bytes | 34,723 bytes | yes |
+| {15} | 8 | 10 | 11 | 29,239 bytes | 117,323 bytes | yes |
+| {0, ..., 4, 6} | 12 | 9 | 9 | 204,165 bytes | 490,951 bytes | yes |
+| {0, ..., 6, 8} | 16 | 12 | 11 | 1,152,009 bytes | 1,640,192 bytes | yes |
+| {0, ..., 8, 10} | 20 | 14 | 13 | 5,106,775 bytes | 2,691,961 bytes | yes |
+| {0, ..., 10, 12} | 24 | 16 | 15 | 19,529,669 bytes | 6,145,378 bytes | yes |
+| {1, ..., 10, 12, 15} | 27 | 16 | 16 | 6,497,632 bytes | 11,954,817 bytes | yes |
+| {0, ..., 13, 15} | 28 | 16 | 16 | 23,675,802 bytes | 17,192,870 bytes | yes |
 
-Every answer agreed with the census, and every proof checked. The short cases settled on 2 to 4 inputs, with proofs the same size or smaller. The long ones needed most of the inputs, and from 27 lines on all 16, so the last round asked the full search's own question. Each round solves from the start, so the rounds add up: in the one run that `sat/plus/guided.txt` records, the case at 28 lines took 35.1 s at L and 38.1 s at L − 1, against 8.3 s and 17.0 s for the full search in `sat/plus/search.txt`. `sat/plus.shale` runs the case of {15} in the build.
+Every answer agreed with the census, and every proof checked. The short cases settled on 2 to 4 inputs. The long ones needed most of the inputs, and from 24 lines on all 16 at L, so the last round asked the full search's own question with the earlier rounds' lemmas in hand. On 2026-11-27, with the box's load average between 2 and 4, the 11 cases took 156.5 s in all, against 287.9 s for the same loop solving each round from the start (the script at `eacbcff`, run the same hour). The case at 28 lines took 36.1 s at L and 29.2 s at L − 1 (`sat/plus/guided.txt`), against 64.5 s and 39.6 s from the start; the full search, at 8.3 s and 17.0 s in `sat/plus/search.txt`, is still faster there, and the case at 24 lines slowed at L, from 17.7 s to 27.2 s. A proof holds every round's lemmas, so the long cases' proofs grew, to 23,675,802 bytes at 28 lines. `sat/plus.shale` runs the case of {15} in the build.
 
 ## P, NP and Cook-Levin
 
