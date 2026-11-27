@@ -41,7 +41,6 @@ variables, and composing six steps gives the whole program as polynomials.
 - `js/`: the machine, the search and the composition in JavaScript, run by
   node, roc-js-interpreter's VM and its x86-64 compiler (below,
   "JavaScript").
-- `shale/`: the same in Shale, Steve's scripting language (below, "Shale").
 - `tests/`: the Python's asserts, every program on every input against a
   table of each opcode's rule, and the golden test against the Python's
   output (`tests/golden/find_solutions.txt`); Poly's strings against
@@ -514,38 +513,6 @@ in the roc-js-interpreter checkout beside this one
 (`repos:roc-js-interpreter`), through that repository's own
 `tools/roc_build.shale`, which reuses a build its cache already holds. With
 no such checkout, the oracle stops and says so.
-
-## Shale
-
-`shale/cook_levin.shale` is the machine, the search, the step polynomials
-and the six-step composition once more, in Shale, the scripting language
-that runs every shell command on this box. It follows `js/cook_levin.js`
-closely. Shale's numbers are 64-bit integers, and every operation on them
-is checked, so a coefficient is exact or the run stops. Like the JavaScript
-subset, Shale has no bitwise operators, so the OR and AND of two masks come
-from tables of their 7-bit halves. Like terms are summed in one dense table
-indexed by mask. `part=search` prints find_solutions' report alone,
-`part=composition` the composition's alone, and `steps=N` composes only
-the first N steps.
-
-```sh
-shale shale/check.shale    # the port held to both goldens
-```
-
-The check runs the port twice, once for each part, and holds each run's
-output byte for byte to its golden: `tests/golden/find_solutions.txt` for
-the search, `roc/golden/composition.txt` for the composition and the proof.
-It prints one line for each, with its time and step count.
-
-On this box (2 cores, 2026-11-25), the search takes about 0.25 s and 13
-million steps. The composition and the proof take about 5.4 s and 397
-million steps. Of those, building the tables and the step polynomials
-takes about 8 million, steps 1 to 5 take about 22 million, step 6 takes
-about 193 million, and the proof at all 16,384 points takes about 174
-million. The interpreter runs about 70 million steps a second here. A run's
-values are freed only when it ends, so the composition needs between 100
-and 300 MB of arena; the script's `-- budget:` line gives it 400 MB and a
-billion steps.
 
 ## License
 
