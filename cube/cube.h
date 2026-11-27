@@ -15,16 +15,19 @@
 // and where that face goes on a roll depends on where it is alone. So the
 // state the rules need is where the painted face points: one of six.
 //
-// Cells are numbered row by row from the north-west corner, cell r * n + c
-// for row r (0 the north row) and column c (0 the west column). Tile i of a
-// pattern is bit i.
+// Cells are named as on a chessboard turned to the north: columns a, b, c,
+// ... west to east, rows 1, 2, 3, ... north to south, so a1 is the
+// north-west corner. In the code, cell r * n + c is row r + 1 (r = 0 the
+// north row) and column c (0 the west column, a). Tile i of a pattern is
+// bit i.
 
 #ifndef COOK_LEVIN_CUBE_H
 #define COOK_LEVIN_CUBE_H
 
 #include <stdint.h>
 
-// The largest grid the census takes: 4 x 4 is 16 tiles, 65,536 patterns.
+// The largest grid the CNF takes; the census takes 4 x 4 at most (16 tiles,
+// 65,536 patterns), since 5 x 5 has 5 billion states.
 enum { CUBE_MAX_N = 5 };
 
 // The rolls, by their two-bit codes.

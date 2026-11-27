@@ -183,7 +183,7 @@ static void print_level(FILE *out, const Census *c, const char *name, uint32_t p
 
 static void report(FILE *out, const Census *c) {
     int n = c->n;
-    fprintf(out, "cube %dx%d: start at row 1, column 1 (the north-west corner), painted face %s; the cube may end anywhere\n", n, n, FACE_NAMES[c->start_face]);
+    fprintf(out, "cube %dx%d: start at a1 (the north-west corner), painted face %s; the cube may end anywhere\n", n, n, FACE_NAMES[c->start_face]);
     fprintf(out, "states: %u reached of %u (cell, painted face, pattern), %d levels\n", c->found, c->states, c->levels);
 
     long at[MAX_PAR + 1] = {0};
@@ -290,7 +290,7 @@ static int write_pars(const Census *c, const char *path) {
 
 // One line a start: its reachable patterns, largest par and mean par.
 static void starts(FILE *out, int n) {
-    fprintf(out, "cube %dx%d, every start: row col face  reachable  largest par  mean par\n", n, n);
+    fprintf(out, "cube %dx%d, every start: cell face  reachable  largest par  mean par\n", n, n);
     static Census c;
     for (int cell = 0; cell < n * n; cell++) {
         for (int face = 0; face < CUBE_FACES; face++) {
@@ -304,7 +304,7 @@ static void starts(FILE *out, int n) {
                 sum += c.par[p];
                 if (c.par[p] > top) top = c.par[p];
             }
-            fprintf(out, "  %d %d %-5s  %9u  %11d  %8.2f\n", cell / n + 1, cell % n + 1, FACE_NAMES[face], reached, top, (double)sum / (double)reached);
+            fprintf(out, "  %c%d   %-5s  %9u  %11d  %8.2f\n", 'a' + cell % n, cell / n + 1, FACE_NAMES[face], reached, top, (double)sum / (double)reached);
             census_free(&c);
         }
     }

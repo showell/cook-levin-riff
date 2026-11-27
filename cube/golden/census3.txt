@@ -1,4 +1,4 @@
-cube 3x3: start at row 1, column 1 (the north-west corner), painted face up; the cube may end anywhere
+cube 3x3: start at a1 (the north-west corner), painted face up; the cube may end anywhere
 states: 27648 reached of 27648 (cell, painted face, pattern), 32 levels
 patterns: 512, reachable 512, unreachable 0
 

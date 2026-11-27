@@ -1,4 +1,4 @@
-cube 4x4: start at row 1, column 1 (the north-west corner), painted face up; the cube may end anywhere
+cube 4x4: start at a1 (the north-west corner), painted face up; the cube may end anywhere
 states: 6291456 reached of 6291456 (cell, painted face, pattern), 51 levels
 patterns: 65536, reachable 65536, unreachable 0
 
