@@ -21,7 +21,8 @@
 --   reaches, the 4 x 4 board's states and each single tile's par there, the
 --   least par at each count of lit tiles on 3 x 3 and 4 x 4 (held to the
 --   floor 3m - 1), and every 4 x 4 lit set's par and a shortest program, in
---   cube_book/build/pars4.txt;
+--   cube_book/build/pars4.txt; it is the state flood in C, and the book
+--   calls it that;
 -- * cube_book/tables.py reads that file and prints the runs, challenges and
 --   tables of the 4 x 4 board, the 2 x 2 board's table, and a list of facts
 --   the prose must hold.
@@ -200,7 +201,11 @@ function check_census(book, shortest_out)
     end
   end
 
-  hold(book, "the 4 x 4 census's single tiles", "```text\n" .. census_block(reports["4"], "the par of each tile lit alone") .. "\n```")
+  -- tables.py lays the single tiles' pars out with the board's labels; each
+  -- of the census's rows must be one of its rows.
+  for l in drop(lines(census_block(reports["4"], "the par of each tile lit alone")), 1) do
+    hold(book, "the 4 x 4 census's single tiles", "  " .. trim(l) .. "\n")
+  end
 
   local census_pars = census_block(reports["3"], "par  patterns")
   local search_pars = trim(sub(shortest_out, find(shortest_out, "par  patterns")))

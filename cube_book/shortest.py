@@ -1,21 +1,19 @@
-# shortest.py: the shortest program for every pattern of lit tiles, found by
-# a breadth-first search over the cube's states.
+# shortest.py: the state flood, which finds the shortest program for every
+# lit set the cube can reach.
 #
 #   python3 cube_book/shortest.py 3
 #
 # A state is where the cube stands, where its painted face points and which
-# tiles are lit. The search starts on a1 (row 0, column 0) with the paint up
-# and nothing lit, and tries the rolls N, E, S and W from each state in the
-# order it found them. The first program to reach a state is a shortest one,
-# and a pattern's par is the length of the first state found with it. A roll
-# off the board halts a program with the tiles it lit before that roll, the
-# set a shorter program lights, so the search skips it.
+# tiles are lit. The flood starts on a1 (row 0, column 0) with the paint up
+# and nothing lit, and tries the rolls N, E, S and W, in that order, from
+# each state in the order it reached them. The first program to reach a
+# state is a shortest one, and a lit set's par is the length of the first
+# state reached with it.
 import sys
 from collections import Counter, deque
 
-# Where the painted face goes on each roll. Rolling north tips the cube over
-# its north edge: the top goes north, north goes down, down goes south and
-# south comes up. A face missing from a roll's map stays where it is.
+# Where the painted face goes on each roll, as Cube.roc's face_after has it.
+# A face missing from a roll's map stays where it is.
 TURN = {
     "N": {"up": "north", "north": "down", "down": "south", "south": "up"},
     "E": {"up": "east", "east": "down", "down": "west", "west": "up"},
@@ -38,9 +36,9 @@ def roll(n, state, r):
     return (row, col, face, lit)
 
 
-def search(n):
+def flood(n):
     """Every state the cube can reach, with the first shortest program to it,
-    in the order the search found them."""
+    in the order the flood reached them."""
     program = {START: ""}
     queue = deque([START])
     while queue:
@@ -53,20 +51,20 @@ def search(n):
     return program
 
 
-def shortest(n):
-    """Each reachable pattern's first shortest program."""
+def shortest(program):
+    """Each reachable lit set's first shortest program, from a flood's."""
     best = {}
-    for state, rolls in search(n).items():
+    for state, rolls in program.items():
         best.setdefault(state[3], rolls)
     return best
 
 
 def main():
     n = int(sys.argv[1])
-    states = len(search(n))
-    best = shortest(n)
+    program = flood(n)
+    best = shortest(program)
     pars = Counter(len(rolls) for rolls in best.values())
-    print(f"{n}x{n}: {states} states reached, {len(best)} patterns lit")
+    print(f"{n}x{n}: {len(program)} states reached, {len(best)} patterns lit")
     print("par  patterns")
     for par in range(max(pars) + 1):
         print(f"{par:3}  {pars[par]:8}")

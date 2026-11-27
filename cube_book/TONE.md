@@ -11,9 +11,9 @@ toy, and it should be a pleasure to read cover to cover. A writer adding to
   (`word_limit` in `cube_book/app/main.roc`). Code, tables and diagrams
   don't count, and a table stays a Markdown table. A chapter that can't fit its lesson is cut first, and split only when the
   lesson itself won't fit.
-- **The chapters keep their order.** A chapter is revised where it stands
-  and never moved. An idea a later chapter needs is introduced, briefly,
-  where it is first used.
+- **The chapters keep their order.** A chapter is revised where it stands;
+  one moves only with care and a strong reason. An idea a later chapter
+  needs is introduced, briefly, where it is first used.
 - **Say each thing once.** The front page lists the chapters by title
   alone. A chapter's lead says what it is about in one or two sentences,
   and its first section starts where the lead stops. The code's comments
@@ -28,9 +28,17 @@ toy, and it should be a pleasure to read cover to cover. A writer adding to
   to a pencil. The 2 × 2 and 3 × 3 boards appear only where a small board
   proves or shows something the big one can't.
 - **The playground's words are the book's.** A roll off the board halts
-  the program. A program's result is its lit set. Cells are numbered 0 to
+  the program. A program's result is its lit set. The board's squares are
+  tiles, never cells (the code's `cell` is a tile's number), numbered 0 to
   15 across each row from the north-west corner, with the chessboard names
   a1 to d4 beside them, so a lit set is a 16-bit number.
+- **Opcodes are shown lightly.** A roll's opcode is its 2 bits (N 00, E 01,
+  S 10, W 11). A program shown as a listing, a trace, has its opcode on
+  each line; a program in a sentence or a table cell stays its letters.
+- **Rolling is the way in.** "Try it in the playground" means roll it and
+  watch the playground name the question the lit set answers; the book
+  never describes the playground's controls in detail (its help page
+  does).
 - **Programs answer questions about numbers.** A lit set is a set of the
   numbers 0 to 15, so a challenge is a predicate (`is_even`,
   `is_small_even`, `is_power_of_2`) and a program answers it for every n at
