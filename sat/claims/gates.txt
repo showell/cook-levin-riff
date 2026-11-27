@@ -1,13 +1,13 @@
 core0.step1.lb_mux.top.pick1 = core0.step1.lb_mux.high.out AND core0.step1.hold.sel_hb
-c core0.step1.lb_mux.high.out = -6
-c core0.step1.hold.sel_hb = 5
+c core0.step1.lb_mux.high.out = -2
+c core0.step1.hold.sel_hb = 1
 c core0.step1.lb_mux.top.pick1 = 17
 c core0.step1.lb' = 17
 c core0.step2.zero.hb_or_lb = 17
 c core0.step2.decr.hb_or_lb = 17
--17 -6 0
--17 5 0
-17 6 -5 0
+-17 -2 0
+-17 1 0
+17 2 -1 0
 
 core0.step2.lb_mux.low.out = core0.step2.lb_mux.low.pick0 OR core0.step2.lb_mux.low.pick1
 c core0.step2.lb_mux.low.pick0 = 22

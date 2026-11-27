@@ -351,13 +351,13 @@ static void program_inputs(Net *net, int prog[12]) {
 
 void circuit_core(Net *net) {
     net_init(net);
+    int prog[12];
+    program_inputs(net, prog);
     CircuitState start;
     start.hb = net_input(net, "in_hb");
     start.lb = net_input(net, "in_lb");
     start.halted = WIRE_0;
     start.accepted = WIRE_0;
-    int prog[12];
-    program_inputs(net, prog);
     CircuitState end = part_core(net, "", start, prog);
     net_port(net, "", "accepted", end.accepted);
 }
@@ -381,14 +381,14 @@ static void decider_links(Net *net, int n) {
 
 void circuit_decides(Net *net) {
     net_init(net);
+    int prog[12];
+    program_inputs(net, prog);
     int want[4];
     char name[CIRCUIT_NAME];
     for (int n = 0; n < 4; n++) {
         snprintf(name, sizeof name, "want%d", n);
         want[n] = net_input(net, name);
     }
-    int prog[12];
-    program_inputs(net, prog);
     int all = -1;
     for (int n = 0; n < 4; n++) {
         char prefix[CIRCUIT_NAME];

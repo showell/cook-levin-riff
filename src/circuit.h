@@ -144,11 +144,11 @@ CircuitState part_core(Net *net, const char *prefix, CircuitState start, const i
 // The stepper alone, on six inputs made in the order hb, lb, halted,
 // accepted, op_hb, op_lb, its ports named hb', lb', halted', accepted'.
 void circuit_stepper(Net *net);
-// A core alone, on fourteen inputs: AX's two bits, then the program's
-// twelve, line 1's first; its one port is accepted.
+// A core alone, on fourteen inputs: the program's twelve bits, line 1's
+// first, then AX's two; its one port is accepted.
 void circuit_core(Net *net);
-// The whole decider, on sixteen inputs: the four want bits (input 0's
-// first), then the program's twelve; its one port is decides.
+// The whole decider, on sixteen inputs: the program's twelve bits, line 1's
+// first, then the four want bits (input 0's first); its one port is decides.
 void circuit_decides(Net *net);
 
 // The wire of the port named `name` of part `part`.

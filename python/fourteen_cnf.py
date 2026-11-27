@@ -7,9 +7,10 @@
 #   python3 python/fourteen_cnf.py model N P       the assignment for input N, program P
 #   python3 python/fourteen_cnf.py book            the blocks the book shows
 #
-# The formula's variables: v1 and v2 are the input's two bits (high, low),
-# v3 to v14 are the program's twelve, line 1's two first, so v1 .. v14 read
-# as the 14-bit number Fourteen.roc's f takes. The step is python/steps.py's
+# The formula's variables: v1 to v12 are the program's twelve bits, line 1's
+# two first, as in every CNF of this repository, and v13 and v14 are the
+# input's two (high, low), so v1 .. v14 read as the 14-bit number
+# Fourteen.roc's f takes. The step is python/steps.py's
 # four functions, composed six times with every bit unknown; each AND and OR
 # gate gets a variable of its own (Tseitin's encoding: three clauses tie it
 # to its two inputs), and NOT is a literal's sign. The last clause asks that
@@ -27,9 +28,9 @@ from steps import FALSE, step, var
 
 
 def formula():
-    state = (var(1), var(2), FALSE, FALSE)
+    state = (var(13), var(14), FALSE, FALSE)
     for k in range(1, 7):
-        state = step(var(2 * k + 1), var(2 * k + 2), state)
+        state = step(var(2 * k - 1), var(2 * k), state)
     return state[3]
 
 
@@ -80,7 +81,7 @@ def cnf_text():
     lit, gates, clauses = clauses_of(formula())
     head = [
         "c f : {0,1}^14 -> {0,1}, the Nibble machine as one function",
-        "c v1 v2: the input's bits; v3 .. v14: the program's, line 1 first",
+        "c v1 .. v12: the program's bits, line 1 first; v13 v14: the input's",
         f"c v15 .. v{14 + len(gates)}: AND and OR gates; the last clause: f = 1",
         f"p cnf {14 + len(gates)} {len(clauses)}",
     ]
@@ -90,9 +91,9 @@ def cnf_text():
 # Every variable's value at one point: the 14 bits, then each gate run on
 # them, in the gates' order.
 def values_at(gates, n, program):
-    env = {1: n >> 1, 2: n & 1}
+    env = {13: n >> 1, 14: n & 1}
     for k in range(12):
-        env[3 + k] = (program >> (11 - k)) & 1
+        env[1 + k] = (program >> (11 - k)) & 1
     memo = {}
     return [env[i] for i in range(1, 15)] + [g.value(env, memo) for g in gates]
 
@@ -150,11 +151,11 @@ def written_length(f, memo):
 # after line 2; the CNF's head and its first five gates' clauses; its last
 # lines; and the assignment for input 2 and program 1689.
 def book_blocks():
-    state = (var(1), var(2), FALSE, FALSE)
+    state = (var(13), var(14), FALSE, FALSE)
     rows = ["| after line | gates in the graph | written out, characters |", "|---|---|---|"]
     after = []
     for k in range(1, 7):
-        state = step(var(2 * k + 1), var(2 * k + 2), state)
+        state = step(var(2 * k - 1), var(2 * k), state)
         after.append(state)
         rows.append(f"| {k} | {state[3].gates()} | {written_length(state[3], {}):,} |")
     one = after[0]

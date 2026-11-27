@@ -1,8 +1,8 @@
 ## The Nibble machine as one function, f : {0,1}^14 -> {0,1}. The 14 bits
-## are a number below 2^14: the top 2 bits are the input, where AX starts,
-## and the low 12 are the program, six lines of two bits, line 1 the highest
-## pair (nada 00, zero 01, decr 10, mod2 11). So the program's 12 bits read
-## as its number: 1689 is zero, decr, decr, zero, decr, zero.
+## are a number below 2^14: the top 12 are the program, six lines of two
+## bits, line 1 the highest pair (nada 00, zero 01, decr 10, mod2 11), and
+## the low 2 are the input, where AX starts. So the program's 12 bits read as
+## its number: 1689 is zero, decr, decr, zero, decr, zero.
 Fourteen :: [].{
 
 	## Where a run stands: still going, with AX, or done.
@@ -27,8 +27,8 @@ Fourteen :: [].{
 	## past line 6 still going rejects.
 	f : U64 -> Bool
 	f = |bits| {
-		input = bits // 4096
-		program = bits % 4096
+		program = bits // 4
+		input = bits % 4
 		# Each line's two bits, line 1 first: 4^5, 4^4, ... 4^0.
 		places = [1024, 256, 64, 16, 4, 1]
 		places.fold(Going(input), |run, place| Fourteen.step(run, (program // place) % 4)) == Accepted
@@ -36,7 +36,7 @@ Fourteen :: [].{
 
 	## The problem a program decides: the inputs f accepts.
 	decided : U64 -> List(U64)
-	decided = |program| [0, 1, 2, 3].keep_if(|input| Fourteen.f(input * 4096 + program))
+	decided = |program| [0, 1, 2, 3].keep_if(|input| Fourteen.f(program * 4 + input))
 }
 
 # Program 1689 is the one program that decides {0, 2, 3}.

@@ -486,23 +486,23 @@ So the 16 problems, the 16 puzzles of Nibble, are the 16 two-input connectives.
 
 ### Six steps, every bit unknown
 
-Name the 14 bits v1 to v14: v1 and v2 the input's, high then low, and v3 to v14 the program's, two a line, line 1 first, so that v3 to v14 read as the program's number. Start from the input's two unknowns with both flags 0, and run the six steps, each on its line's two unknowns (`python/fourteen_cnf.py`):
+Name the 14 bits v1 to v14: v1 to v12 the program's, two a line, line 1 first, so that v1 to v12 read as the program's number. Start from the input's two unknowns with both flags 0, and run the six steps, each on its line's two unknowns (`python/fourteen_cnf.py`):
 
 {{lines python/fourteen_cnf.py from "def formula():" to "    return state[3]"}}
 
 What comes back is f. After line 1 the four state bits are short enough to read:
 
 ```text
-hb'       = ((NOT v3 AND NOT v4 AND v1) OR (NOT v3 AND v4 AND v1) OR (v3 AND NOT v4 AND v1 AND v2))
-lb'       = ((NOT v3 AND NOT v4 AND v2) OR (NOT v3 AND v4 AND v2) OR (v3 AND v4 AND v2) OR (v3 AND NOT v4 AND v1 AND NOT v2))
-halted'   = (v3 AND NOT v4 AND NOT v1 AND NOT v2)
-accepted' = (NOT v3 AND v4 AND NOT v1 AND NOT v2)
+hb'       = ((NOT v1 AND NOT v2 AND v13) OR (NOT v1 AND v2 AND v13) OR (v1 AND NOT v2 AND v13 AND v14))
+lb'       = ((NOT v1 AND NOT v2 AND v14) OR (NOT v1 AND v2 AND v14) OR (v1 AND v2 AND v14) OR (v1 AND NOT v2 AND v13 AND NOT v14))
+halted'   = (v1 AND NOT v2 AND NOT v13 AND NOT v14)
+accepted' = (NOT v1 AND v2 AND NOT v13 AND NOT v14)
 ```
 
-`accepted'` is line 1 being `zero` (`NOT v3 AND v4`) on an `AX` of 0 (`NOT v1 AND NOT v2`). `hb'` is the high bit kept by `nada`, kept by `zero`, or kept by a `decr` from 3; `mod2` clears it. After line 2, `accepted` has the line-1 bits pasted in wherever it uses them:
+`accepted'` is line 1 being `zero` (`NOT v1 AND v2`) on an `AX` of 0 (`NOT v13 AND NOT v14`). `hb'` is the high bit kept by `nada`, kept by `zero`, or kept by a `decr` from 3; `mod2` clears it. After line 2, `accepted` has the line-1 bits pasted in wherever it uses them:
 
 ```text
-((NOT v3 AND v4 AND NOT v1 AND NOT v2) OR (NOT (v3 AND NOT v4 AND NOT v1 AND NOT v2) AND NOT v5 AND v6 AND NOT ((NOT v3 AND NOT v4 AND v1) OR (NOT v3 AND v4 AND v1) OR (v3 AND NOT v4 AND v1 AND v2)) AND NOT ((NOT v3 AND NOT v4 AND v2) OR (NOT v3 AND v4 AND v2) OR (v3 AND v4 AND v2) OR (v3 AND NOT v4 AND v1 AND NOT v2))))
+((NOT v1 AND v2 AND NOT v13 AND NOT v14) OR (NOT (v1 AND NOT v2 AND NOT v13 AND NOT v14) AND NOT v3 AND v4 AND NOT ((NOT v1 AND NOT v2 AND v13) OR (NOT v1 AND v2 AND v13) OR (v1 AND NOT v2 AND v13 AND v14)) AND NOT ((NOT v1 AND NOT v2 AND v14) OR (NOT v1 AND v2 AND v14) OR (v1 AND v2 AND v14) OR (v1 AND NOT v2 AND v13 AND NOT v14))))
 ```
 
 It reads: line 1 accepted, or line 1 left the machine running, line 2 is `zero`, and `AX` after line 1 is 0.
@@ -513,12 +513,12 @@ Written out as text, each line's formula repeats the last line's state bits wher
 
 | after line | gates in the graph | written out, characters |
 |---|---|---|
-| 1 | 6 | 37 |
-| 2 | 34 | 322 |
-| 3 | 69 | 2,131 |
-| 4 | 104 | 13,598 |
-| 5 | 139 | 86,211 |
-| 6 | 174 | 546,105 |
+| 1 | 6 | 39 |
+| 2 | 34 | 335 |
+| 3 | 69 | 2,213 |
+| 4 | 104 | 14,115 |
+| 5 | 139 | 89,478 |
+| 6 | 174 | 566,784 |
 
 The last row is f: 174 gates, or more than half a million characters. {{chapter Checking a claim}} works with the graph.
 
@@ -607,27 +607,27 @@ The gates are numbered from v15 up, inputs before the gates that use them. The l
 
 ```text
 c f : {0,1}^14 -> {0,1}, the Nibble machine as one function
-c v1 v2: the input's bits; v3 .. v14: the program's, line 1 first
+c v1 .. v12: the program's bits, line 1 first; v13 v14: the input's
 c v15 .. v160: AND and OR gates; the last clause: f = 1
 p cnf 160 439
--15 -3 0
--15 4 0
-15 3 -4 0
--16 -1 0
--16 -2 0
-16 1 2 0
+-15 -1 0
+-15 2 0
+15 1 -2 0
+-16 -13 0
+-16 -14 0
+16 13 14 0
 -17 15 0
 -17 16 0
 17 -15 -16 0
--18 3 0
--18 -4 0
-18 -3 4 0
+-18 1 0
+-18 -2 0
+18 -1 2 0
 -19 18 0
 -19 16 0
 19 -18 -16 0
 ```
 
-Each group of three is one gate: v15 is `NOT v3 AND v4`, line 1 is `zero`; v16 is `NOT v1 AND NOT v2`, `AX` starts at 0; v17 is v15 AND v16, line 1 accepts; v18 is `v3 AND NOT v4`, line 1 is `decr`; v19 is v18 AND v16, line 1 halts. The formula has 160 variables and 439 clauses, three for each of the 146 gates and one for f = 1. It ends:
+Each group of three is one gate: v15 is `NOT v1 AND v2`, line 1 is `zero`; v16 is `NOT v13 AND NOT v14`, `AX` starts at 0; v17 is v15 AND v16, line 1 accepts; v18 is `v1 AND NOT v2`, line 1 is `decr`; v19 is v18 AND v16, line 1 halts. The formula has 160 variables and 439 clauses, three for each of the 146 gates and one for f = 1. It ends:
 
 ```text
 160 -130 0
@@ -647,7 +647,7 @@ A claim gives every variable a value. The 14 bits come from the claim; each gate
 For input 2 (`10`) and program 1689 (`01 10 10 01 10 01`), the 160 values, in the solvers' `v` format, a minus sign for false:
 
 ```text
-v 1 -2 -3 4 5 -6 7 -8 -9 10 11 -12 -13 14 15 -16 -17 -18 -19 -20 -21 -22 23 24 -25 -26 27 -28 -29 -30 -31 -32 -33 34 -35 -36 -37 -38 -39 -40 41 -42 -43 -44 -45 -46 -47 -48 -49 -50 -51 -52 -53 -54 -55 -56 -57 -58 -59 -60 -61 62 63 64 65 66 -67 -68 -69 -70 71 -72 -73 74 -75 -76 -77 -78 -79 -80 -81 -82 -83 -84 -85 -86 -87 -88 -89 -90 -91 -92 -93 -94 -95 -96 97 98 99 100 -101 -102 -103 -104 -105 -106 -107 -108 -109 -110 -111 -112 -113 -114 -115 -116 -117 -118 -119 -120 -121 -122 -123 -124 -125 -126 127 -128 -129 130 131 132 133 134 -135 -136 -137 -138 -139 -140 -141 -142 -143 -144 -145 -146 -147 -148 -149 -150 -151 -152 -153 -154 -155 -156 157 158 -159 160 0
+v -1 2 3 -4 5 -6 -7 8 9 -10 -11 12 13 -14 15 -16 -17 -18 -19 -20 -21 -22 23 24 -25 -26 27 -28 -29 -30 -31 -32 -33 34 -35 -36 -37 -38 -39 -40 41 -42 -43 -44 -45 -46 -47 -48 -49 -50 -51 -52 -53 -54 -55 -56 -57 -58 -59 -60 -61 62 63 64 65 66 -67 -68 -69 -70 71 -72 -73 74 -75 -76 -77 -78 -79 -80 -81 -82 -83 -84 -85 -86 -87 -88 -89 -90 -91 -92 -93 -94 -95 -96 97 98 99 100 -101 -102 -103 -104 -105 -106 -107 -108 -109 -110 -111 -112 -113 -114 -115 -116 -117 -118 -119 -120 -121 -122 -123 -124 -125 -126 127 -128 -129 130 131 132 133 134 -135 -136 -137 -138 -139 -140 -141 -142 -143 -144 -145 -146 -147 -148 -149 -150 -151 -152 -153 -154 -155 -156 157 158 -159 160 0
 ```
 
 ### rocsat checks it
@@ -1120,18 +1120,18 @@ The equations hold 1,047 AND and OR gates (659 AND, 388 OR), beside 392 compleme
 
 ```text
 core0.step1.lb_mux.top.pick1 = core0.step1.lb_mux.high.out AND core0.step1.hold.sel_hb
-c core0.step1.lb_mux.high.out = -6
-c core0.step1.hold.sel_hb = 5
+c core0.step1.lb_mux.high.out = -2
+c core0.step1.hold.sel_hb = 1
 c core0.step1.lb_mux.top.pick1 = 17
 c core0.step1.lb' = 17
 c core0.step2.zero.hb_or_lb = 17
 c core0.step2.decr.hb_or_lb = 17
--17 -6 0
--17 5 0
-17 6 -5 0
+-17 -2 0
+-17 1 0
+17 2 -1 0
 ```
 
-Core 0 starts at `AX` = 0, so its multiplexer's high input folds to ¬v6, the complement of `op1_lb`, and the select is `op1_hb` itself, v5. v17 is their AND, and three later wires fold onto it: a copy, and two ORs with a 0. Then an OR:
+Core 0 starts at `AX` = 0, so its multiplexer's high input folds to ¬v2, the complement of `op1_lb`, and the select is `op1_hb` itself, v1. v17 is their AND, and three later wires fold onto it: a copy, and two ORs with a 0. Then an OR:
 
 ```text
 core0.step2.lb_mux.low.out = core0.step2.lb_mux.low.pick0 OR core0.step2.lb_mux.low.pick1

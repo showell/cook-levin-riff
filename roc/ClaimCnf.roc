@@ -67,8 +67,9 @@ refusal = |e|
 		Twice(name) => "${name} is defined twice"
 	}
 
-## The claim's units: want n is bit n of the problem; line k's two bits are
-## the program's k-th base-4 digit, line 1 the highest; and decides = 1.
+## The claim's units, in the order of the decider's inputs: line k's two
+## bits are the program's k-th base-4 digit, line 1 the highest; want n is bit
+## n of the problem; and decides = 1.
 units : U64, U64 -> List({ name : Str, bit : Bool })
 units = |program, problem| {
 	wants = List.from_iter(U64.until(0, 4)).map(|n| { name: "want${n.to_str()}", bit: bit_at(problem, n) })
@@ -80,7 +81,7 @@ units = |program, problem| {
 			all.concat([{ name: "op${line}_hb", bit: digit // 2 == 1 }, { name: "op${line}_lb", bit: digit % 2 == 1 }])
 		},
 	)
-	wants.concat(lines).append({ name: "decides", bit: True })
+	lines.concat(wants).append({ name: "decides", bit: True })
 }
 
 bit_at : U64, U64 -> Bool
@@ -97,11 +98,11 @@ set_text = |problem| {
 }
 
 # Program 1689 is zero, decr, decr, zero, decr, zero: 01 10 10 01 10 01.
-expect units(1689, 13).map(|u| u.bit) == [True, False, True, True, False, True, True, False, True, False, False, True, True, False, False, True, True]
+expect units(1689, 13).map(|u| u.bit) == [False, True, True, False, True, False, False, True, True, False, False, True, True, False, True, True, True]
 expect set_text(13) == "{0, 2, 3}" and set_text(0) == "{}"
 
 # A claim about a one-gate decider, whole.
-expect claim(5, 1, "inputs: want0 want1 want2 want3 op1_hb op1_lb op2_hb op2_lb op3_hb op3_lb op4_hb op4_lb op5_hb op5_lb op6_hb op6_lb\ndecides = want0 AND op6_lb\n") == Ok("c the decider's 1 equations by Tseitin's encoding: 16 inputs and 1 AND and OR gates, constants folded\nc the claim: program 5 decides {0}, its 16 inputs fixed and decides = 1\nc want0 = 1\nc want1 = 2\nc want2 = 3\nc want3 = 4\nc op1_hb = 5\nc op1_lb = 6\nc op2_hb = 7\nc op2_lb = 8\nc op3_hb = 9\nc op3_lb = 10\nc op4_hb = 11\nc op4_lb = 12\nc op5_hb = 13\nc op5_lb = 14\nc op6_hb = 15\nc op6_lb = 16\nc decides = 17\np cnf 17 20\n-17 1 0\n-17 16 0\n17 -1 -16 0\n1 0\n-2 0\n-3 0\n-4 0\n-5 0\n-6 0\n-7 0\n-8 0\n-9 0\n-10 0\n-11 0\n-12 0\n-13 0\n14 0\n-15 0\n16 0\n17 0\n")
+expect claim(5, 1, "inputs: op1_hb op1_lb op2_hb op2_lb op3_hb op3_lb op4_hb op4_lb op5_hb op5_lb op6_hb op6_lb want0 want1 want2 want3\ndecides = want0 AND op6_lb\n") == Ok("c the decider's 1 equations by Tseitin's encoding: 16 inputs and 1 AND and OR gates, constants folded\nc the claim: program 5 decides {0}, its 16 inputs fixed and decides = 1\nc op1_hb = 1\nc op1_lb = 2\nc op2_hb = 3\nc op2_lb = 4\nc op3_hb = 5\nc op3_lb = 6\nc op4_hb = 7\nc op4_lb = 8\nc op5_hb = 9\nc op5_lb = 10\nc op6_hb = 11\nc op6_lb = 12\nc want0 = 13\nc want1 = 14\nc want2 = 15\nc want3 = 16\nc decides = 17\np cnf 17 20\n-17 13 0\n-17 12 0\n17 -13 -12 0\n-1 0\n-2 0\n-3 0\n-4 0\n-5 0\n-6 0\n-7 0\n-8 0\n-9 0\n10 0\n-11 0\n12 0\n13 0\n-14 0\n-15 0\n-16 0\n17 0\n")
 
 # The whole decider, roc/golden/equations.txt (build.shale holds it to
 # `circuit_main equations`): its 1,447 lines are 1,439 gates (659 AND, 388 OR,

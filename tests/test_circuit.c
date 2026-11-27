@@ -196,9 +196,9 @@ TEST(a_core_is_the_machine_on_all_16384_runs_step_by_step) {
         Program p = disassemble(code);
         for (int n = 0; n < NUM_INPUTS; n++) {
             int in[14];
-            in[0] = n / 2;
-            in[1] = n % 2;
-            program_bits(code, in + 2);
+            program_bits(code, in);
+            in[12] = n / 2;
+            in[13] = n % 2;
             eval(in);
             SatState s = {lit(n / 2), lit(n % 2), SAT_FALSE, SAT_FALSE};
             for (int k = 1; k <= MAX_STEPS; k++) {
@@ -225,8 +225,8 @@ TEST(the_decider_says_which_problem_each_program_decides) {
         uint32_t lang = encoded_language(get_language_that_program_accepts(disassemble(code)));
         for (uint32_t want = 0; want < NUM_LANGUAGES; want++) {
             int in[16];
-            for (int n = 0; n < 4; n++) in[n] = (int)(want >> n & 1);
-            program_bits(code, in + 4);
+            program_bits(code, in);
+            for (int n = 0; n < 4; n++) in[12 + n] = (int)(want >> n & 1);
             eval(in);
             EXPECT_EQ(VALUES[decides], want == lang);
             lit_count += VALUES[decides];

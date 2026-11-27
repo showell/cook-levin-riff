@@ -1,4 +1,4 @@
-inputs: want0 want1 want2 want3 op1_hb op1_lb op2_hb op2_lb op3_hb op3_lb op4_hb op4_lb op5_hb op5_lb op6_hb op6_lb
+inputs: op1_hb op1_lb op2_hb op2_lb op3_hb op3_lb op4_hb op4_lb op5_hb op5_lb op6_hb op6_lb want0 want1 want2 want3
 core0.in_hb = 0
 core0.in_lb = 0
 core0.step1.zero.hb_or_lb = core0.in_hb OR core0.in_lb
