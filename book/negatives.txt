@@ -28,11 +28,11 @@ quote: Steve's own view of `nada` and of the design, in his words: "nada is kind
 scope: This book doesn't answer that question.
 scope: It makes no claim about NP, and it reduces one machine's questions, never an arbitrary verifier's.
 logic: - NOT x is 1 - x;
-logic: The step is built in the ring as {{chapter Arithmetization}} builds it: NOT x is 1 − x, x AND y is x·y and x OR y is x + y − x·y.
 logic: The logic is the stepper's, gate for gate, NOT, AND and OR as in {{chapter Arithmetization}}.
 logic: Each AND and OR becomes a Tseitin variable, tied to its inputs by three clauses, and a NOT is a literal's sign:
 logic: NOT
 guarantee: No program of five or fewer lines decides {0, 2, 3}.
+guarantee: Nothing is padded, nothing is added and taken away again, and no polynomial is squared to grow it.
 guarantee: - the run **rejects implicitly** when it gets past the sixth instruction with neither of them having seen 00.
 logic: Three kinds of gate are allowed, AND, OR and NOT, and every part is made of them alone.
 logic: The drawings use the standard symbols: AND is a D, OR a shield, NOT a triangle with a bubble.
