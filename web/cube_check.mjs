@@ -15,10 +15,15 @@
 //   the wasm, each ending with exactly its pattern lit, in its par;
 // - serves <site-dir> on a loopback port and loads cube.html in headless
 //   Chromium (Playwright's, found by PLAYWRIGHT_BROWSERS_PATH, which Shale
-//   sets). At 1366 x 650 it sees three panes side by side and nothing
-//   scroll, and the canvas draw the cube with its painted face up; plays
-//   the "b2 alone" sample to its end and reads par 8, yours 8 and b2 lit,
-//   the lit set 32 in decimal and binary, with lit tiles on the canvas;
+//   sets). At 1366 x 650 it sees the canvas and the chain beside it and
+//   nothing scroll: the chain's four links in order (the move, the
+//   listing, the letters and machine code, the name), the listing above
+//   the fold, and the samples outside the chain, never between the listing
+//   and the name; and the canvas draw the cube with its painted face up;
+//   plays the "b2 alone" sample to its end and reads par 8, yours 8 and
+//   b2 lit, the lit set 32 in decimal and binary, with lit tiles on the
+//   canvas; a move (a key, a click on a tile, a typed program) changes
+//   each link and runs the highlight down the chain in order;
 //   holds the lit set's name to NAMES below and NAMES to <plus_names.tsv>
 //   (Nibble++'s names, cost 4 or less), playing each one's census solution,
 //   and a set past the table showing its number alone, and the help's table
@@ -33,7 +38,7 @@
 //   north from a1 halting the machine; rolls by clicking the tiles next to
 //   the cube and by dragging the cube, a click on the cube or the sky doing
 //   nothing; plays the halt sample to its halt; refuses a roll past L; sees
-//   three panes and no scroll at 1920 x 700 too; at a phone's width one
+//   the same chain and no scroll at 1920 x 700 too; at a phone's width one
 //   column, nothing sideways and nothing stored; and the help page, its L
 //   the census's, its tile numbering and its names. It saves screenshots to
 //   <screenshot.png> (1366 x 650), and beside it `-rolling` (mid-roll),
@@ -303,7 +308,11 @@ const pixels = () => evaluate(`(() => {
   }
   return { ivory, paint, amber };
 })()`);
-const litCells = () => evaluate(`Array.from(document.querySelectorAll("#lit-map div")).map((d, i) => d.classList.contains("lit") ? d.dataset.name : null).filter(Boolean).join(",")`);
+// The tiles lit on the canvas, by their chess names.
+const litCells = async () => {
+  const lit = Number(await evaluate("document.getElementById('scene').dataset.lit"));
+  return Array.from({ length: 16 }, (_, n) => (lit >> n) & 1 ? `${"abcd"[n % 4]}${Math.floor(n / 4) + 1}` : null).filter(Boolean).join(",");
+};
 const number = async () => `${await text("decimal")} ${await text("binary")}`;
 // The listing as the page shows it, in listingOf's form, and its current line.
 const listing = () => evaluate(`Array.from(document.querySelectorAll("#listing li")).map((li) =>
@@ -336,35 +345,64 @@ async function pressAt(x, y, x2 = x, y2 = y) {
 const targets = async () => Object.fromEntries((await evaluate("document.getElementById('scene').dataset.targets")).split(" ").filter(Boolean)
   .map((t) => { const [r, xy] = t.split(":"); return [r, xy.split(",").map(Number)]; }));
 const programValue = () => evaluate("document.getElementById('program').value");
-// The page's fit: its scroll against the window, and each pane's box.
+// The page's fit: its scroll against the window, each pane's box, the
+// chain's links' boxes in the page's order, the listing's, the name's and
+// the samples'.
 const layout = () => evaluate(`(() => {
   const s = document.scrollingElement;
-  const panes = Array.from(document.querySelectorAll(".pane")).map((p) => { const r = p.getBoundingClientRect(); return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height), bottom: Math.round(r.bottom) }; });
+  const box = (e) => { const r = e.getBoundingClientRect(); return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height), bottom: Math.round(r.bottom) }; };
+  const panes = Array.from(document.querySelectorAll(".pane")).map((p) => ({ ...box(p), kind: p.classList.contains("view") ? "view" : "chain" }));
+  const links = Array.from(document.querySelectorAll("#chain .link")).map((l) => ({ ...box(l), link: l.dataset.link }));
   const c = document.getElementById("scene").getBoundingClientRect();
-  return { scrollW: s.scrollWidth, clientW: s.clientWidth, scrollH: s.scrollHeight, clientH: s.clientHeight, panes, canvas: [Math.round(c.width), Math.round(c.height)] };
+  return { scrollW: s.scrollWidth, clientW: s.clientWidth, scrollH: s.scrollHeight, clientH: s.clientHeight, panes, links,
+    listing: box(document.getElementById("listing")), name: box(document.getElementById("name")), samples: box(document.getElementById("samples")),
+    samplesInChain: !!document.querySelector("#chain #samples"), canvas: [Math.round(c.width), Math.round(c.height)] };
 })()`);
 const measured = [];
-function threePanes(l, size) {
-  measured.push(`${size}: canvas ${l.canvas[0]} x ${l.canvas[1]}, page ${l.scrollW} x ${l.scrollH}`);
+// The wide layout: the canvas, then the chain beside it, nothing scrolling;
+// the chain's links in reading order, all in the window; the listing above
+// the fold with room for lines; the samples outside the chain, above the
+// listing or below the name, never between them.
+function chainLayout(l, size) {
+  measured.push(`${size}: canvas ${l.canvas[0]} x ${l.canvas[1]}, listing ${l.listing.h} px tall, page ${l.scrollW} x ${l.scrollH}`);
   expect(l.scrollH <= l.clientH && l.scrollW <= l.clientW, `at ${size} the page scrolls: ${JSON.stringify(l)}`);
-  const [a, b, c] = l.panes;
-  expect(l.panes.length === 3 && a.y === b.y && b.y === c.y && a.x < b.x && b.x < c.x, `at ${size} the panes are not side by side: ${JSON.stringify(l.panes)}`);
+  const [a, b] = l.panes;
+  expect(l.panes.length === 2 && a.kind === "view" && b.kind === "chain" && a.y === b.y && a.x + a.w <= b.x, `at ${size} the canvas and the chain are not side by side: ${JSON.stringify(l.panes)}`);
   expect(l.panes.every((p) => p.bottom <= l.clientH), `at ${size} a pane ends below the window: ${JSON.stringify(l.panes)}`);
+  expect(l.links.map((k) => k.link).join(" ") === "move listing code name", `at ${size} the chain's links are ${l.links.map((k) => k.link).join(" ")}`);
+  expect(l.links.every((k, i) => i === 0 || k.y >= l.links[i - 1].bottom) && l.links.every((k) => k.bottom <= l.clientH),
+    `at ${size} the chain's links are not one under the other, all in the window: ${JSON.stringify(l.links)}`);
+  expect(l.listing.y >= 0 && l.listing.bottom <= l.clientH && l.listing.h >= 120, `at ${size} the listing is not above the fold with room for lines: ${JSON.stringify(l.listing)}`);
+  expect(!l.samplesInChain && (l.samples.bottom <= l.listing.y || l.samples.y >= l.name.bottom), `at ${size} the samples are between the listing and the name: ${JSON.stringify(l.samples)}`);
+  expect(l.canvas[1] <= l.clientH - 40, `at ${size} the canvas is ${l.canvas[1]} tall in a window ${l.clientH} tall`);
+}
+// The chain's state: its pulse count, each link's, and each link's
+// highlight delay, in the page's order.
+const chainState = () => evaluate(`(() => { const c = document.getElementById("chain");
+  return { pulses: Number(c.dataset.pulses), links: Array.from(c.querySelectorAll(".link")).map((l) => ({ pulse: Number(l.dataset.pulse ?? 0), on: l.classList.contains("pulse"),
+    delay: parseFloat(getComputedStyle(l).animationDelay) })) }; })()`);
+// What each link shows: the move's pressed key, the listing, the letters
+// and machine code, the name and number.
+const linkTexts = async () => ({ listing: await listing(), code: `${await programValue()} ${await text("machine-code")}`, name: `${await named()} ${await text("decimal")}` });
+// A move ran down the chain: the count one more, each link's highlight that
+// pulse's, and their delays rising in the chain's order.
+async function ranDownChain(before, why) {
+  const s = await chainState();
+  expect(s.pulses === before + 1 && s.links.length === 4 && s.links.every((k) => k.on && k.pulse === s.pulses) && s.links.every((k, i) => i === 0 || k.delay > s.links[i - 1].delay),
+    `${why}: the highlight did not run down the chain: ${JSON.stringify(s)}, before ${before}`);
 }
 
 try {
   await open(1366, 650, false);
   expect((await evaluate("document.title")) === "Rolling cube", `the page's title is ${await evaluate("document.title")}`);
   expect((await evaluate("!document.getElementById('loading')")), "the page still says it is loading");
-  threePanes(await layout(), "1366 x 650");
+  chainLayout(await layout(), "1366 x 650");
   const start = await pixels();
   expect(start.ivory > 500 && start.paint > 300 && start.amber === 0, `the start's canvas: ${JSON.stringify(start)} (the cube's ivory sides, its paint up, nothing lit)`);
   expect((await text("par")) === "par 0; yours is 0" && (await text("length")) === `0 of ${L} rolls`, `the start's readout: ${await text("par")} / ${await text("length")}`);
   expect((await number()) === "0 0000 0000 0000 0000", `the start's number: ${await number()}`);
   expect((await evaluate("document.querySelector('label[for=program]').textContent")).includes("RollScript"), "the program's label does not name RollScript");
-  expect((await evaluate("Array.from(document.querySelectorAll('#lit-map div')).map((d) => d.textContent + d.dataset.name).join(' ')")) ===
-    Array.from({ length: 16 }, (_, n) => `${n}${"abcd"[n % 4]}${Math.floor(n / 4) + 1}`).join(" "), "the lit map's tiles are not numbered 0 to 15 row by row, a1 first");
-  expect((await evaluate("document.querySelectorAll('#questions, #question, #answers').length")) === 0, "the page still has the questions");
+  expect((await evaluate("document.querySelectorAll('#questions, #question, #answers, #lit-map').length")) === 0, "the page still has the questions or the lit map, which repeats the canvas");
   expect((await named()) === "grumpy" && (await listing()) === "0 - U -" && (await nowLine()) === 0 && (await text("machine-code")) === "",
     `the start's name, listing and code: ${await named()} / ${await listing()} / ${await nowLine()} / ${await text("machine-code")}`);
   const start0 = await views();
@@ -434,7 +472,13 @@ try {
   expect(await settled(2), "ES did not show its end");
   const before0 = (await views()).flashes;
   await evaluate("document.activeElement.blur()");
+  // The move changes every link of the chain: the E key lights, the
+  // listing gains its line, the letters and machine code their roll, and
+  // the name goes from grumpy to is_6; the highlight runs down in order.
+  const was = await linkTexts(), pulses0 = (await chainState()).pulses;
   await key("ArrowRight");
+  expect(await evaluate("document.querySelector('.keys [data-roll=E]').classList.contains('pressed')"), "ArrowRight did not light the move's E button");
+  await ranDownChain(pulses0, "ArrowRight after ES");
   for (let k = 0; k < 40 && (await views()).flash !== "6"; k++) await sleep(15);
   await sleep(60);
   await screenshot(shotFile.replace(/\.png$/, "-landing.png"));
@@ -444,6 +488,13 @@ try {
   expect((await listing()) === listingOf("ESE") && (await nowLine()) === 3 && (await evaluate("document.querySelector('#listing li.now .mark').textContent")) === "lights c2",
     `ESE's listing: ${await listing()}`);
   expect((await text("machine-code")) === "#25  01 10 01", `ESE's machine code: ${await text("machine-code")}`);
+  const now3 = await linkTexts();
+  expect(was.listing !== now3.listing && was.code === "ES #6  01 10" && now3.code === "ESE #25  01 10 01" && was.name === "grumpy 0" && now3.name === "is_6 64",
+    `the move did not change each link: ${JSON.stringify(was)} to ${JSON.stringify(now3)}`);
+  // The newest line sits at the listing's bottom, just above the letters.
+  const newest = await evaluate(`(() => { const l = document.getElementById("listing").getBoundingClientRect(), n = document.querySelector("#listing li:last-child").getBoundingClientRect(),
+    p = document.getElementById("program").getBoundingClientRect(); return { gap: Math.round(l.bottom - n.bottom), below: Math.round(p.top - n.bottom) }; })()`);
+  expect(newest.gap >= 0 && newest.gap <= 4 && newest.below >= 0 && newest.below <= 60, `ESE's newest line is not at the listing's bottom, above the letters: ${JSON.stringify(newest)}`);
   await sleep(800);
   expect((await views()).flash === "" && (await views()).stamped === "6", `after the flash: ${JSON.stringify(await views())}`);
   await click("#back");
@@ -468,7 +519,9 @@ try {
   // Typed programs: spaces and lower case pass, a letter that is no roll is
   // refused, a roll off the board halts the run, and a program past L is
   // refused.
+  const typed0 = (await chainState()).pulses;
   await typeProgram("es e");
+  await ranDownChain(typed0, "the typed `es e`");
   expect(await settled(3), "the typed `es e` did not show its end");
   expect((await text("par")) === "par 3; yours is 3" && (await litCells()) === "c2", `es e: ${await text("par")}, lit ${await litCells()}`);
   await typeProgram("ESX");
@@ -512,7 +565,9 @@ try {
   for (const r of ["E", "S", "E", "N", "W", "S", "W", "N"]) {
     const t = await targets();
     if (!t[r]) { expect(false, `after ${made} no tile to click for ${r}: ${JSON.stringify(t)}`); break; }
+    const p0 = (await chainState()).pulses;
     await pressAt(...t[r]);
+    await ranDownChain(p0, `the click on the ${r} tile`);
     made += r;
     expect(await settled(made.length) && (await programValue()) === made, `clicking ${r} after ${made.slice(0, -1)} made ${await programValue()}`);
   }
@@ -549,14 +604,14 @@ try {
   expect((await text("said")).includes(`at most ${L}`) && (await programValue()) === longest, `a roll past L: ${await text("said")}`);
 
   await open(1920, 700, false);
-  threePanes(await layout(), "1920 x 700");
+  chainLayout(await layout(), "1920 x 700");
   await screenshot(shotFile.replace(/\.png$/, "-wide.png"));
 
   await open(390, 844, true);
   const phone = await layout();
   measured.push(`390 x 844: canvas ${phone.canvas[0]} x ${phone.canvas[1]}, page ${phone.scrollW} x ${phone.scrollH}`);
   expect(phone.scrollW <= phone.clientW, `at 390px the page scrolls sideways: ${JSON.stringify(phone)}`);
-  expect(phone.panes.length === 3 && phone.panes.every((p) => p.x === phone.panes[0].x) && phone.panes[1].y < phone.panes[0].y && phone.panes[0].y < phone.panes[2].y,
+  expect(phone.panes.length === 2 && phone.panes[0].x === phone.panes[1].x && phone.panes[0].kind === "view" && phone.panes[0].y < phone.panes[1].y,
     `at 390px the panes are not one column, the canvas first: ${JSON.stringify(phone.panes)}`);
   await click('#samples button[data-program="ESENSNWS"]');
   expect(await settled(8), "at 390px the b2 sample did not play to its end");
@@ -590,4 +645,4 @@ try {
 }
 
 if (failures > 0) { console.error(`cube_check: ${failures} of ${checks} checks failed`); process.exit(1); }
-console.log(`ok   cube_check: the wasm matches cube.c on ${runLines.length} programs (${frames} frames, ${offs} halted) and rolls all ${solutions} census solutions to their patterns; the table's 65,536 pars and L = ${L} are the census's; in Chromium the page fit with no scroll (${measured.join("; ")}), played the samples, stepped, took typed programs, the arrow keys and clicks and a drag on the tiles, halted off the board (typed, by key, the halt sample), refused a non-roll and programs past L, numbered its tiles, showed the lit set as a number and named it (${NAMES.length} names held to plus_names.tsv, and ${unnamed}, past the table, as its number), listed the run a line a roll with its opcodes and machine code, showed the compass and the glow along ESWN and a landing's flash and stamp, and its help page says L, the numbering and the ${NAMES.length} names with their pars (${checks} checks)`);
+console.log(`ok   cube_check: the wasm matches cube.c on ${runLines.length} programs (${frames} frames, ${offs} halted) and rolls all ${solutions} census solutions to their patterns; the table's 65,536 pars and L = ${L} are the census's; in Chromium the page fit with no scroll, the chain's four links in order beside the canvas, the listing above the fold and the samples outside the chain (${measured.join("; ")}), ran each move down the chain, played the samples, stepped, took typed programs, the arrow keys and clicks and a drag on the tiles, halted off the board (typed, by key, the halt sample), refused a non-roll and programs past L, numbered its tiles, showed the lit set as a number and named it (${NAMES.length} names held to plus_names.tsv, and ${unnamed}, past the table, as its number), listed the run a line a roll with its opcodes and machine code, showed the compass and the glow along ESWN and a landing's flash and stamp, and its help page says L, the numbering and the ${NAMES.length} names with their pars (${checks} checks)`);
