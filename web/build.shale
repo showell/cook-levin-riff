@@ -94,6 +94,7 @@ replace(OUT .. "/runs.json", runs.out)
 local puzzles = json_read(table.out).puzzles
 print("ok   web/puzzles.c: " .. #puzzles .. " puzzles, " .. (#runs.out - 3) .. " runs, " .. cc.ms .. " ms to compile")
 
+-- Bulk memory makes host.c's memcpy a memory.copy, not an import.
 mkdir(HOST_DIR)
 if exists(HOST_DIR .. "/host.wasm") then remove(HOST_DIR .. "/host.wasm") end
 local h = must(run({"clang", "--target=wasm32-unknown-unknown", "-mbulk-memory", "-O2", "-std=c11", "-Wall", "-Wextra", "-Werror",
