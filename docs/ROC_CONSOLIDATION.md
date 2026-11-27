@@ -19,7 +19,7 @@ There are three places that hold Roc, on two platforms.
 
   Each app runs on Roc's default command-line platform, except
   `NibbleWasm.roc`.
-- **`web/platform/`** (`main.roc` and `host.zig`) is the Nibble page's wasm
+- **`web/platform/`** (`main.roc` and `host.c`) is the Nibble page's wasm
   platform. Its only app is `roc/NibbleWasm.roc`, which wraps `Machine.roc`.
   `web/build.shale` builds it and holds it to `web/puzzles.c`.
 - **`book/app/`** is the book's builder app, on roc-apps' book_builder

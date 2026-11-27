@@ -158,9 +158,11 @@ The page runs the Roc port's machine. `roc/NibbleWasm.roc` is
 `roc/Machine.roc` behind the three functions the page calls: `status(n,
 code)`, `after(n, code, k)` (AX, halted and the Status packed in one
 number) and `accepts(code)`. The pinned Roc builds it for wasm32
-(`--opt=speed`) on the small platform in `web/platform/`, and Zig links it
-with `web/platform/host.zig`, the allocator and crash functions, into a
-9.5 KB module that imports nothing and exports only those three. The
+(`--opt=speed`) on the small platform in `web/platform/`, and links it with
+`web/platform/host.c`, the allocator and crash functions, which the
+system's clang compiles to a wasm object. The result is an 8.3 KB module
+that imports nothing and exports those three functions (beside its memory
+and the stack's globals). The
 table of puzzles still comes from C: `web/puzzles.c` counts every
 program's language and finds each puzzle's shortest program.
 
