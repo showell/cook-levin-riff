@@ -1693,7 +1693,7 @@ A solver reads CNF, and the machine is a circuit, gates feeding gates. Writing a
 
 ### A circuit of three gates
 
-Here is out = (a AND b) OR (NOT c), its gates' outputs named g1, g2 and out:
+Here is `out = (a AND b) OR (NOT c)`, its gates' outputs named g1, g2 and out:
 
 The circuit, before
 ```dot
@@ -1883,9 +1883,9 @@ Each of those UNSATISFIABLE answers rests on a DRAT proof, and the next chapter 
 
 ## Proofs of unsatisfiability
 
-**SAT solving. A review; it needs {{chapter Cook-Levin as SAT}}.** We show what a DRAT proof is on a formula of four clauses you can check with a pencil, and why a no needs a proof when a yes needs only an answer.
+**SAT solving. A review; it needs {{chapter Cook-Levin as SAT}}.** We show what a DRAT proof is on a formula of four clauses you can check with a pencil, and why an UNSATISFIABLE answer needs a proof when a SATISFIABLE one needs only an assignment.
 
-### A yes is checked, a no is proved
+### SATISFIABLE is checked, UNSATISFIABLE is proved
 
 A SATISFIABLE answer carries its own evidence, the assignment, and `rocsat check` tests it clause by clause, in time that grows in step with the formula's length. That is NP's verifier ({{chapter P and NP}}), and it runs in polynomial time. Finding the assignment is the hard part. The plain way tries all 2^n assignments of n variables: 4,096 for a puzzle's 12 program bits, since propagation settles its other 404 variables, and 2^56 for the 56 program bits of is_not_14 at 28 lines. rocsat prunes most of each search away, yet every method known takes exponential time on some formulas; whether some method could always take polynomial time is the P versus NP question. An UNSATISFIABLE answer needs evidence of another kind, a proof that every assignment breaks a clause, and DRAT is the format rocsat writes it in.
 
@@ -1942,7 +1942,7 @@ A line that starts with `d` deletes a clause from the checker's database. Above,
 
 RAT stands for *resolution asymmetric tautology*. An *asymmetric tautology* is a clause RUP accepts. *Resolution* joins two clauses that clash on one variable, `(l OR A)` and `(NOT l OR B)`, into `(A OR B)`. A lemma is RAT on its first literal l when every clause holding the complement of l, resolved with the lemma, gives a clause RUP accepts. That lets a proof name a fresh variable m: `(m OR NOT hb OR NOT lb)` is RAT on m, since the database holds `NOT m` in zero clauses, and `(NOT m OR hb)` and `(NOT m OR lb)` follow, Tseitin's three clauses for m = hb AND lb, made inside a proof. `src/drat.c` tries RAT on a lemma's first literal when RUP fails. All 15 of rocsat's puzzle proofs pass by RUP alone, so RAT appears in this book in this paragraph.
 
-A yes is an answer you check, and a no is a proof you replay; here both fit on a page.
+A SATISFIABLE answer is an assignment you check, and an UNSATISFIABLE one is a proof you replay; here both fit on a page.
 
 ## Solved by hand
 
