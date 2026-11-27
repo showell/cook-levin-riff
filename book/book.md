@@ -53,10 +53,9 @@ This list is the whole book in one line a chapter, the kind in italics:
 **Part IV, the polynomials:**
 
 - {{chapter Six expressions, composed}}: the program left unknown, and two roads forward. *The machine shown another way.*
-- {{chapter Arithmetization}}: logic turned into arithmetic. *The machine shown another way.*
-- {{chapter The Boolean ring}}: one identity, x² = x, that keeps every polynomial small. *The machine shown another way.*
+- {{chapter Arithmetization}}: logic turned into arithmetic, kept small by one identity, x² = x. *The machine shown another way.*
 - {{chapter Six steps composed}}: four polynomials that are the machine. *New results.*
-- {{chapter The Delightful Monstrosity}}: the largest polynomials we could make by the rules, checked, then printed whole. *Big output to skim.*
+- {{chapter The Delightful Monstrosity}}: the machine as one polynomial, in full view, then evaluated by hand. *Big output to skim.*
 
 **Part V, Nibble++, a bigger machine:**
 
@@ -81,9 +80,8 @@ This list is the whole book in one line a chapter, the kind in italics:
 - Monstrosity 2: the proof that five lines are too few for {0, 2, 3}, in {{chapter Appendix: two DRAT proofs}}.
 - Monstrosity 3: the largest of the 15 proofs, in {{chapter Appendix: two DRAT proofs}}.
 - Monstrosity 4: one puzzle as 1,216 clauses, in {{chapter The solver's work, in full}}.
-- Monstrosity 5: one step, as Python printed it, in {{chapter The Delightful Monstrosity}}.
-- Monstrosity 6: the whole machine as four polynomials, in {{chapter The Delightful Monstrosity}}.
-- Monstrosity 7: a 17 MB proof that 27 lines are too few, in {{chapter is_not_14 needs 28 lines}}.
+- Monstrosity 5: the machine as one polynomial, in {{chapter The Delightful Monstrosity}}.
+- Monstrosity 6: a 17 MB proof that 27 lines are too few, in {{chapter is_not_14 needs 28 lines}}.
 
 ## Introduction
 
@@ -97,7 +95,7 @@ This list is the whole book in one line a chapter, the kind in italics:
 
 **Program 1689 is your guide.** It is `zero, decr, decr, zero, decr, zero`, the one program that decides {0, 2, 3}. In base 4, 1689 is 122121, one digit a line, with `zero` as 1 and `decr` as 2: the number is the program. Each chapter that shows the machine in a new form shows 1689 in it too, in a box headed "1689, here", so a reader who follows the boxes alone sees the whole reduction, from a run to a satisfying assignment. The Nibble++ chapters follow is_not_14's 28-line program the same way, in boxes headed "is_not_14, here".
 
-**The monstrosities.** This machine fits on an index card: one two-bit register, four instructions, six lines. Yet it keeps producing monsters, and we have numbered them proudly, like theorems. The question "does this program accept this input?", composed through six steps, becomes one polynomial of 510,387 characters (Monstrosity 6). Wiring the same machine as gates takes 1,439 equations (Monstrosity 1). Ask whether the 4-bit Nibble++ can decide is_not_14 in 27 lines, and the answer, that every 27-line program fails, comes backed by a proof of 17,192,870 bytes that our own checker replays line by line (Monstrosity 7), while the answer at 28 lines is a program of 56 bits that you check by running it. That gap is NP's in miniature: a yes has a short certificate, and the best known evidence the other way can be enormous. Skim the monsters, marvel, and move on: each one is the hidden complexity in simple things, and the front page lists all seven.
+**The monstrosities.** This machine fits on an index card: one two-bit register, four instructions, six lines. Yet it keeps producing monsters, and we have numbered them proudly, like theorems. The question "does this program accept this input?", composed through six steps, becomes one polynomial of 510,387 characters (Monstrosity 5). Wiring the same machine as gates takes 1,439 equations (Monstrosity 1). Ask whether the 4-bit Nibble++ can decide is_not_14 in 27 lines, and the answer, that every 27-line program fails, comes backed by a proof of 17,192,870 bytes that our own checker replays line by line (Monstrosity 6), while the answer at 28 lines is a program of 56 bits that you check by running it. That gap is NP's in miniature: a yes has a short certificate, and the best known evidence the other way can be enormous. Skim the monsters, marvel, and move on: each one is the hidden complexity in simple things, and the front page lists all six.
 
 Steve wrote the first version by hand in Python, in [virtual-machine](https://github.com/showell/virtual-machine): the machine (`virtual_machine.py`), a general polynomial library (`poly.py`) and a stepper that writes one step of the machine as polynomials (`stepper.py`). The machine is Steve's invention; the code in this repository, written by AI coding agents (Claude) with human supervision, departs from the 2023 Python wherever a cleaner choice turned up, and its choices are this book's own. Each language has one role, which {{chapter Roc is our lingua franca}} sets out.
 
@@ -775,7 +773,7 @@ The machine's step appears in this book in seven forms, each built for a differe
 | a formula graph | `python/steps.py`'s `F`, {{chapter One formula for the whole machine}} | 35 gates: 21 AND, 9 OR, 5 NOT | f: 174 gates, 146 of them AND and OR | v1 to v12 the program, v13 and v14 the input, gates from v15 |
 | the mux circuit | `src/circuit.c`, {{chapter The machine as a circuit}} | 59 gates: 27 AND, 16 OR, 16 NOT | the decider: 1,439 gates, 461 AND and OR once constants fold | wires by name; as CNF, v1 to v12 the program, v13 to v16 the want bits, wires from v17 |
 | `sat_step` | `src/sat.c`, {{chapter The Cook-Levin machine}} | 34 AND and OR gates | a puzzle: 404 gates, 416 variables, 1,216 clauses | v1 to v12 the program, gates from v13 |
-| polynomials | `src/stepper.c`, `roc/Stepper.roc`, {{chapter Arithmetization}} | 786, 2,979, 25 and 33 terms; with x² = x, 7, 13, 17 and 33 | composed: 319, 2,185, 2,732 and 10,324 terms | named: the six above; composed, `h0`, `l0`, `op1_hb` to `op6_lb` |
+| polynomials | `roc/Stepper.roc`, {{chapter Arithmetization}} | 7, 13, 17 and 33 terms, in the Boolean ring | composed: 319, 2,185, 2,732 and 10,324 terms | named: the six above; composed, `h0`, `l0`, `op1_hb` to `op6_lb` |
 | Nibble++'s step | `src/plus_sat.c`, {{chapter Nibble++ meets rocsat}} | a 4-bit `AX`, four muxes | one run at 28 lines: 1,340 gates | v1 to v56 the program, then the input's four bits |
 
 The formula graph's counts by kind were made by `python/steps.py` while this chapter was written; every other number is held in the chapter the row names.
@@ -1957,7 +1955,7 @@ Naming is why Cook-Levin's formula stays polynomial in size: each step adds the 
 
 ## Arithmetization
 
-**Mathematics. The machine shown another way; it needs {{chapter Six expressions, composed}}.** We turn logic into arithmetic, NOT as 1 − x and AND as a product, so that one step of the machine becomes four polynomials.
+**Mathematics. The machine shown another way; it needs {{chapter Six expressions, composed}}.** We turn logic into arithmetic, NOT as 1 − x and AND as a product, and add one identity, x² = x, so that one step of the machine becomes four small polynomials of the proper kind, the kind that composes.
 
 The stepper writes one step of the machine as polynomials, the first of the two ways to compose in {{chapter Six expressions, composed}}: expand. Each bit of the state is a variable that is only ever 0 or 1, and logic becomes arithmetic:
 
@@ -1980,11 +1978,25 @@ def OR(x, y):
     return (x + y) - (x * y)
 ```
 
- In Roc (`roc/Stepper.roc`) the first and third read as they are written:
+In Roc (`roc/Stepper.roc`) the first and third read as they are written:
 
 {{function roc/Stepper.roc complement}}
 
 {{function roc/Stepper.roc either}}
+
+### x² = x
+
+Every variable here is only ever 0 or 1, and on those values x² = x. A ring where every x² is x is a Boolean ring: every polynomial in it is multilinear, each variable to the first power at most. A monomial is then a set of variables, kept as a bit mask, and the product of two monomials is the union of their sets, the OR of their masks.
+
+`roc/BoolPoly.roc` is that ring. Its product, with like terms summed in a table indexed by mask:
+
+{{function roc/BoolPoly.roc times}}
+
+`src/boolring.c` is the C's version (`0c233e3`), with a 32-bit mask and checked int64 coefficients.
+
+Two polynomials that agree on every 0/1 point reduce to the same multilinear polynomial, and a multilinear polynomial is fixed by its values on {0, 1}^n. So reducing by x² = x keeps every value the machine can see, and the canonical form makes `==` equality of functions (`roc/BoolPoly.roc`'s header).
+
+Steve's 2023 stepper built its four polynomials in the general ring, where x·x stays x²: there every product raises powers, x·x to x² and x²·x to x³, and keeps apart terms the machine sees as one, so one step's `hb'` has 786 terms where the Boolean ring's has 7. Composed in the general ring, the same six steps would need about 10^54 terms, of degree about 10 million, with step 2 alone over 10 GB (`docs/DM_GENERAL.md`), so that monstrosity is lost to history. In the Boolean ring each substitution keeps the polynomials multilinear, and {{chapter Six steps composed}} composes all six in a fraction of a second.
 
 ### One step
 
@@ -2011,7 +2023,7 @@ The construction names each fact about the state with an indicator, a polynomial
 
 ### The step's sizes
 
-With the identity x² = x of {{chapter The Boolean ring}}, the four polynomials have 7, 13, 17 and 33 terms, every coefficient 1 or -1, as an expect in `roc/Stepper.roc` holds. Here is `halted'`. It says: halted already, or a `decr` at `AX` = 0 on a running machine.
+In the Boolean ring the four polynomials have 7, 13, 17 and 33 terms, every coefficient 1 or -1, as an expect in `roc/Stepper.roc` holds. Here is `halted'`. It says: halted already, or a `decr` at `AX` = 0 on a running machine.
 
 ```text
 halted+op_hb+(-1)*hb*op_hb+(-1)*lb*op_hb+(-1)*halted*op_hb+(-1)*op_hb*op_lb
@@ -2020,7 +2032,7 @@ halted+op_hb+(-1)*hb*op_hb+(-1)*lb*op_hb+(-1)*halted*op_hb+(-1)*op_hb*op_lb
 +(-1)*hb*halted*op_hb*op_lb+(-1)*lb*halted*op_hb*op_lb+hb*lb*halted*op_hb*op_lb
 ```
 
-In the general ring, where x·x stays x², as Steve's `stepper.py` builds them, the same four have 786, 2,979, 25 and 33 terms. {{chapter The Delightful Monstrosity}} prints both versions whole, and {{chapter The step's encodings}} sets these counts beside the other versions of the step.
+{{chapter The step's encodings}} sets these counts beside the other versions of the step.
 
 *The frame switches here back to ordinary computation: the polynomials run as a machine.*
 
@@ -2030,7 +2042,7 @@ Evaluated at the bits of a state and an instruction, the four polynomials give t
 
 **Theorem 11.** On every one of the 4,096 programs and each of the four inputs, the stepper, evaluating the step polynomials one step at a time, accepts exactly when `run_progam` does.
 
-*Proof.* Run all 16,384 pairs both ways, on the general ring's polynomials: the two agree on every pair, and 5,596 pairs accept.
+*Proof.* Run all 16,384 pairs both ways, on the step polynomials as Steve's `stepper.py` builds them, which `src/stepper.c` rebuilds term for term: the two agree on every pair, and 5,596 pairs accept.
 
 ```text Run it
 $ out/tcc/test_cross_check
@@ -2076,33 +2088,11 @@ input  accepted after line 1 2 3 4 5 6  test_with_stepper
 3                           0 0 0 0 0 1  accepts
 ```
 
-## The Boolean ring
-
-**Mathematics. The machine shown another way; it needs {{chapter Arithmetization}}.** We show you the one identity, x² = x, that keeps every polynomial here multilinear, so that composing six steps takes a fraction of a second.
-
-A whole program is six steps. Composing them means substituting: step 1's four polynomials go in for the state variables of step 2, and so on, until the final state is four polynomials in the 14 bits of {{chapter Six expressions, composed}}. One polynomial would then hold the whole machine.
-
-### x² = x
-
-Every variable here is only ever 0 or 1, and on those values x² = x. A ring where every x² is x is a Boolean ring: every polynomial in it is multilinear, each variable to the first power at most. A monomial is then a set of variables, kept as a bit mask, and the product of two monomials is the union of their sets, the OR of their masks.
-
-`roc/BoolPoly.roc` is that ring. Its product, with like terms summed in a table indexed by mask:
-
-{{function roc/BoolPoly.roc times}}
-
-`src/boolring.c` is the C's version (`0c233e3`), with a 32-bit mask and checked int64 coefficients.
-
-### Why it is exact
-
-Two polynomials that agree on every 0/1 point reduce to the same multilinear polynomial, and a multilinear polynomial is fixed by its values on {0, 1}^n. So reducing by x² = x keeps every value the machine can see, and the canonical form makes `==` equality of functions (`roc/BoolPoly.roc`'s header).
-
-Each substitution keeps the polynomials multilinear, and the composition of {{chapter Six steps composed}} takes a fraction of a second. In the general ring every product raises powers, x·x to x² and x²·x to x³, and keeps apart terms the machine sees as one; {{chapter The Delightful Monstrosity}} follows that road as far as it goes.
-
 ## Six steps composed
 
-**Mathematics. New results, the book's thesis; it needs {{chapter The Boolean ring}}.** We compose all six steps into four polynomials and prove that they agree with the machine at all 16,384 points.
+**Mathematics. New results, the book's thesis; it needs {{chapter Arithmetization}}.** We compose all six steps into four polynomials, describe the one that answers every question at once, and prove that they agree with the machine at all 16,384 points.
 
-`src/compose.c` substitutes the step polynomials into themselves six times (`1146d43`). The Roc port's step, from `roc/Compose.roc`:
+A whole program is six steps. Composing them means substituting: step 1's four polynomials go in for the state variables of step 2, and so on, until the final state is four polynomials in the 14 bits of {{chapter Six expressions, composed}}: the input's two, `h0` and `l0`, and the program's twelve, `op1_hb` to `op6_lb`. `src/compose.c` substitutes the step polynomials into themselves six times (`1146d43`). The Roc port's step, from `roc/Compose.roc`:
 
 {{function roc/Compose.roc after_step}}
 
@@ -2136,7 +2126,9 @@ Each step's term counts, from `roc/golden/composition.txt` and `out/tcc/compose_
 | 5 | 143 | 727 | 878 | 2,568 |
 | 6 | 319 | 2,185 | 2,732 | 10,324 |
 
-The final `hb` has degree 9 and its largest coefficient is 6; `lb` has degree 14 and 21; `halted` 14 and 20; `accepted` 14 and 63. Sixty-three is the largest coefficient of the four final polynomials, so int64 holds each with room to spare. In the Boolean ring `compose_main` composed all six in 44 to 50 ms (`gcc -O2`, three runs on 2026-11-27), where the general ring's composition ran past 30 s at step 2 ({{chapter How it got here}}).
+The final `hb` has degree 9 and its largest coefficient is 6; `lb` has degree 14 and 21; `halted` 14 and 20; `accepted` 14 and 63. Sixty-three is the largest coefficient of the four final polynomials, so int64 holds each with room to spare. In the Boolean ring `compose_main` composed all six in 44 to 50 ms (`gcc -O2`, three runs on 2026-11-27).
+
+The proper polynomial is still a big one, and intrinsically so. `accepted` is 10,324 terms and, as the C prints it, 510,387 characters: all 4,096 programs run on all four inputs, written as one sum, each term a coefficient times a product of up to 14 of the bits. Every term is the machine's own, and x² = x has already taken out every power. {{chapter The Delightful Monstrosity}}, a short chapter, prints it in full and evaluates it by hand at program 1689.
 
 ### The proof
 
@@ -2146,7 +2138,13 @@ Fourteen 0/1 variables make 2^14 = 16,384 points, and each point is one input wi
 
 In programmer terms, `accepted` is a lookup table of 16,384 entries written as algebra, and the proof reads every entry.
 
-*Proof.* Evaluate the four final polynomials at every point and compare each with `run_progam`; the Roc port's proof agrees, and {{chapter The Delightful Monstrosity}} shows its run.
+*Proof.* Evaluate the four final polynomials at every point and compare each with `run_progam`. The Roc port's proof agrees, and its run says:
+
+```text
+proof: 16384 points, 0 differ, 5596 accepted, 2891 accepted with no halt
+```
+
+The last count is the Python's own reading of `halted`, kept as it is: a `zero` that accepts leaves `halted` at 0, so 2,891 accepting runs end with it unset.
 
 ```text Run it
 $ out/tcc/test_compose
@@ -2166,44 +2164,35 @@ input  hb  lb  halted  accepted
 
 ## The Delightful Monstrosity
 
-**Mathematics. Big output to skim; it needs {{chapter Six steps composed}}.** We describe a two-bit machine by the largest polynomials we could make by the rules, show the run that checks them, and then print all of them, 762,670 characters for the whole program.
+**Mathematics. Big output to skim; it needs {{chapter Six steps composed}}.** Here is the polynomial in full view: `accepted`, 10,324 terms and 510,387 characters that answer every question about a two-bit machine at once, and then the same polynomial evaluated by hand at program 1689.
 
-This chapter is a stunt in the spirit of the International Obfuscated C Code Contest, whose entries are C made unreadable on purpose that still runs correctly within the contest's rules. Ours is to describe a very simple machine by an enormous polynomial. Steve wanted exactly this: part of the project, he said on 2026-11-25, was "to generate obscenely large [polynomials] that actually mapped to a simple Nibble VM solving our 2-bit language". The stunt stays in this chapter; the rest of the book needs only the counts.
+Steve wanted exactly this: part of the project, he said on 2026-11-25, was "to generate obscenely large [polynomials] that actually mapped to a simple Nibble VM solving our 2-bit language". Every term comes from the machine's logic by the rules of {{chapter Arithmetization}}, composed one substitution a line. Nothing is padded, nothing is added and taken away again, and no polynomial is squared to grow it. The book's build composes it afresh each time, with `src/compose_main.c`, and holds its counts to `roc/golden/composition.txt`.
 
-### The rules
+**Monstrosity 5: the machine as one polynomial.** `accepted` after six steps: 10,324 terms over 14 variables, of degree up to 14 and coefficients up to 63, 510,387 characters as the C's `bp_str` prints it, for a machine whose register holds 2 bits. Skim it, admire the scroll bar, and read the worked example below it.
 
-Every polynomial here comes from the machine's logic by the three rules of {{chapter Arithmetization}}, and the whole program comes from composing actual step polynomials, one substitution a line. Nothing is padded, nothing is added and taken away again, and no polynomial is squared to grow it. One dirty trick is allowed: ignoring x² = x, so that powers pile up. The stunt plays it on one step, as Steve's `stepper.py` builds it. On the whole program the trick is out of reach: composing that way, the Python harness took about 0.9 s for step 1 and ran step 2 past its 30 s cap ([1a5f6fa](https://github.com/showell/virtual-machine/commit/1a5f6fa)'s message). So the composition plays it straight, in the Boolean ring, and its `accepted`, at 510,387 characters, is the largest polynomial we could generate by the rules alone.
-
-### Why six
-
-A program is six lines, and each line is one step of the machine, so the whole program is the step composed six times: step 1's four polynomials substituted into step 2's, and on to step 6. Fewer substitutions describe only the first lines of a run; six reach every run's end. Steve's Python took the same six steps by evaluating the step polynomials once a line (`test_with_stepper`, quoted in {{chapter Arithmetization}}). The composition takes them by algebra, before any input or program is known, so its 14 variables are the input's two bits, `h0` and `l0`, and the program's twelve, `op1_hb` to `op6_lb`.
-
-### The check, first
-
-Every box below is checked before it is printed:
-
-- **One step, ignoring x² = x.** `tests/golden/step_hb.txt` and its three siblings hold Python's own `str` of each polynomial, and `tests/test_stepper.c` holds the C's printing to them byte for byte (`5b14d74`). For this book `stepper.py` was run again, at virtual-machine's [94c3d31](https://github.com/showell/virtual-machine/commit/94c3d31), and its four strings matched. Theorem 11's stepper runs on these four.
-- **One step, in the Boolean ring.** The four are the C's `bp_str`, as `roc/golden/step_polynomials.txt` holds them, and the Roc port's gate prints the same file.
-- **The whole program.** `book/book.shale` builds `src/compose_main.c` with `gcc -O2` at each build of the book, holds each step's term counts and each final polynomial's terms, degree and largest coefficient to `roc/golden/composition.txt`, and the app reads the four files it writes. Theorem 12 holds the four to the machine at every point. The Roc port's run of that proof:
-
-```text
-proof: 16384 points, 0 differ, 5596 accepted, 2891 accepted with no halt
+```polynomial book/build/out/accepted.txt
+accepted after six steps, composed by the C's compose_main at the book's build
+10324
 ```
 
-All 16,384 points, each one input with one program, agree. The last count is the Python's own reading of `halted`, kept as it is: a `zero` that accepts leaves `halted` at 0, so 2,891 accepting runs end with it unset.
+### Evaluated by hand
 
-### What the sizes mean
+To evaluate the polynomial at a point, set each variable to its bit. Program 1689 at input 0 sets `h0` and `l0` to 0 and the twelve program bits to `01 10 10 01 10 01`. A term is a coefficient times a product of variables, so it is 0 as soon as one of its variables is 0. Only the terms whose every variable is 1 survive, and the polynomial's value is the sum of their coefficients. At this point 41 of the 10,324 survive. Grouped by degree:
 
-`accepted`'s 10,324 terms are all 4,096 programs run on all four inputs, written as one sum. Over each box is what the book's app (`book/app/Polynomials.roc`) counts in the text it shows: terms, degree, the largest coefficient and characters, and the build stops if a box's terms differ from the count the source gives it. For one step, the two rings compare like this:
+```text 1689, here: accepted at input 0, worked term by term
+the variables at 1: op1_lb op2_hb op3_hb op4_lb op5_hb op6_lb
+terms with every variable at 1: 41 of the 10,324
+degree  terms  their sum
+1       3      +3
+2       8      -8
+3       13     +13
+4       11     -11
+5       5      +5
+6       1      -1
+accepted = 3 - 8 + 13 - 11 + 5 - 1 = 1
+```
 
-| polynomial | general ring | Boolean ring |
-|---|---|---|
-| hb' | 786 terms, 36,547 characters | 7 terms, 116 characters |
-| lb' | 2,979 terms, 147,274 characters | 13 terms, 230 characters |
-| halted' | 25 terms, 514 characters | 17 terms, 294 characters |
-| accepted' | 33 terms, 728 characters | 33 terms, 728 characters |
-
-`accepted'` is already multilinear in the general ring, so the identity keeps its 33 terms; the two printers order them differently. Skim the boxes, admire the scroll bar, and move on.
+The three terms of degree 1 are `op1_lb`, `op4_lb` and `op6_lb`; the 38 terms of higher degree sum to −2. The value is 1: the polynomial says that program 1689 accepts input 0, as its first line's `zero` does. The same count at all four inputs gives the machine's four verdicts, 1, 0, 1 and 1:
 
 ```text 1689, here: the terms of accepted that are 1 at its four points
 input  terms of the 10,324 that are 1 there  their coefficients' sum
@@ -2211,78 +2200,6 @@ input  terms of the 10,324 that are 1 there  their coefficients' sum
 1      82                                     0
 2      76                                     1
 3      157                                    1
-```
-
-### One step, in the Boolean ring
-
-These four are small, 70 terms in all; they are here for contrast with the two monstrosities after them.
-
-```polynomial roc/golden/step_polynomials.txt hb'
-hb', one step in the Boolean ring, printed by the C's bp_str
-7
-```
-
-```polynomial roc/golden/step_polynomials.txt lb'
-lb', one step in the Boolean ring, printed by the C's bp_str
-13
-```
-
-```polynomial roc/golden/step_polynomials.txt halted'
-halted', one step in the Boolean ring, printed by the C's bp_str
-17
-```
-
-```polynomial roc/golden/step_polynomials.txt accepted'
-accepted', one step in the Boolean ring, printed by the C's bp_str
-33
-```
-
-### One step, ignoring x² = x
-
-**Monstrosity 5: one step, as Python printed it.** One step of the machine, in four polynomials of 3,823 terms and 185,063 characters together (`tests/golden/step_*.txt`), most of the terms powers like x² that a machine of 0s and 1s reads as plain x. `lb'` alone is 2,979 terms.
-
-```polynomial tests/golden/step_hb.txt
-hb', one step in the general ring, as Python's stepper.py prints it
-786
-```
-
-```polynomial tests/golden/step_lb.txt
-lb', one step in the general ring, as Python's stepper.py prints it
-2979
-```
-
-```polynomial tests/golden/step_halted.txt
-halted', one step in the general ring, as Python's stepper.py prints it
-25
-```
-
-```polynomial tests/golden/step_accepted.txt
-accepted', one step in the general ring, as Python's stepper.py prints it
-33
-```
-
-### The whole program
-
-**Monstrosity 6: the whole machine as four polynomials.** 15,560 terms (319, 2,185, 2,732 and 10,324) and 762,670 characters, composed by `src/compose_main.c` at the book's build. `accepted` alone is 510,387 characters: all 4,096 programs on all four inputs of a two-bit machine, written as one sum.
-
-```polynomial book/build/out/hb.txt
-hb after six steps, composed by the C's compose_main at the book's build
-319
-```
-
-```polynomial book/build/out/lb.txt
-lb after six steps, composed by the C's compose_main at the book's build
-2185
-```
-
-```polynomial book/build/out/halted.txt
-halted after six steps, composed by the C's compose_main at the book's build
-2732
-```
-
-```polynomial book/build/out/accepted.txt
-accepted after six steps, composed by the C's compose_main at the book's build
-10324
 ```
 
 ## Nibble++
@@ -2700,7 +2617,7 @@ Both proofs replace the programs with a finite model of the machine, the circuit
 
 ### The proof itself
 
-**Monstrosity 7: a 17 MB proof that 27 lines are too few.** rocsat's DRAT proof for is_not_14 at 27 lines is 17,192,870 bytes on 145,384 lines, 64,533 lemmas and 80,851 deletions over 18,365 variables and 54,949 clauses, all to show that every 27-line program for a machine with a 4-bit register gets one of 16 inputs wrong. Rerun while this chapter was written, it came out the very size `sat/plus/search.txt` records, and `src/drat.c` said `verified: 64533 lemmas (0 by RAT), 80851 deletions, over 18365 variables and 54949 clauses; the empty clause at line 145384`. It is too big for any page, so it stays a file: `sat/plus_search.shale` writes it under `out/sat/plus/` in about 17 seconds.
+**Monstrosity 6: a 17 MB proof that 27 lines are too few.** rocsat's DRAT proof for is_not_14 at 27 lines is 17,192,870 bytes on 145,384 lines, 64,533 lemmas and 80,851 deletions over 18,365 variables and 54,949 clauses, all to show that every 27-line program for a machine with a 4-bit register gets one of 16 inputs wrong. Rerun while this chapter was written, it came out the very size `sat/plus/search.txt` records, and `src/drat.c` said `verified: 64533 lemmas (0 by RAT), 80851 deletions, over 18365 variables and 54949 clauses; the empty clause at line 145384`. It is too big for any page, so it stays a file: `sat/plus_search.shale` writes it under `out/sat/plus/` in about 17 seconds.
 
 ## Guided search
 
@@ -2784,7 +2701,7 @@ Each pair shares only the machine's rule. The interpreter branches on opcodes, t
 
 ## The Roc port
 
-**Ordinary computation. Tools and history; it needs {{chapter The Boolean ring}}.** We show the mathematics written so that it reads like mathematics, and how a race against it made the C four times faster.
+**Ordinary computation. Tools and history; it needs {{chapter Arithmetization}}.** We show the mathematics written so that it reads like mathematics, and how a race against it made the C four times faster.
 
 `roc/` is the same machine and the same mathematics in Roc, at the compiler that `roc/roc-version` pins (`6206236`). Its point is that the mathematics reads like mathematics.
 

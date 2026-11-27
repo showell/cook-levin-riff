@@ -263,6 +263,49 @@ static void stepper_box(void) {
     printf("```\n\n");
 }
 
+// The composed `accepted` evaluated at input 0 by hand: the variables that
+// are 1 there, then the terms whose variables are all 1, counted and summed
+// by degree, and their total, the machine's verdict.
+static void worked_box(const BPoly *accepted) {
+    enum { INPUT = 0 };
+    BVars vars = compose_vars();
+    uint32_t ones = compose_ones(INPUT, guide());
+    printf("```text 1689, here: accepted at input %d, worked term by term\n", INPUT);
+    printf("the variables at 1:");
+    for (int v = 0; v < COMPOSE_VARS; v++) {
+        if (ones >> v & 1) printf(" %s", vars.names[v]);
+    }
+    int count[COMPOSE_VARS + 1] = {0};
+    int64_t sum[COMPOSE_VARS + 1] = {0};
+    int live = 0;
+    for (size_t t = 0; t < accepted->len; t++) {
+        uint32_t mask = accepted->terms[t].mask;
+        if ((mask & ~ones) != 0) continue;
+        int degree = __builtin_popcount(mask);
+        count[degree]++;
+        sum[degree] += accepted->terms[t].coeff;
+        live++;
+    }
+    printf("\nterms with every variable at 1: %d of the %zu,%03zu\n", live, accepted->len / 1000, accepted->len % 1000);
+    printf("degree  terms  their sum\n");
+    int64_t total = 0;
+    for (int d = 0; d <= COMPOSE_VARS; d++) {
+        if (count[d] == 0) continue;
+        printf("%-7d %-6d %+lld\n", d, count[d], (long long)sum[d]);
+        total += sum[d];
+    }
+    printf("accepted =");
+    int first = 1;
+    for (int d = 0; d <= COMPOSE_VARS; d++) {
+        if (count[d] == 0) continue;
+        if (first) printf(" %lld", (long long)sum[d]);
+        else printf(" %s %lld", sum[d] < 0 ? "-" : "+", (long long)(sum[d] < 0 ? -sum[d] : sum[d]));
+        first = 0;
+    }
+    printf(" = %lld\n```\n\n", (long long)total);
+    if (total != (run_progam(INPUT, guide()) == STATUS_ACCEPTED)) stop("the worked sum differs from the machine");
+}
+
 // The four composed polynomials at the program's four points, and the terms
 // of `accepted` that are 1 there: a multilinear polynomial's value at a 0/1
 // point is the sum of the coefficients of its terms whose variables are all
@@ -299,6 +342,7 @@ static void polynomial_boxes(void) {
         printf("%d      %-37d  %lld\n", n, live, (long long)sum);
     }
     printf("```\n\n");
+    worked_box(&s.accepted);
     bstate_free(&s);
 }
 
