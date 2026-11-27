@@ -2,8 +2,10 @@
 //
 //   complexity N PARS     N 3 or 4, PARS the file `census N PARS` writes:
 //                         the Hamiltonian lemma on every lit set, and on
-//                         3 x 3 the state graph, on 4 x 4 the sets with one
-//                         dark tile
+//                         3 x 3 the state graph and the column tours, on
+//                         4 x 4 the sets with one dark tile and the
+//                         reduction from Hamiltonian cycle, run on every
+//                         grid graph in a 4 x 4 box
 //   complexity graph N    the state graph alone, N 3 or 4 (4 is 96 searches
 //                         of 6.3 million states: minutes, not in the build)
 //
