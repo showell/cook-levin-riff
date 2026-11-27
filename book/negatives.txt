@@ -40,8 +40,8 @@ logic: The drawings use the standard symbols: AND is a D, OR a shield, NOT a tri
 logic: An OR followed by a NOT is drawn as one shield with a bubble, a NOR; it still counts as two gates.
 logic: It is (`in 0` AND NOT `s`) OR (`in 1` AND `s`), four gates.
 logic: The hold ANDs each of the line's two bits with NOT `halted`, so a halted machine selects 00, `nada`: its bits pass and its flags are 0.
-logic: The machine as logic; it needs {{chapter The machine}}.** We show you the toy the way a chip sees it: one fixed bank of AND, OR and NOT gates, ticking once a line, that sees only bits.
+logic: The machine shown another way; it needs {{chapter The machine}}.** We show you the toy the way a chip sees it: one fixed bank of AND, OR and NOT gates, ticking once a line, that sees only bits.
 logic: 35 gates: 21 AND, 9 OR, 5 NOT
 logic: 59 gates: 27 AND, 16 OR, 16 NOT
-logic: Cool math; it needs {{chapter Six expressions, composed}}.** We turn logic into arithmetic, NOT as 1 − x and AND as a product, so that one step of the machine becomes four polynomials.
+logic: The machine shown another way; it needs {{chapter Six expressions, composed}}.** We turn logic into arithmetic, NOT as 1 − x and AND as a product, so that one step of the machine becomes four polynomials.
 logic: A comparator is five gates: (`accepted` AND `want`) OR (NOT `accepted` AND NOT `want`).

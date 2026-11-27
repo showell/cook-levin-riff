@@ -9,9 +9,10 @@ adding to `book.md` keeps to these:
   amazement, stated with its number.
 - **Every chapter opens with a lead**: one to three sentences that make a
   bold claim about what the chapter gives the reader, after a guidepost in
-  bold naming its kind (start here, a review of a well-known idea, cool
-  math, new theorems, diagrams, big output to skim, history, the tools) and
-  the earlier chapter it needs, or that it stands alone. The guidepost starts
+  bold naming its kind, one of six fixed kinds (start here; a review; new
+  results; the machine shown another way; big output to skim; tools and
+  history), which the front page explains once, and the earlier chapter it
+  needs, or that it stands alone. A "needs" always points backward. The guidepost starts
   with the chapter's frame: ordinary computation, circuit design,
   mathematics, complexity theory or SAT solving. A chapter that changes
   frame partway through says so in one line in italics. A lead may promise

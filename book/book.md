@@ -2,66 +2,77 @@
 
 A small book about [cook-levin-riff](https://github.com/showell/cook-levin-riff): a toy machine whose every program is a polynomial and a Boolean formula, the six-step composition that took three years to arrive, and five independent ways of computing the same answers that all agree.
 
-The book is meant to be skimmed. Each chapter opens with a guidepost, in bold, saying what kind of chapter it is and what earlier chapter it needs, so you can jump in anywhere. The guidepost starts with the chapter's frame, the way it looks at the machine: ordinary computation, circuit design, mathematics, complexity theory or SAT solving. Where a chapter changes frame partway through, a line in italics says so. This list is the whole book in one line a chapter, the kind in italics:
+The book is meant to be skimmed. Each chapter opens with a guidepost, in bold. It starts with the chapter's frame, the way it looks at the machine: ordinary computation, circuit design, mathematics, complexity theory or SAT solving. Where a chapter changes frame partway through, a line in italics says so. Then comes the chapter's kind, one of six, and the earlier chapter it needs, so you can jump in anywhere:
+
+- **Start here**: the pitch and the machine, the two chapters to read first.
+- **A review**: well-known ideas, retold beside the toy; skip one you know.
+- **New results**: theorems, counts and answers worked out for this book, each checked by a run.
+- **The machine shown another way**: the same machine as a puzzle, as gates, a circuit, a formula, clauses or polynomials, with program 1689 shown in each.
+- **Big output to skim**: a monstrosity, printed whole because its size is the point.
+- **Tools and history**: the languages, the solver, the cross-checks, the story, and what is still open.
+
+This list is the whole book in one line a chapter, the kind in italics:
+
+- {{chapter Introduction}}: what the book is for, its thesis, and its guide, program 1689. *Start here.*
 
 **Part I, the toy:**
 
 - {{chapter The machine}}: Steve's whole machine in one page. *Start here.*
-- {{chapter Roc is our lingua franca}}: which language does which job, and why Roc does most of them. *The tools, in brief.*
-- {{chapter Formal languages and machines}}: formal languages and Turing's machine in six rules. *A review of well-known ideas.*
-- {{chapter Deciding in plain Python}}: every answer as a one-line Python lookup. *The tools, in brief.*
-- {{chapter Programs as formal languages}}: all 4,096 programs run, and the problem with one answer. *New theorems.*
-- {{chapter Which instructions are needed}}: one instruction is dead weight. *New theorems.*
-- {{chapter Nibble, the puzzle page}}: sixteen puzzles to play in the browser. *The playground.*
+- {{chapter Roc is our lingua franca}}: which language does which job, and why Roc does most of them. *Tools and history.*
+- {{chapter Formal languages and machines}}: formal languages and Turing's machine in six rules. *A review.*
+- {{chapter Deciding in plain Python}}: every answer as a one-line Python lookup. *Tools and history.*
+- {{chapter Programs as formal languages}}: all 4,096 programs run, and the problem with one answer. *New results.*
+- {{chapter Which instructions are needed}}: one instruction is dead weight. *New results.*
+- {{chapter Nibble, the puzzle page}}: sixteen puzzles to play in the browser. *The machine shown another way.*
 
 **Part II, P, NP and Cook-Levin:**
 
-- {{chapter P and NP}}: the two classes, defined. *A review of well-known ideas.*
-- {{chapter Nibble, sized}}: the toy grown until P and NP apply. *New definitions.*
-- {{chapter P, NP and Cook-Levin}}: the theorem itself, and what it means for the toy. *A review of the theorem.*
+- {{chapter P and NP}}: the two classes, defined. *A review.*
+- {{chapter Nibble, sized}}: the toy grown until P and NP apply. *New results.*
+- {{chapter P, NP and Cook-Levin}}: the theorem itself, and what it means for the toy. *A review.*
 
 **Part III, Cook-Levin on the toy:**
 
-- {{chapter The Boolean view}}: the toy as a chip sees it. *The machine as logic.*
-- {{chapter The problems, seen from outside}}: the 16 puzzles are the 16 two-input gates. *Cool math, short.*
-- {{chapter The step's encodings}}: every version of the step, side by side. *A reference table.*
-- {{chapter One formula for the whole machine}}: the whole machine as one formula of 14 bits. *Cool math.*
-- {{chapter The SAT solver}}: rocsat and the two questions we ask it. *The tools.*
-- {{chapter Checking a claim}}: a claim about a program, checked by a solver. *The first SAT encoding.*
-- {{chapter Parts for a small computer}}: each instruction drawn as a circuit. *Diagrams.*
-- {{chapter The machine as a circuit}}: one step of the machine as 59 gates. *Diagrams, and a listing to skim.*
-- {{chapter The circuit, in full}}: the whole machine, and one wire that says "solved". *Diagrams.*
+- {{chapter The Boolean view}}: the toy as a chip sees it. *The machine shown another way.*
+- {{chapter The problems, seen from outside}}: the 16 puzzles are the 16 two-input gates. *New results.*
+- {{chapter The step's encodings}}: every version of the step, side by side. *The machine shown another way.*
+- {{chapter One formula for the whole machine}}: the whole machine as one formula of 14 bits. *The machine shown another way.*
+- {{chapter The SAT solver}}: rocsat and the two questions we ask it. *Tools and history.*
+- {{chapter Checking a claim}}: a claim about a program, checked by a solver. *The machine shown another way.*
+- {{chapter Parts for a small computer}}: each instruction drawn as a circuit. *The machine shown another way.*
+- {{chapter The machine as a circuit}}: one step of the machine as 59 gates. *The machine shown another way.*
+- {{chapter The circuit, in full}}: the whole machine, and one wire that says "solved". *The machine shown another way.*
 - {{chapter The circuit as equations}}: all 1,439 gates, to skim. *Big output to skim.*
-- {{chapter From equations to CNF}}: why naming gates beats multiplying them out. *Cool math, Cook-Levin in small.*
-- {{chapter The Cook-Levin machine}}: the circuit run backwards. *Diagrams, the theorem's construction.*
-- {{chapter The tableau, filled in}}: Cook's grid, printed twice. *A picture of the proof.*
-- {{chapter Cook-Levin as SAT}}: every puzzle as one formula. *A new theorem.*
-- {{chapter Solved by hand}}: a formula solved on paper. *Worked examples.*
+- {{chapter From equations to CNF}}: why naming gates beats multiplying them out. *New results.*
+- {{chapter The Cook-Levin machine}}: the circuit run backwards. *The machine shown another way.*
+- {{chapter The tableau, filled in}}: Cook's grid, printed twice. *The machine shown another way.*
+- {{chapter Cook-Levin as SAT}}: every puzzle as one formula. *New results.*
+- {{chapter Solved by hand}}: a formula solved on paper. *The machine shown another way.*
 - {{chapter The solver's work, in full}}: a whole formula, answer and proof, to skim. *Big output to skim.*
 
 **Part IV, the polynomials:**
 
-- {{chapter Six expressions, composed}}: the program left unknown, and two roads forward. *The pivot.*
-- {{chapter Arithmetization}}: logic turned into arithmetic. *Cool math.*
-- {{chapter The Boolean ring}}: one identity, x² = x, that keeps every polynomial small. *Cool math.*
-- {{chapter Six steps composed}}: four polynomials that are the machine. *A new theorem, the book's thesis.*
-- {{chapter The Delightful Monstrosity}}: the largest polynomials we could make by the rules, checked, then printed whole. *A stunt, and big output to skim.*
+- {{chapter Six expressions, composed}}: the program left unknown, and two roads forward. *The machine shown another way.*
+- {{chapter Arithmetization}}: logic turned into arithmetic. *The machine shown another way.*
+- {{chapter The Boolean ring}}: one identity, x² = x, that keeps every polynomial small. *The machine shown another way.*
+- {{chapter Six steps composed}}: four polynomials that are the machine. *New results.*
+- {{chapter The Delightful Monstrosity}}: the largest polynomials we could make by the rules, checked, then printed whole. *Big output to skim.*
 
 **Part V, Nibble++, a bigger machine:**
 
-- {{chapter Nibble++}}: a bigger machine, and why we built it. *Why we invented a bigger machine.*
-- {{chapter Two theorems about Nibble++}}: Fibonacci numbers, off by one where the inputs end. *Cool math, new theorems.*
-- {{chapter Shortest programs with mod2 and half}}: every shortest length, explained by one recursion. *New theorems.*
-- {{chapter Nibble++ meets rocsat}}: a 17 MB proof, replayed. *SAT at scale.*
-- {{chapter is_not_14 needs 28 lines}}: a public question, answered twice. *A question answered.*
-- {{chapter Guided search}}: a search that asks about a few inputs at a time. *An experiment.*
+- {{chapter Nibble++}}: a bigger machine, and why we built it. *New results.*
+- {{chapter Two theorems about Nibble++}}: Fibonacci numbers, off by one where the inputs end. *New results.*
+- {{chapter Shortest programs with mod2 and half}}: every shortest length, explained by one recursion. *New results.*
+- {{chapter Nibble++ meets rocsat}}: a 17 MB proof, replayed. *New results.*
+- {{chapter is_not_14 needs 28 lines}}: a public question, answered twice. *New results.*
+- {{chapter Guided search}}: a search that asks about a few inputs at a time. *New results.*
 
 **Part VI, the cross-checks, and the history:**
 
-- {{chapter The oracles}}: five ways to the same answers. *The cross-checks.*
-- {{chapter The Roc port}}: the mathematics as Roc writes it. *The tools.*
-- {{chapter How it got here}}: the toy in four days of 2023, and its polynomials composed in 2026. *History, safe to skip.*
-- {{chapter What comes next}}: the steps still open. *Open steps.*
+- {{chapter The oracles}}: five ways to the same answers. *Tools and history.*
+- {{chapter The Roc port}}: the mathematics as Roc writes it. *Tools and history.*
+- {{chapter How it got here}}: the toy in four days of 2023, and its polynomials composed in 2026. *Tools and history.*
+- {{chapter What comes next}}: the steps still open. *Tools and history.*
 - {{chapter Appendix: two DRAT proofs}}: two proofs of impossibility, whole. *Big output to skim.*
 
 **The monstrosities.** Here they all are, each shown because its size is the point:
@@ -100,7 +111,7 @@ Each number here comes from the repository, a commit, a golden file or a program
 
 ## The machine
 
-**Ordinary computation. Start here; this chapter stands alone.** Here you get Steve's whole machine in one page: four instructions, a two-bit register and a spec of 26 lines. Every later chapter is this machine seen from another side.
+**Ordinary computation. Start here; it stands alone.** Here you get Steve's whole machine in one page: four instructions, a two-bit register and a spec of 26 lines. Every later chapter is this machine seen from another side.
 
 The machine holds one register, `AX`, of 2 bits, so `AX` is 0, 1, 2 or 3. A run starts with `AX` set to the input. Its program is six instructions, each one of four opcodes, and the machine's programming language, an assembly language, is called Nibble.
 
@@ -201,7 +212,7 @@ decides {0, 2, 3}
 
 ## Roc is our lingua franca
 
-**Ordinary computation. The tools, in brief; it needs {{chapter The machine}}.** Here is which programming language does which job in this book, and why Roc does most of them.
+**Ordinary computation. Tools and history; it needs {{chapter The machine}}.** Here is which programming language does which job in this book, and why Roc does most of them.
 
 Roc is our lingua franca in this book. This is not a book about type systems, but Roc's clear type annotations help us express mathematical concepts. It's also simply a good working language. It has the horsepower for computation and versatility to live in the browser. The Roc port composes all six steps of the machine into four polynomials and checks them at every point ({{chapter The Roc port}}), and the app that builds this book is Roc as well.
 
@@ -215,7 +226,7 @@ Finally, JS does what JS does best. JS runs the skin of our toys. It also serves
 
 ## Formal languages and machines
 
-**Complexity theory. A review of well-known ideas; skip it if you know Turing machines.** We explain the one word complexity theory runs on, the formal language, and show a Turing machine deciding one with six rules.
+**Complexity theory. A review; skip it if you know Turing machines.** We explain the one word complexity theory runs on, the formal language, and show a Turing machine deciding one with six rules.
 
 In computer science a *formal language* is a set of strings. The book spends two words on it because it also has a *programming language*, Nibble, the notation its programs are written in, and the two are different things: a Nibble program decides a formal language. Pick an alphabet, say the digits 0 to 9, and any set of strings over it is a formal language: the decimal numerals of the primes, the palindromes, the strings that are valid Roc programs. A formal language is the cleanest way to state a decision question. "Is 91 prime?" becomes "is the string `91` in the formal language of primes?"
 
@@ -264,7 +275,7 @@ The machine here is Turing's idea at its smallest. Its tape is one 2-bit registe
 
 ## Deciding in plain Python
 
-**Ordinary computation. The tools, in brief; it stands alone.** You will see that every question the toy answers is a one-line lookup in Python, and that is exactly why the machine is worth taking apart.
+**Ordinary computation. Tools and history; it stands alone.** You will see that every question the toy answers is a one-line lookup in Python, and that is exactly why the machine is worth taking apart.
 
 A problem is four answers, one per input, so deciding one takes a line of ordinary code. The code here is `python/decides.py`, which `build.shale` runs on every build: it holds its two versions to each other on all 16 problems and all four inputs, and each one-line test below to its problem.
 
@@ -292,7 +303,7 @@ The want code already says everything about a problem. The Nibble machine takes 
 
 ## Programs as formal languages
 
-**Ordinary computation. New theorems; it needs {{chapter The machine}}.** We settle which problems the toy decides by running all 4,096 programs, and we find the one problem that exactly one program solves.
+**Ordinary computation. New results; it needs {{chapter The machine}}.** We settle which problems the toy decides by running all 4,096 programs, and we find the one problem that exactly one program solves.
 
 Steve settled which programs decide which problems twice in Python: first by construction, then by running everything.
 
@@ -418,7 +429,7 @@ The empty problem, { }, has 844 programs, since any program that rejects every i
 
 ## Which instructions are needed
 
-**Ordinary computation. New theorems; it needs {{chapter Programs as formal languages}}.** We prove that one of the four instructions is dead weight, and that two instructions of another design would decide everything in four lines.
+**Ordinary computation. New results; it needs {{chapter Programs as formal languages}}.** We prove that one of the four instructions is dead weight, and that two instructions of another design would decide everything in four lines.
 
 {{chapter Programs as formal languages}} counted what the four opcodes decide together. This chapter takes them apart: which of the four are needed, and what instructions of other designs could do.
 
@@ -456,7 +467,7 @@ the test: one_instruction_decides_at_most_five_languages_at_any_length
 
 ## Nibble, the puzzle page
 
-**Ordinary computation, in the browser. The playground; it stands alone.** This is where you play the machine yourself: sixteen puzzles, one for each problem, ramped so that a newcomer gets through all of them.
+**Ordinary computation, in the browser. The machine shown another way; it stands alone.** This is where you play the machine yourself: sixteen puzzles, one for each problem, ramped so that a newcomer gets through all of them.
 
 [Nibble](https://roc.lynrummy.com/nibble/) is a puzzle page with one puzzle for each of the 16 problems: pick instructions until the program accepts exactly the puzzle's inputs and rejects the rest. The search of {{chapter Programs as formal languages}} says every puzzle has an answer, and how many programs are answers.
 
@@ -527,7 +538,7 @@ accept | reject | accept | accept
 
 ## P and NP
 
-**Complexity theory. A review of well-known ideas; skip it if you know P and NP.** We give you the two classes the rest of the book leans on, at the level of their definitions, with the toy close at hand.
+**Complexity theory. A review; skip it if you know P and NP.** We give you the two classes the rest of the book leans on, at the level of their definitions, with the toy close at hand.
 
 The toy's every question was settled by trying everything: 4,096 programs on four inputs. That works because the toy is finite. Complexity theory is about formal languages with inputs of every length, where trying everything grows with the input, and it sorts them by how fast the work grows. This chapter gives the two classes the rest of the book leans on, P and NP, at the level of their definitions.
 
@@ -587,7 +598,7 @@ The N stands for *nondeterministic*: NP was first defined by machines that guess
 
 ## Nibble, sized
 
-**Complexity theory. New definitions; it needs {{chapter P and NP}}.** We grow the toy until complexity theory has something to say about it, and turn three questions about it into formal languages, two in P and one in NP.
+**Complexity theory. New results; it needs {{chapter P and NP}}.** We grow the toy until complexity theory has something to say about it, and turn three questions about it into formal languages, two in P and one in NP.
 
 P and NP sort formal languages by how their cost grows with the input's length. The toy's formal languages are finite, and every finite one is in P for an empty reason: a machine can keep all its answers in a table and look each one up in a fixed number of steps. To ask the question precisely, the machine has to grow. Below, three questions about it become formal languages, each with members and non-members at the toy's size.
 
@@ -642,7 +653,7 @@ Finding the program is the costly part. Trying every program tries 4^k of them, 
 
 ## P, NP and Cook-Levin
 
-**Complexity theory. A review of the theorem; skip it if you know Cook-Levin.** We state the theorem this whole book riffs on, and say exactly what it means for a machine with a two-bit register.
+**Complexity theory. A review; it needs {{chapter P and NP}}, and you can skip it if you know Cook-Levin.** We state the theorem this whole book riffs on, and say exactly what it means for a machine with a two-bit register.
 
 {{chapter P and NP}} defines the two classes, and {{chapter Nibble, sized}} places the toy among them. This chapter states the theorem that ties NP to one formal language, SAT, and says what it means for the toy.
 
@@ -662,7 +673,7 @@ The toy is such a checker. Given a problem and a program, it runs the program on
 
 ## The Boolean view
 
-**Circuit design. The machine as logic; it needs {{chapter The machine}}.** We show you the toy the way a chip sees it: one fixed bank of AND, OR and NOT gates, ticking once a line, that sees only bits.
+**Circuit design. The machine shown another way; it needs {{chapter The machine}}.** We show you the toy the way a chip sees it: one fixed bank of AND, OR and NOT gates, ticking once a line, that sees only bits.
 
 Everything so far ran the machine as a program, an interpreter reading its lines. This chapter runs the same machine as a computer's hardware does: a clock, and at each tick, one step of the machine, a fixed bank of Boolean gates, AND, OR and the complement, that takes bits in and puts bits out. The gates are the same at every tick, for every program and every input. They read the line's two opcode bits and the four state bits, and they write four state bits. They see bits and only bits: what a program means, which of the 16 problems it decides, even that problems exist, all lies outside them.
 
@@ -714,7 +725,7 @@ Whether a program decides a problem is more gates of the same kind. Run the six 
 
 ## The problems, seen from outside
 
-**Mathematics. Cool math, short; it needs {{chapter The Boolean view}}.** We prove that the 16 puzzles are, in disguise, the 16 logic gates of two inputs, XOR among them.
+**Mathematics. New results; it needs {{chapter The Boolean view}}.** We prove that the 16 puzzles are, in disguise, the 16 logic gates of two inputs, XOR among them.
 
 {{chapter The Boolean view}} ran the machine as gates that see only bits. We can see more than the gates do. Read an input n as its two bits, n = 2·`hb` + `lb`, and each problem is itself a Boolean function of them: {3} is `hb AND lb`, {1, 2, 3} is `hb OR lb`, {1, 2} is `hb XOR lb`, and {0, 2, 3} is `hb OR NOT lb`. That is a fact about the problems, found by looking at all 16 at once. The machine reaches each answer the long way instead, six ticks of the same gates.
 
@@ -751,7 +762,7 @@ So the 16 problems, the 16 puzzles of Nibble, are the 16 two-input connectives.
 
 ## The step's encodings
 
-**Every frame at once. A reference table; read it whenever the counts blur.** We put every version of the machine's step side by side, from Python to polynomials, with its gate count and its variables, so each 34 or 174 in this book has one home.
+**Every frame at once. The machine shown another way, as a reference table; it needs {{chapter The Boolean view}}.** We put every version of the machine's step side by side, from Python to polynomials, with its gate count and its variables, so each 34 or 174 in this book has one home; come back to it whenever the counts blur.
 
 The machine's step appears in this book in seven forms, each built for a different job, and each counts its parts its own way. This chapter is the one place they sit side by side. The chapters that introduce them point here.
 
@@ -787,7 +798,7 @@ Twenty-four steppers of 34 gates would be 816. The top row's constants fold many
 
 ## One formula for the whole machine
 
-**Mathematics. Cool math; it needs {{chapter The Boolean view}}.** We write the entire machine, every program on every input, as one formula of 14 bits, and watch it grow past half a million characters on paper while it stays 174 gates as a graph.
+**Mathematics. The machine shown another way; it needs {{chapter The Boolean view}}.** We write the entire machine, every program on every input, as one formula of 14 bits, and watch it grow past half a million characters on paper while it stays 174 gates as a graph.
 
 {{chapter The Boolean view}} ran the machine as gates on known bits. Its four step functions never ask what their bits are, so they can be handed something else: formulas. The machine is then one function of 14 bits, f, the input's two and the program's twelve, true where the program accepts the input, and running the step functions on formulas writes f down. The Roc port states f directly, in `roc/Fourteen.roc`:
 
@@ -847,7 +858,7 @@ v1 .. v12          v13 v14  f
 
 ## The SAT solver
 
-**SAT solving. The tools; it stands alone.** We introduce rocsat, the outside oracle this book trusts least and checks most, and the only two questions we ever ask it.
+**SAT solving. Tools and history; it stands alone.** We introduce rocsat, the outside oracle this book trusts least and checks most, and the only two questions we ever ask it.
 
 Several chapters from here on hand a formula to a SAT solver, [rocsat](https://github.com/mpizenberg/rocsat), written in Roc by Matthieu Pizenberg. It is his project, and its README is the place to read about it: a CDCL solver, the kind that learns a new clause from each contradiction it meets, with a model checker and DRAT proofs beside it. This book uses it as an outside oracle. Its code is separate from the machine's, so when it agrees with the machine, two separate programs agree. This chapter says once what the book asks it, so that each later chapter needs only to name its question.
 
@@ -915,7 +926,7 @@ The script stops at the first answer other than the one it expects. Each script 
 
 ## Checking a claim
 
-**SAT solving. The first SAT encoding; it needs {{chapter One formula for the whole machine}} and {{chapter The SAT solver}}.** We turn a sentence like "program 1689 accepts input 2" into clauses, and a solver that knows only clauses confirms it or refutes it.
+**SAT solving. The machine shown another way; it needs {{chapter One formula for the whole machine}} and {{chapter The SAT solver}}.** We turn a sentence like "program 1689 accepts input 2" into clauses, and a solver that knows only clauses confirms it or refutes it.
 
 A claim such as "program 1689 accepts input 2" can be checked by a tool that knows only formulas and clauses. This chapter turns f's graph into CNF and asks `rocsat check` about the claim ({{chapter The SAT solver}}).
 
@@ -996,7 +1007,7 @@ Every bit here was given; the check only computes. A solver that finds the bits 
 
 ## Parts for a small computer
 
-**Circuit design. Diagrams; it stands alone.** Here we help you visualize Steve's toy as an actual physical machine, built from gates you could buy, starting with each instruction drawn as a circuit.
+**Circuit design. The machine shown another way; it stands alone.** Here we help you visualize Steve's toy as an actual physical machine, built from gates you could buy, starting with each instruction drawn as a circuit.
 
 This chapter and the two after it build the machine as hardware, a plain digital circuit, from the bottom up. Each part is drawn once with all its gates, and from then on it is a box with named wires in and out. {{chapter The machine as a circuit}} wires the boxes into a stepper, and {{chapter The circuit, in full}} chains the steppers into the whole machine.
 
@@ -1127,7 +1138,7 @@ The latches: two ORs
 
 ## The machine as a circuit
 
-**Circuit design. Diagrams, and a listing to skim; it needs {{chapter Parts for a small computer}}.** We wire the parts into one step of the machine, a 59-gate stepper you can trace with a finger, and print every one of its gates.
+**Circuit design. The machine shown another way; it needs {{chapter Parts for a small computer}}.** We wire the parts into one step of the machine, a 59-gate stepper you can trace with a finger, and print every one of its gates.
 
 {{chapter Parts for a small computer}} drew every part with its gates. From here on each part is a box, known by its name and its wires, and this chapter wires the boxes into a *stepper*: one step of the machine. The circuit is combinational: the whole run is laid out in space, and every wire settles at once. {{chapter The Cook-Levin machine}} turns the same circuit around.
 
@@ -1301,7 +1312,7 @@ accepted' = accepted OR accepts_mux.out
 
 ## The circuit, in full
 
-**Circuit design. Diagrams; it needs {{chapter The machine as a circuit}}.** We chain six steppers into the whole machine and set four machines side by side, so that one wire lights up exactly when a program solves a puzzle.
+**Circuit design. The machine shown another way; it needs {{chapter The machine as a circuit}}.** We chain six steppers into the whole machine and set four machines side by side, so that one wire lights up exactly when a program solves a puzzle.
 
 {{chapter The machine as a circuit}} ends with a stepper as one box. This chapter chains six of them into the machine, then puts four machines side by side to decide a problem. Every drawing is still generated from the netlist of `src/circuit.c`, which records how each box is wired.
 
@@ -1443,7 +1454,7 @@ circuit_main equations: every gate of the decider, in evaluation order
 
 ## From equations to CNF
 
-**Circuit design, then SAT solving. Cool math, Cook-Levin in small; it needs {{chapter Checking a claim}} and {{chapter The circuit as equations}}.** We show why naming gates beats multiplying them out: 1,400 clauses that grow in a straight line, against 3,869 whose growth is exponential.
+**Circuit design, then SAT solving. New results; it needs {{chapter Checking a claim}} and {{chapter The circuit as equations}}.** We show why naming gates beats multiplying them out: 1,400 clauses that grow in a straight line, against 3,869 whose growth is exponential.
 
 {{chapter The circuit as equations}} writes the decider as 1,439 gates. This chapter turns those equations into CNF with a small Roc library, `roc/Cnf.roc`, and hands claims about the decider to rocsat, which evaluates them. The encoding is the one {{chapter Checking a claim}} uses on the 14-bit machine, now applied to the whole decider.
 
@@ -1524,7 +1535,7 @@ decides by distribution equals the circuit at all 65,536 points
 
 ## The Cook-Levin machine
 
-**Circuit design, then complexity theory. Diagrams, the theorem's construction; it needs {{chapter The circuit, in full}}.** We run the circuit backwards, the move at the heart of Cook-Levin: fix the answer, leave the program unknown, and ask which programs fit.
+**Circuit design, then complexity theory. The machine shown another way; it needs {{chapter The circuit, in full}}.** We run the circuit backwards, the move at the heart of Cook-Levin: fix the answer, leave the program unknown, and ask which programs fit.
 
 The decider of {{chapter The circuit, in full}} is a checker: hand it a problem and a program, and it says true or false. Cook and Levin's idea is to run a checker backwards. Fix the problem, leave the program unknown, pin the output to true, and ask which programs fit. The circuit does the same work as before; only the question changes.
 
@@ -1575,7 +1586,7 @@ The stepper's gates as the SAT encoding builds them, in `sat_step` (`src/sat.c`)
 
 ## The tableau, filled in
 
-**Complexity theory. A picture of the proof; it needs {{chapter The Cook-Levin machine}}.** We print Cook's grid twice, once for one program and once for every program at once, and you can watch a constant carry a fact down a column.
+**Complexity theory. The machine shown another way; it needs {{chapter The Cook-Levin machine}}.** We print Cook's grid twice, once for one program and once for every program at once, and you can watch a constant carry a fact down a column.
 
 ### The tableau of one program
 
@@ -1627,7 +1638,7 @@ Each variable here is a gate's output, and its three clauses tie it to the cell 
 
 ## Cook-Levin as SAT
 
-**SAT solving. A new theorem; it needs {{chapter The tableau, filled in}}.** We write every puzzle as one formula of 416 variables whose solutions are exactly its programs, and prove it by propagation alone.
+**SAT solving. New results; it needs {{chapter The tableau, filled in}}.** We write every puzzle as one formula of 416 variables whose solutions are exactly its programs, and prove it by propagation alone.
 
 `src/sat.c` writes each problem as one Boolean formula in DIMACS CNF, the input format of SAT solvers (`8de51b7`), whose satisfying assignments are exactly the programs that decide the problem: the Cook-Levin construction itself. Multiplied out, a formula like this grows with every step substituted, as {{chapter From equations to CNF}}'s distribution showed. This chapter names every wire instead: each gate's output gets a variable, tied to the gate's inputs by three clauses, so the formula grows linearly with the steps.
 
@@ -1711,7 +1722,7 @@ sat 13 len=5: UNSATISFIABLE, its DRAT proof 286 lemmas
 
 ## Solved by hand
 
-**SAT solving, on paper. Worked examples; it needs {{chapter Cook-Levin as SAT}}.** We solve the smallest puzzle's formula on paper and read the first lemmas of the hardest one's proof as plain statements about programs.
+**SAT solving, on paper. The machine shown another way; it needs {{chapter Cook-Levin as SAT}}.** We solve the smallest puzzle's formula on paper and read the first lemmas of the hardest one's proof as plain statements about programs.
 
 ### {0} in one line
 
@@ -1838,7 +1849,7 @@ rocsat's answer to that CNF, as sat/oracle.shale kept it
 
 ## Six expressions, composed
 
-**Circuit design, then mathematics. The pivot to the polynomials; it needs {{chapter The Boolean view}} and {{chapter Cook-Levin as SAT}}.** We leave the program's bits unknown, and the machine becomes a formula whose true points are exactly the programs that solve a puzzle; then we set the road already travelled, naming, beside the one this part takes, expanding.
+**Circuit design, then mathematics. The machine shown another way; it needs {{chapter The Boolean view}} and {{chapter Cook-Levin as SAT}}.** We leave the program's bits unknown, and the machine becomes a formula whose true points are exactly the programs that solve a puzzle; then we set the road already travelled, naming, beside the one this part takes, expanding.
 
 {{chapter The Boolean view}} ran the machine as four Boolean functions of six bits, composed over six steps, with the input and the program fixed. Cook and Levin's move is to stop fixing the program. Keep the same four functions and the same six steps, give the program's twelve bits names in place of values, v1 to v12, and what comes out of the sixth step is a formula where it was a bit. This chapter does that, turns the formula into the question a puzzle asks, and then sets the two ways of composing side by side: the circuit chapters took one, and the rest of this part takes the other.
 
@@ -1946,7 +1957,7 @@ Naming is why Cook-Levin's formula stays polynomial in size: each step adds the 
 
 ## Arithmetization
 
-**Mathematics. Cool math; it needs {{chapter Six expressions, composed}}.** We turn logic into arithmetic, NOT as 1 − x and AND as a product, so that one step of the machine becomes four polynomials.
+**Mathematics. The machine shown another way; it needs {{chapter Six expressions, composed}}.** We turn logic into arithmetic, NOT as 1 − x and AND as a product, so that one step of the machine becomes four polynomials.
 
 The stepper writes one step of the machine as polynomials, the first of the two ways to compose in {{chapter Six expressions, composed}}: expand. Each bit of the state is a variable that is only ever 0 or 1, and logic becomes arithmetic:
 
@@ -2067,7 +2078,7 @@ input  accepted after line 1 2 3 4 5 6  test_with_stepper
 
 ## The Boolean ring
 
-**Mathematics. Cool math; it needs {{chapter Arithmetization}}.** We show you the one identity, x² = x, that keeps every polynomial here multilinear, so that composing six steps takes a fraction of a second.
+**Mathematics. The machine shown another way; it needs {{chapter Arithmetization}}.** We show you the one identity, x² = x, that keeps every polynomial here multilinear, so that composing six steps takes a fraction of a second.
 
 A whole program is six steps. Composing them means substituting: step 1's four polynomials go in for the state variables of step 2, and so on, until the final state is four polynomials in the 14 bits of {{chapter Six expressions, composed}}. One polynomial would then hold the whole machine.
 
@@ -2089,7 +2100,7 @@ Each substitution keeps the polynomials multilinear, and the composition of {{ch
 
 ## Six steps composed
 
-**Mathematics. A new theorem, the book's thesis; it needs {{chapter The Boolean ring}}.** We compose all six steps into four polynomials and prove that they agree with the machine at all 16,384 points.
+**Mathematics. New results, the book's thesis; it needs {{chapter The Boolean ring}}.** We compose all six steps into four polynomials and prove that they agree with the machine at all 16,384 points.
 
 `src/compose.c` substitutes the step polynomials into themselves six times (`1146d43`). The Roc port's step, from `roc/Compose.roc`:
 
@@ -2155,7 +2166,7 @@ input  hb  lb  halted  accepted
 
 ## The Delightful Monstrosity
 
-**Big output to skim, and a deliberate stunt; it needs {{chapter Six steps composed}}.** We describe a two-bit machine by the largest polynomials we could make by the rules, show the run that checks them, and then print all of them, 762,670 characters for the whole program.
+**Mathematics. Big output to skim; it needs {{chapter Six steps composed}}.** We describe a two-bit machine by the largest polynomials we could make by the rules, show the run that checks them, and then print all of them, 762,670 characters for the whole program.
 
 This chapter is a stunt in the spirit of the International Obfuscated C Code Contest, whose entries are C made unreadable on purpose that still runs correctly within the contest's rules. Ours is to describe a very simple machine by an enormous polynomial. Steve wanted exactly this: part of the project, he said on 2026-11-25, was "to generate obscenely large [polynomials] that actually mapped to a simple Nibble VM solving our 2-bit language". The stunt stays in this chapter; the rest of the book needs only the counts.
 
@@ -2276,7 +2287,7 @@ accepted after six steps, composed by the C's compose_main at the book's build
 
 ## Nibble++
 
-**Ordinary computation. Why we invented a bigger machine; it needs {{chapter The machine}}.** We built Nibble++ because the toy is too small to surprise anyone: with 16 inputs it has 65,536 problems and far too many programs to list, and yet one search of its states settles every problem exactly.
+**Ordinary computation. New results; it needs {{chapter The machine}}.** We built Nibble++ because the toy is too small to surprise anyone: with 16 inputs it has 65,536 problems and far too many programs to list, and yet one search of its states settles every problem exactly.
 
 The toy is small enough to settle by listing every program, 4,096 of them. Nibble++ is the case n = 4 of {{chapter Nibble, sized}}, with programs of any length: inputs 0 to 15, and 2^16 = 65,536 formal languages, the sets of inputs a program can decide. It is too big to list, and small enough to settle exactly by searching the machine's states. `src/plus.c` is its interpreter and `src/census.c` its census.
 
@@ -2414,7 +2425,7 @@ accepted at    1  3  5  7  9 11 13 15 17 19 21 23 25 28  - 28
 
 ## Two theorems about Nibble++
 
-**Mathematics. Cool math, new theorems; it needs {{chapter Nibble++}}.** We prove that the shortest programs of two instructions are counted by the Fibonacci numbers, off by exactly one where the inputs run out.
+**Mathematics. New results; it needs {{chapter Nibble++}}.** We prove that the shortest programs of two instructions are counted by the Fibonacci numbers, off by exactly one where the inputs run out.
 
 With `zero` and `decr` alone, a short proof gives every formal language's shortest length and the count of formal languages at each length. The census of {{chapter Nibble++}} checks both.
 
@@ -2474,7 +2485,7 @@ With `mod2` the counts follow the Fibonacci numbers one place on, F(L + 1), from
 
 ## Shortest programs with mod2 and half
 
-**Mathematics. New theorems; it needs {{chapter Two theorems about Nibble++}}.** We explain every shortest length the census found, all 65,536 of them, by one recursion, and we name the one conjecture still standing.
+**Mathematics. New results; it needs {{chapter Two theorems about Nibble++}}.** We explain every shortest length the census found, all 65,536 of them, by one recursion, and we name the one conjecture still standing.
 
 {{chapter Two theorems about Nibble++}} settles `zero` and `decr` alone. This chapter brings in `mod2` and `half`, the split lines, and explains every length the census of {{chapter Nibble++}} finds. The proofs are in `docs/NIBBLE_PLUS_THEORY.md`, and a test holds each theorem to the census on all 65,536 formal languages.
 
@@ -2569,7 +2580,7 @@ Beyond 16 inputs each theorem here is a conjecture. With an n-bit `AX`, `src/the
 
 ## Nibble++ meets rocsat
 
-**SAT solving. SAT at scale; it needs {{chapter Nibble++}} and {{chapter The SAT solver}}.** We hand the same questions to a SAT solver and watch it refute every 27-line program for the hardest problem, with a 17 MB proof that our own checker replays.
+**SAT solving. New results; it needs {{chapter Nibble++}} and {{chapter The SAT solver}}.** We hand the same questions to a SAT solver and watch it refute every 27-line program for the hardest problem, with a 17 MB proof that our own checker replays.
 
 {{chapter Nibble++}} settles every formal language's shortest program by searching the machine's states. This chapter puts the same questions to rocsat, as {{chapter The SAT solver}} frames them, in a CNF that `src/plus_sat.c` builds on the toy's gates.
 
@@ -2655,7 +2666,7 @@ Three methods agree on every case: the census, a breadth-first search over state
 
 ## is_not_14 needs 28 lines
 
-**SAT solving, then ordinary computation. A question answered; it needs {{chapter Nibble++ meets rocsat}}.** We answer, two separate ways, a question Steve asked in public: why every 27-line program fails one particular problem.
+**SAT solving, then ordinary computation. New results; it needs {{chapter Nibble++ meets rocsat}}.** We answer, two separate ways, a question Steve asked in public: why every 27-line program fails one particular problem.
 
 Steve asked the Roc Zulip, on 2026-11-26: "How do we prove that no 27-line Nibble++ programs can recognize the language is_not_14?" This chapter answers that question in full. The parts are in {{chapter Nibble++}} and {{chapter Nibble++ meets rocsat}}.
 
@@ -2693,7 +2704,7 @@ Both proofs replace the programs with a finite model of the machine, the circuit
 
 ## Guided search
 
-**SAT solving. An experiment; it needs {{chapter Nibble++ meets rocsat}}.** We try to beat the full search by asking the solver about a few inputs at a time, and report plainly where it wins and where it loses.
+**SAT solving. New results, from an experiment; it needs {{chapter Nibble++ meets rocsat}}.** We try to beat the full search by asking the solver about a few inputs at a time, and report plainly where it wins and where it loses.
 
 The search of {{chapter Nibble++ meets rocsat}} hands rocsat all 16 runs at once. A guided search, counterexample by counterexample, starts with a few runs and adds the others as they are needed. `plus_sat search-guarded` writes the full search's 16 runs with each run's output held by a selector variable, and `sat/plus_guided.shale` runs the loop on the same 11 cases with one rocsat kept across the rounds: `sat/rocsat_guided.roc`, on rocsat's incremental API, solves under the selectors of the set as assumptions, so the clauses rocsat learns in one round carry to the next. For a formal language W and a length k:
 
@@ -2735,7 +2746,7 @@ Four methods have now answered the same questions, and each wins somewhere:
 
 ## The oracles
 
-**Ordinary computation. The cross-checks; it stands alone.** We show you five separate ways of computing the same answers, which is why you can believe the numbers in this book.
+**Ordinary computation. Tools and history; it stands alone.** We show you five separate ways of computing the same answers, which is why you can believe the numbers in this book.
 
 Every implementation in this repository computes the same answers in its own way, and each is held to the others.
 
@@ -2773,7 +2784,7 @@ Each pair shares only the machine's rule. The interpreter branches on opcodes, t
 
 ## The Roc port
 
-**Ordinary computation. The tools; it needs {{chapter The Boolean ring}}.** We show the mathematics written so that it reads like mathematics, and how a race against it made the C four times faster.
+**Ordinary computation. Tools and history; it needs {{chapter The Boolean ring}}.** We show the mathematics written so that it reads like mathematics, and how a race against it made the C four times faster.
 
 `roc/` is the same machine and the same mathematics in Roc, at the compiler that `roc/roc-version` pins (`6206236`). Its point is that the mathematics reads like mathematics.
 
@@ -2817,7 +2828,7 @@ The C's CPU time, best of five runs on 2026-11-27, the polynomials byte for byte
 
 ## How it got here
 
-**History, and safe to skip: the rest of the book stands on its own.** We tell how Steve built the toy in four days of March 2023, how far his polynomials got, and the afternoon in 2026 when all six steps finally composed.
+**Every frame. Tools and history, safe to skip; it stands alone.** We tell how Steve built the toy in four days of March 2023, how far his polynomials got, and the afternoon in 2026 when all six steps finally composed.
 
 This book takes its ideas in the order that explains them best, which is seldom the order they came in. This chapter gives the order they came in, as two git logs record it.
 
@@ -2849,7 +2860,7 @@ The cook-levin-riff log opens on 2026-11-25 with the C port of the machine and t
 
 ## What comes next
 
-**Every frame. Open steps; it stands alone.** We list the questions still open, and say how to start on your own.
+**Every frame. Tools and history; it stands alone.** We list the questions still open, and say how to start on your own.
 
 A few questions stand open:
 
