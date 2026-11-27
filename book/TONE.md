@@ -17,6 +17,11 @@ adding to `book.md` keeps to these:
   of its lead, so the book can be skimmed from there.
 - **Big output goes at the end of its chapter**, framed by its scale and
   with a word that skimming it is the point; prose never sits below it.
+  Each is labelled proudly, like a theorem, `**Monstrosity N: <title>.**`,
+  numbered through the book (the build holds the numbers), with a caption
+  of measured facts: bytes, lines, terms or clauses, what made it, and from
+  how small a machine. A DRAT proof may live in the appendix, its label in
+  the chapter pointing there.
 - **Every number is cited**: a commit's short hash, `README.md`, a golden
   file, or a program run while the book was written, named where the
   number is used. A number nobody re-ran is labelled as the record's.

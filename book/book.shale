@@ -579,38 +579,41 @@ function check_citations()
   return nil
 end
 
--- The book's theorems hold together: each is stated once, as a line opening
--- `**Theorem N.**`, and their numbers run 1, 2, 3 and on through the book
--- in order; every other "Theorem N", and each number of "Theorems N and M"
--- or "Theorems N to M", names one of them. A number stated twice, out of
--- order, or named and never stated stops the build.
-function check_theorems()
+-- The book's numbered things hold together: its theorems, each stated as
+-- `**Theorem N.**`, and its monstrosities, the big outputs, each labelled
+-- `**Monstrosity N:`. Each number is given once, and they run 1, 2, 3 and
+-- on through the book in order; every other "Theorem N" or "Monstrosity N",
+-- and each number of "Theorems N and M" or "N to M", names one of them. A
+-- number given twice, out of order, or named and never given stops the
+-- build.
+function check_numbered(word, plural)
   local text = read(SOURCE)
   local stated = {}
   local wrong = {}
   local count = 0
-  for m in re_find_all(text, "\\*\\*Theorem ([0-9]+)\\.\\*\\*") do
+  local mark = word == "Theorem" and "\\." or ":"
+  for m in re_find_all(text, "\\*\\*" .. word .. " ([0-9]+)" .. mark) do
     count = count + 1
     local n = m.group
-    if has_key(stated, n) then push(wrong, "Theorem " .. n .. " is stated twice") end
-    if tonumber(n) ~= count then push(wrong, "the theorem stated " .. count .. " in order is numbered " .. n) end
+    if has_key(stated, n) then push(wrong, word .. " " .. n .. " is given twice") end
+    if tonumber(n) ~= count then push(wrong, "the " .. word .. " given " .. count .. " in order is numbered " .. n) end
     stated[n] = true
   end
   local named = 0
-  for m in re_find_all(text, "Theorems? ([0-9]+)((?:(?:, | and | to )[0-9]+)*)") do
+  for m in re_find_all(text, "(?:" .. word .. "|" .. plural .. ") ([0-9]+)((?:(?:, | and | to )[0-9]+)*)") do
     local numbers = {m.groups[1]}
     for k in re_find_all(m.groups[2], "[0-9]+") do push(numbers, k.group) end
     for n in numbers do
       named = named + 1
-      if not has_key(stated, n) then push(wrong, "Theorem " .. n .. " is named and never stated") end
+      if not has_key(stated, n) then push(wrong, word .. " " .. n .. " is named and never given") end
     end
   end
-  if count == 0 then fail("book: book/book.md states no theorem") end
+  if count == 0 then fail("book: book/book.md gives no " .. word) end
   if #wrong > 0 then
     for w in wrong do print("  " .. w) end
-    fail("book: the book's theorem numbers don't hold together, so /" .. DEST_NAME .. "/ is left as it was")
+    fail("book: the book's " .. plural .. "' numbers don't hold together, so /" .. DEST_NAME .. "/ is left as it was")
   end
-  print("book: " .. count .. " theorems stated once each, numbered 1 to " .. count .. " in order, and " .. (named - count) .. " references to them, each to one")
+  print("book: " .. count .. " " .. plural .. " given once each, numbered 1 to " .. count .. " in order, and " .. (named - count) .. " references to them, each to one")
   return nil
 end
 
@@ -630,7 +633,8 @@ function main()
   if not exists(HERE) or real(HERE) ~= real(".") then fail("book: run from the checkout at " .. HERE .. " (" .. (exists(HERE) and real(HERE) or "not there") .. "), which roc-apps' tools reach by that mount") end
   if not exists(ROC_APPS .. "/" .. BUILD) then fail("book: no " .. ROC_APPS .. "/" .. BUILD .. ": clone roc-apps beside this checkout") end
   check_citations()
-  check_theorems()
+  check_numbered("Theorem", "Theorems")
+  check_numbered("Monstrosity", "Monstrosities")
   if exists(PREPARED) then remove_tree(PREPARED) end
   mkdir(PREPARED)
   local drawn = must(run({"shale", "--root", ".", DRAW, "source=" .. HERE .. "/" .. SOURCE, "prepared=" .. HERE .. "/" .. PREPARED}, {cwd = ROC_APPS, timeout_ms = 120000, tail = 20, want = DOT_WANT}))

@@ -2,6 +2,8 @@
 
 A small book about [cook-levin-riff](https://github.com/showell/cook-levin-riff): a toy machine whose every program is a polynomial and a Boolean formula, the six-step composition that took three years to arrive, and seven independent ways of computing the same answers that all agree.
 
+Some problems are easy to check and hard to solve: an answer can be confirmed in moments, but finding one can mean a search that doubles with every step. That gap is what makes computation feel intractable, and it is the question at the heart of P versus NP. This book doesn't answer that question. It makes the gap visible on a machine small enough to hold in your head, and along the way it tries a few ways around it, which sometimes help and sometimes only show how wide the gap is.
+
 The book is meant to be skimmed. Each chapter opens with a guidepost, in bold, saying what kind of chapter it is and what earlier chapter it needs, so you can jump in anywhere. This list is the whole book in one line a chapter, the kind in italics:
 
 **Part I, the toy:**
@@ -55,6 +57,19 @@ The book is meant to be skimmed. Each chapter opens with a guidepost, in bold, s
 - {{chapter What is Shale?}}: the language behind every script here. *The tools.*
 - {{chapter The VM in Shale}}: the machine again, in Shale. *The tools.*
 - {{chapter What comes next}}: the steps still open. *Open steps.*
+- {{chapter Appendix: two DRAT proofs}}: two proofs of impossibility, whole. *Big output to skim.*
+
+**The monstrosities.** This machine fits on an index card: one two-bit register, four instructions, six lines. Yet it keeps producing monsters, and we have numbered them proudly, like theorems. The question "does this program accept this input?", composed through six steps, becomes one polynomial of 510,387 characters (Monstrosity 4). Wiring the same machine as gates takes 1,439 equations (Monstrosity 1). Ask whether the 4-bit Nibble++ can decide is_not_14 in 27 lines, and the answer, that every 27-line program fails, comes backed by a proof of 17,192,870 bytes that our own checker replays line by line (Monstrosity 2), while the answer at 28 lines is a program of 56 bits that you check by running it. That gap is NP's in miniature: a yes has a short certificate, and the best known evidence the other way can be enormous. Skim the monsters, marvel, and move on: each one is the hidden complexity in simple things.
+
+Here they all are, each shown because its size is the point:
+
+- Monstrosity 1: the decider as 1,448 lines of equations, in {{chapter The circuit as equations}}.
+- Monstrosity 2: a 17 MB proof that 27 lines are too few, in {{chapter is_not_14 needs 28 lines}}.
+- Monstrosity 3: one step, as Python printed it, in {{chapter The polynomials, in full}}.
+- Monstrosity 4: the whole machine as four polynomials, in {{chapter The polynomials, in full}}.
+- Monstrosity 5: the proof that five lines are too few for {0, 2, 3}, in {{chapter Appendix: two DRAT proofs}}.
+- Monstrosity 6: the largest of the 15 proofs, in {{chapter Appendix: two DRAT proofs}}.
+- Monstrosity 7: one puzzle as 1,216 clauses, in {{chapter The solver's work, in full}}.
 
 ## Introduction
 
@@ -1168,7 +1183,7 @@ All four comparators say yes, so the AND lights "decides".
 
 `python/equations.py` reads this text back with a parser and an interpreter of its own, apart from the C that printed it, and evaluates it on all 4,096 programs and all 16 want registers at once: `decides` is 1 at exactly the 4,096 points where the program decides the problem the register holds. `build.shale` runs it on every build.
 
-So here is the decider whole: 1,439 gates on 1,449 lines, 109,098 bytes of text (`roc/golden/equations.txt`), to answer one question about a program twelve bits long, whether it solves a puzzle with four inputs. Every line is a gate you could solder. Skim them, glance at the last line, `decides`, and move on: the next chapter needs only their count.
+**Monstrosity 1: the decider as 1,448 lines of equations.** Here it is whole: 1,439 gates and 8 copies under one line of inputs, 109,098 bytes of text (`roc/golden/equations.txt`), printed by `src/circuit_main.c` to answer one question about a program twelve bits long, whether it solves a puzzle with four inputs. Every line is a gate you could solder. Skim them, glance at the last line, `decides`, and move on: the next chapter needs only their count.
 
 ```equations book/build/equations.txt
 circuit_main equations: every gate of the decider, in evaluation order
@@ -1757,6 +1772,10 @@ The proof is trusted through its checker. `src/drat.c` is the book's own C, apar
 
 Both proofs replace the programs with a finite model of the machine, the circuit for rocsat and the graph of states for the census, and ask the question of the model once. The census lists every reachable state, 374,003 here. rocsat needs only the circuit, which grows with the program's length and the machine's width, so its method carries over to machines with more states than a list can hold.
 
+### The proof itself
+
+**Monstrosity 2: a 17 MB proof that 27 lines are too few.** rocsat's DRAT proof for is_not_14 at 27 lines is 17,192,870 bytes on 145,384 lines, 64,533 lemmas and 80,851 deletions over 18,365 variables and 54,949 clauses, all to show that every 27-line program for a machine with a 4-bit register gets one of 16 inputs wrong. Rerun while this chapter was written, it came out the very size `sat/plus/search.txt` records, and `src/drat.c` said `verified: 64533 lemmas (0 by RAT), 80851 deletions, over 18365 variables and 54949 clauses; the empty clause at line 145384`. It is too big for any page, so it stays a file: `sat/plus_search.shale` writes it under `out/sat/plus/` in about 17 seconds.
+
 ## Guided search
 
 **An experiment; it needs {{chapter Nibble++ meets rocsat}}.** We try to beat the full search by asking the solver about a few inputs at a time, and report plainly where it wins and where it loses.
@@ -2085,6 +2104,8 @@ The four final polynomials come from `src/compose_main.c` (`1146d43`). `book/boo
 
 ### One step, in the Boolean ring
 
+These four are small, 70 terms in all; they are here for contrast with the two monstrosities after them.
+
 ```polynomial roc/golden/step_polynomials.txt hb'
 hb', one step in the Boolean ring, printed by the C's bp_str
 7
@@ -2107,6 +2128,8 @@ accepted', one step in the Boolean ring, printed by the C's bp_str
 
 ### One step, as the Python printed it
 
+**Monstrosity 3: one step, as Python printed it.** One step of the machine, in four polynomials of 3,823 terms and 185,063 characters together (`tests/golden/step_*.txt`), most of the terms powers like x² that a machine of 0s and 1s reads as plain x. `lb'` alone is 2,979 terms.
+
 ```polynomial tests/golden/step_hb.txt
 hb', one step in the general ring, as Python's stepper.py prints it
 786
@@ -2128,6 +2151,8 @@ accepted', one step in the general ring, as Python's stepper.py prints it
 ```
 
 ### The whole program
+
+**Monstrosity 4: the whole machine as four polynomials.** 15,560 terms (319, 2,185, 2,732 and 10,324) and 762,670 characters, composed by `src/compose_main.c` at the book's build. `accepted` alone is 510,387 characters: all 4,096 programs on all four inputs of a two-bit machine, written as one sum.
 
 ```polynomial book/build/out/hb.txt
 hb after six steps, composed by the C's compose_main at the book's build
@@ -2368,7 +2393,7 @@ The first two restate the length bound, and the next four decode line 6 as `nada
 
 **Big output to skim; it needs {{chapter Cook-Levin as SAT}}.** You get a whole SAT formula, its whole answer and two whole proofs of impossibility, each checked again at every build.
 
-This chapter prints what rocsat was given and what it answered for two problems, whole. Over each box are the counts that the book's app (`book/app/SatFiles.roc`) makes from the text it shows. The chapter states one count for each box again in its source, and the build stops if the text has another.
+This chapter prints what rocsat was given and what it answered for two problems, whole. Over each box are the counts that `book/app/SatFiles.roc` makes from its text, and the build holds one of them to the source.
 
 ### Where the files come from
 
@@ -2378,7 +2403,7 @@ The formulas come from the repository's C: `book/book.shale` builds `src/sat_mai
 
 A DRAT proof is a list of lines, each a clause added, a lemma, or a clause deleted, after a `d`. `src/drat.c` replays it forward. Each lemma has to follow by reverse unit propagation: set all its literals false, propagate over the formula and the lemmas so far, and some clause must come out with every literal false. Each deletion has to name a clause the database holds, and it is applied. The proof ends at the empty clause, which follows when propagation over the database alone reaches a conflict. A lemma that fails this test may still pass as a RAT on its first literal; all 15 of rocsat's proofs pass by the first test alone.
 
-`tests/test_drat.c` holds the checker both ways in 16 tests: hand-made proofs that pass, planted ones that fail (a lemma the formula leaves open, a proof that stops short of the empty clause, a deletion of a clause a later lemma needs, a deletion of the clause that set a literal), and each committed proof, which verifies against its formula and fails against the formula one line longer.
+`tests/test_drat.c` holds the checker both ways in 16 tests: hand-made proofs that pass, four planted ones that fail, and each committed proof, which verifies against its formula and fails against the formula one line longer.
 
 ### All 15 proofs
 
@@ -2406,15 +2431,17 @@ The proofs run from 7,440 to 14,698 bytes and from 286 to 821 lemmas. The {0} pr
 
 ### What the boxes hold
 
-`is_not_one` accepts exactly {0, 2, 3} (code 13), and one program of the 4,096 solves it (`tests/golden/find_solutions.txt`). The first box is its formula, `sat 13`, in full: 1,216 clauses over 416 variables, the whole tableau of {{chapter The tableau, filled in}} as clauses. The `c` lines at its top name the variables: the program's 12 bits, then each input's state after each step as the literals that carry it, `T` and `F` where folding left a constant.
+`is_not_one` accepts exactly {0, 2, 3} (code 13), and one program of the 4,096 solves it (`tests/golden/find_solutions.txt`). The first box is its formula, `sat 13`, in full: 1,216 clauses over 416 variables. The `c` lines at its top name the variables: the program's 12 bits, then each input's state after each step as the literals that carry it, `T` and `F` where folding left a constant.
 
 The second is rocsat's answer, its statistics line, its verdict and a value for every one of the 416 variables. Instruction i is 2·v[2i − 1] + v[2i], so the first 12 values read as program 1689 (`zero, decr, decr, zero, decr, zero`). The build decodes the program from the answer and holds this sentence to it, and `sat solves 13` confirms on the machine that the program accepts exactly {0, 2, 3}.
 
-The third is the proof that five lines are too few. With line 6 forced to `nada` (`sat 13 len=5`), the formula is the first box's with two unit clauses at its top, 1,218 clauses in all, and {{chapter Solved by hand}} reads the start of rocsat's proof. The checker, run on it at the book's build, says `verified: 286 lemmas (0 by RAT), 387 deletions, over 416 variables and 1218 clauses; the empty clause at line 673`. A program of fewer than five lines has its line 6 at `nada` too, so the formula covers every program of five lines or fewer, and the proof shows that each one decides another problem. No program of five or fewer lines decides {0, 2, 3}.
+**Monstrosity 5: the proof that five lines are too few**, 9,012 bytes on 673 lines, printed whole in {{chapter Appendix: two DRAT proofs}}. With line 6 forced to `nada` (`sat 13 len=5`), the formula is the first box's with two unit clauses at its top, 1,218 clauses in all, and {{chapter Solved by hand}} reads the start of rocsat's proof. The checker, run on it at the book's build, says `verified: 286 lemmas (0 by RAT), 387 deletions, over 416 variables and 1218 clauses; the empty clause at line 673`. A program of fewer than five lines has its line 6 at `nada` too, so the formula covers every program of five lines or fewer, and the proof shows that each one decides another problem. No program of five or fewer lines decides {0, 2, 3}.
 
-The fourth is the largest of the 15 proofs by bytes, that of `is_big`, {2, 3} (code 12). Its shortest program has five lines, and this proof shows that four are too few. The checker says `verified: 490 lemmas (0 by RAT), 788 deletions, over 416 variables and 1220 clauses; the empty clause at line 1278`.
+**Monstrosity 6: the largest of the 15 proofs**, 14,698 bytes on 1,278 lines, also printed whole in the appendix, is that of `is_big`, {2, 3} (code 12). Its shortest program has five lines, and this proof shows that four are too few. The checker says `verified: 490 lemmas (0 by RAT), 788 deletions, over 416 variables and 1220 clauses; the empty clause at line 1278`.
 
-So the four boxes below hold 1,216 clauses, 416 values and 776 lemmas, all of them checked again at every build, to settle three facts that each fit in a sentence: program 1689 solves {0, 2, 3}, every program of five lines fails it, and every program of four lines fails {2, 3}. Skim them; the counts over each box are the story.
+So the two boxes below and the two proofs in the appendix hold 1,216 clauses, 416 values and 776 lemmas, all of them checked again at every build, to settle three facts that each fit in a sentence: program 1689 solves {0, 2, 3}, every program of five lines fails it, and every program of four lines fails {2, 3}. Skim them; the counts over each box are the story.
+
+**Monstrosity 7: one puzzle as 1,216 clauses.** The CNF of {0, 2, 3}, 15,994 bytes on 1,243 lines, written by `src/sat_main.c` at the book's build: 416 variables, to ask which of 4,096 six-line programs solves one puzzle with four inputs.
 
 ### The formula of {0, 2, 3}
 
@@ -2428,20 +2455,6 @@ the CNF of {0, 2, 3}, written by src/sat_main.c at the book's build
 ```dimacs sat/proofs/13-len6.model
 rocsat's answer to that CNF, as sat/oracle.shale kept it
 416
-```
-
-### Five lines are too few
-
-```dimacs sat/proofs/13-len5.drat
-rocsat's DRAT proof that the CNF of {0, 2, 3} at length 5 is unsatisfiable
-286
-```
-
-### The largest proof
-
-```dimacs sat/proofs/12-len4.drat
-rocsat's DRAT proof that the CNF of {2, 3} at length 4 is unsatisfiable
-490
 ```
 
 ## The oracles
@@ -2520,8 +2533,6 @@ On this box, the release build of `composition 6` composes all six steps and run
 
 ## What is Shale?
 
-**The tools; skip it if you came for the machine.** We describe Shale, the language that runs every script behind this book, from its own documentation.
-
 Shale is a small scripting language for working on code, Lua-like on the surface, and the language of every script in this repository and of the port in the next chapter. This chapter describes the language itself, from its own documentation, and leaves Cook-Levin aside; a reader here for the machine can skip ahead to {{chapter The VM in Shale}}.
 
 ### What it is for
@@ -2556,8 +2567,6 @@ The style is an allow-list: Shale and its runner name what they permit, and a re
 A long list is refused, each item by name: floats and `/`; `^`, hex literals and the bitwise operators; function values, closures, nested functions and `local function`; `:` method calls, `...`, `goto` and `repeat`; multiple assignment and multiple returns; and Lua's library, `string.`, `pairs` and the rest. What remains is integers, strings, booleans, lists and maps, loops, and functions by name, with a large set of builtins beside them. {{chapter The VM in Shale}} is the machine and its mathematics in that much.
 
 ## The VM in Shale
-
-**The tools; it needs {{chapter What is Shale?}}.** We rebuild the whole machine and its polynomials in a scripting language that refuses bitwise operators, and count what that costs.
 
 `shale/cook_levin.shale` is the machine, the search over all 4,096 programs, the step polynomials and the six-step composition once more, in Shale (`4942a49`). It follows `js/cook_levin.js` closely, and it prints the same two reports, byte for byte: `tests/golden/find_solutions.txt`, then `roc/golden/composition.txt`. `part=search` prints the first alone and `part=composition` the second.
 
@@ -2639,3 +2648,23 @@ A few steps stand open, each small:
 - **The C's dense table.** The C composition could sum like terms in the Roc port's dense table, and its time would then measure the programming language.
 - **The compiled JavaScript.** Its slowness is unprofiled. `README.md` guesses that an array's items are values of unknown kind to the compiler, so each read and write passes the runtime's tag checks.
 - **Nondeterminism.** The machine is deterministic. The SAT encoding already treats the program as the unknown, which is the theorem's "a certificate exists"; a machine with choice instructions would make the riff closer to the theorem.
+
+## Appendix: two DRAT proofs
+
+**Big output to skim; it needs {{chapter The solver's work, in full}}.** Here are two proofs of impossibility, whole, lemma by lemma, for anyone who wants to watch a solver rule out every program of a given length.
+
+Each is a file of `sat/proofs/`, checked again by `src/drat.c` at every build of this book, as {{chapter The solver's work, in full}} tells.
+
+### Monstrosity 5: five lines are too few for {0, 2, 3}
+
+```dimacs sat/proofs/13-len5.drat
+rocsat's DRAT proof that the CNF of {0, 2, 3} at length 5 is unsatisfiable
+286
+```
+
+### Monstrosity 6: four lines are too few for {2, 3}
+
+```dimacs sat/proofs/12-len4.drat
+rocsat's DRAT proof that the CNF of {2, 3} at length 4 is unsatisfiable
+490
+```
